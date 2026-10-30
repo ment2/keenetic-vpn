@@ -1,0 +1,28 @@
+#!/opt/bin/sh
+
+LOG=/opt/tmp/xray-watchdog.log
+SERVICE=/opt/etc/init.d/S97xray
+
+port_ready() {
+    netstat -lnt 2>/dev/null | grep -q '127.0.0.1:10808'
+}
+
+while :; do
+    if ! port_ready; then
+        echo "$(date) SOCKS5 unavailable; restarting Xray" >> "$LOG"
+
+        if "$SERVICE" restart; then
+            sleep 5
+
+            if port_ready; then
+                echo "$(date) Xray successfully restored" >> "$LOG"
+            else
+                echo "$(date) ERROR: Xray started but SOCKS5 unavailable" >> "$LOG"
+            fi
+        else
+            echo "$(date) ERROR: Xray restart failed" >> "$LOG"
+        fi
+    fi
+
+    sleep 30
+done
