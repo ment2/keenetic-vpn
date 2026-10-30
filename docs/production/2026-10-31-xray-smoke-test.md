@@ -33,3 +33,12 @@ Read-only job `bf641e41-f467-4227-b2df-bcaa3b7efa86` completed:
 - `XRAY_KS_HOME` DROP counter was **956 packets / 382524 bytes**, local RETURN counter 2 packets / 123 bytes. Counters are cumulative, so this is evidence of dropped LAN transit traffic but not its current rate.
 - Agent Python process was running.
 **Important:** This means **Wi-Fi client VPN forwarding is not yet verified and may be broken**, despite working SOCKS5 and present firewall rules. Do not report whole VPN as healthy. Further read-only check of PREROUTING/FORWARD counters and actual Xray inbound is queued as job `c47de0e6-aa51-4fde-8452-3e0b1de885b5`. Do not reset counters, disable kill-switch or alter production without a separate change plan.
+
+## Follow-up completed: PREROUTING and inbounds
+Job `c47de0e6-aa51-4fde-8452-3e0b1de885b5` completed exit 0:
+- `PREROUTING` hook to `XRAY_WIFI`: **48 UDP packets / 30317 bytes**, **0 TCP packets**. The XRAY_WIFI chain had 0 TPROXY target hits in prior sampling, which is compatible with UDP being filtered by local/multicast RETURN rules; no proof of internet traffic interception.
+- `FORWARD` first hook `XRAY_KS_HOME`: 40118 packets / 16075628 bytes cumulative.
+- `br0` up, IPv4 `192.168.1.1/24`; nonsecret Xray inbounds: `local-socks` SOCKS `127.0.0.1:10808`, `tproxy-in` dokodemo-door `0.0.0.0:12345`.
+- Conntrack text query for source `192.168.1.*` yielded 3 matching entries; insufficient to prove internet egress.
+- Additional read-only snapshot queued: `0d4abb7b-f93f-4612-a3d8-de5d2a086c19` (chain detail, local client neighbor table, processes, IPv6 FORWARD, sanitized recent watchdog/error log). **Do not resubmit**.
+**Conclusion:** Router-local SOCKS5 verified. Wi-Fi transparent interception remains **unverified**, and the active kill-switch has observed dropped packets. A real client-initiated request through Keenetic Wi-Fi is needed for end-to-end proof, after counters are sampled safely without resetting them.
