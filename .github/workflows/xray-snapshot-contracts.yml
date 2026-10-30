@@ -1,0 +1,36 @@
+name: Xray snapshot offline source contracts
+
+on:
+  push:
+    branches:
+      - snapshot/keenetic-production-2026-10-30
+    paths:
+      - 'xray/production/opt/**'
+      - 'tests/**'
+      - '.github/workflows/xray-snapshot-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile frozen Python sources without importing or executing them
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path('xray/production/opt/bin').glob('*.py'))
+          for path in files:
+              ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+          print('PASS: parsed', len(files), 'Python source files')
+          PY
+      - name: Run non-mutating static source contract tests
+        run: python -m unittest discover -s tests -p 'test_xray_source_contracts.py' -v
