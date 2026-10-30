@@ -79,7 +79,7 @@ def config(api_port, socks_port, a_port, b_port):
         "log": {"loglevel": "warning"},
         "api": {"tag": "lab-api", "services": ["HandlerService", "RoutingService"]},
         "inbounds": [
-            {"tag": "lab-api-in", "listen": "127.0.0.1", "port": api_port,
+            {"tag": "lab-api", "listen": "127.0.0.1", "port": api_port,
              "protocol": "dokodemo-door", "settings": {"address": "127.0.0.1"}},
             {"tag": "lab-socks", "listen": "127.0.0.1", "port": socks_port,
              "protocol": "socks", "settings": {"auth": "noauth", "udp": False}},
@@ -96,7 +96,7 @@ def config(api_port, socks_port, a_port, b_port):
             "balancers": [{"tag": "lab-balancer", "selector": ["lab-a", "lab-b"],
                            "strategy": {"type": "random"}, "fallbackTag": "lab-a"}],
             "rules": [
-                {"type": "field", "inboundTag": ["lab-api-in"], "outboundTag": "lab-api"},
+                {"type": "field", "inboundTag": ["lab-api"], "outboundTag": "lab-api"},
                 {"type": "field", "inboundTag": ["lab-socks"], "balancerTag": "lab-balancer"},
                 {"type": "field", "port": "0-65535", "outboundTag": "lab-blocked"},
             ],
