@@ -8,9 +8,9 @@ class DualProcessContracts(unittest.TestCase):
         c = config(29001, 29002, 29003)
         self.assertTrue(all(x["listen"] == "127.0.0.1" for x in c["inbounds"]))
 
-    def test_socks_udp_flag_explicit(self):
+    def test_socks_udp_not_claimed_verified(self):
         c = config(29001, 29002)
-        self.assertTrue(c["inbounds"][0]["settings"]["udp"])
+        self.assertFalse(c["inbounds"][0]["settings"]["udp"])
 
     def test_no_api_legacy(self):
         c = config(29001, 29002)
