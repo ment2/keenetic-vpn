@@ -46,3 +46,16 @@ Neither approach has been validated for real production handover. Do not claim z
 ## Next implementation stage
 
 Implement **pure offline pool reconciliation** and behavioral tests with synthetic endpoint identities, plus a laboratory API capability probe. Keep production `xray-update-v23.py` and `xray-safe-hourly.sh` untouched. Before any deployment or live switch, require an explicit separate user approval with exact commands and rollback plan.
+
+## Offline implementation and CI results
+
+- Pure prototype `xray/lab/pool_reconcile_v30.py` implemented. It accepts **opaque endpoint fingerprints**, old/new pools and active endpoint. It preserves active identity when present and healthy, adds qualified standby without switching, selects replacement for new flows only on failure/removal, and holds fail-closed on empty new pool. This is a **decision policy only**; it does not reconfigure Xray, observe real active endpoint, or drain sockets.
+- `tests/test_xray_pool_reconcile_v30.py`: 10 behavior tests for reordering, standby additions, removals, failed active endpoint, empty pool, invalid duplicates and first activation.
+- Previous `tests/test_xray_shell_behavior.py` initially failed CI due a test-helper syntax error. Fixed without changing production files. GitHub run **41131522273** completed **success** (source contracts + updater behavior + staging/watchdog shell tests).
+- GitHub run **41131576305** completed **success** for commit `a182040b90f4bb6c2105d8bd63367d707ac536f4`, including the 10 v30 policy tests. This is offline CI only, not evidence of real seamless Xray handover.
+
+### Remaining hard blockers before deployment
+1. Verify installed Xray 26.2.6 dynamic outbound/balancer API behavior and whether old TCP/UDP sessions survive a route/pool update. Current production has **no API enabled**.
+2. Implement **canonical secret-safe endpoint fingerprints**, durable stable tags, live endpoint observation, last-known-good state, concurrency lock and generation CAS.
+3. Prove zero direct/freedom fallback, no `killall xray`, no listener interruption, watchdog coordination and rollback under lab fault injection.
+4. Obtain separate explicit approval for any live change. No production changes were performed in this phase.
