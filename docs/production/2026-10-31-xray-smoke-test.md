@@ -130,3 +130,10 @@ Read-only jobs `2fe66a1a-cee2-42c8-98ab-b6802f087d77` and `be721bd6-395b-42d2-a5
 - No Agent code or files changed on router or GitHub source branch.
 
 **Overall snapshot scope:** 63/63 Xray source files byte-identical and mode-matched; Agent's 2 main Python source files semantically identical to separate `keenetic-control` branch (trailing LF only). Live Worker deployment parity, runtime config secrets, and router packages are not a fully reproducible disaster-recovery clone.
+
+## Regression test suite added to snapshot branch
+- `tests/test_xray_source_contracts.py`: **11 offline static source contract tests** covering stage-only updates, HTTPS/permission checks, empty pool fail-closed, fallback membership, per-outbound OpenAI check, isolated geo probe cleanup, OpenAI 401 classification, watchdog trigger, IPv4 kill-switch DROP, TCP/UDP TPROXY and known legacy limitations. These are static assertions, **not live integration tests**.
+- `.github/workflows/xray-snapshot-contracts.yml`: branch-scoped CI workflow compiles/parses all frozen Python source files with `ast.parse` and runs unittest. It does not invoke live Xray, network, router, iptables or production config. GitHub Actions run list was empty at initial check after creation; **CI result NOT YET VERIFIED**. No claims of passed tests until a run is observed and completed.
+- GitHub source is now documented as matching installed Agent files **except a single final LF byte** each. Production not modified.
+
+**Next:** inspect CI run status; if workflow does not start, verify repository Actions enablement/branch policy rather than claiming success. Continue only non-mutating validation until an explicit production change is approved.
