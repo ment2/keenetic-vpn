@@ -84,3 +84,13 @@ Static review of **SHA256-verified production sources**, without executing any m
 - The snapshot's source parity is already 63/63 SHA256, but true end-to-end failover and kill-switch outage tests are **not** passed until isolated simulation or an approved maintenance window.
 
 Additional read-only inventory job `6470e4f5-82b8-4ffd-8a36-b606f40f904d` is queued for runtime components, Xray routing tags, service inventory and package versions; **do not resubmit**.
+
+## Runtime dependency and source inventory completed
+Read-only job `6470e4f5-82b8-4ffd-8a36-b606f40f904d` completed exit 0:
+- Installed **Xray 26.2.6**, Go 1.26.1, linux/mipsle, `xray-core 26.2.6-1` package; process PID 13546. Entware dependencies include Python 3.13.9-2, curl 8.15.0-2, flock 2.41.3-1, iptables 1.4.21-6.
+- Active routing has **7 VLESS** outbounds tagged `vpn01`, `vpn02`, `vpn04`, `vpn05`, `vpn06`, `vpn07`, `vpn09`, plus `blocked` blackhole; inbounds `local-socks` and `tproxy-in`, balancer `auto`. This is structural metadata only; no secret endpoints or UUIDs are committed.
+- Installed Agent and safety modules exist at `/opt/telegram-ai/keenetic_agent.py` (9454 bytes) and `/opt/telegram-ai/agent_safety.py` (15039 bytes), **not included** in the 63-file VPN snapshot; their source of truth is `ment2/keenetic-control`. Source/version parity is not yet proven.
+- Generated Python `__pycache__/*.pyc` files are present but should not be archived as source.
+- The 63-file snapshot scope under `/opt/bin` and `/opt/etc/init.d` remains complete for the enumerated Xray/VPN files; related Agent source, runtime binary, package metadata and config are separate inventory categories.
+
+Read-only Agent hash/identity and balancer metadata job `ffe26251-aefc-4d62-b052-fcbd5cb95ec5` queued; no repeat submission. Keep production unchanged.
