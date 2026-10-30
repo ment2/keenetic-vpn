@@ -68,3 +68,11 @@ Proposed order:
 - `tests/test_xray_first_migration_dry_run_v30.py`: 12 additional safety tests for fail-closed and approval gates; report status must be verified in CI.
 
 **Production unchanged. No merge. No deploy. No restart.**
+
+## Verified CI checkpoint
+
+- **41134367243 SUCCESS**: **84/84 offline tests** (72 previous + 12 dry-run safety tests).
+- **41134447314 SUCCESS**: **84/84 tests** plus an actual synthetic CLI invocation of `first_migration_dry_run_v30.py` producing `NOT_AUTHORIZED` with empty `production_commands` because exclusive SOCKS5/TPROXY handoff is unproven. GitHub job step `Execute synthetic first-migration dry-run and assert NO DEPLOY` passed.
+- **41134057510 SUCCESS**: Xray 26.2.6 linux/mipsle under QEMU, API BO/ADO/RMO TCP continuity on synthetic loopback.
+
+**No real production inventory has been read or used in this dry-run.** Its SHA256/PID/ports are synthetic test inputs. The first-switch mechanism remains unimplemented and requires a future reviewed change request and separate approval.
