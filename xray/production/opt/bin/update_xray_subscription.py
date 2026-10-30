@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Refresh NerpVPN VLESS subscription safely while retaining Xray routing and balancer.
+Requires setup_xray.py in the same directory, Python 3 + urllib, and curl.
+Run with --check to validate without changes. Run with --apply to install a valid change.
+Does not restart Xray: use a separate tested init script/cron orchestration.
+"""
+import argparse
+import base64
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+
+from setup_xray import create_outbound
+
+ROOT = Path('/opt/etc/xray')
+CONFIG = ROOT / 'config.json'
+URLFILE = ROOT / 'subscription.url'
+EXCLUDED = ('lte', 'универсальная', 'youtube без рекламы', 'авто')
+
+
+def redact_exception(exc):
+    # Never print URL, UUID, or other sensitive content from provider / parsing errors.
+    return type(exc).__name__
+
+
+def refresh(apply):
+    if not CONFIG.is_file():
+        raise RuntimeError('current config missing')
+    if not URLFILE.is_file() or not URLFILE.read_text().strip().startswith('https://'):
+        raise RuntimeError('HTTPS subscription URL file missing')
+    if URLFILE.stat().st_mode & 0o077:
+        raise RuntimeError('subscription.url permissions must be 600')
+    with tempfile.TemporaryDirectory(dir=str(ROOT)) as td:
+        datafile = Path(td) / 'subscription'
+        # URL appears only as a curl argument to a short-lived subprocess, not in logs.
+        url = URLFILE.read_text().strip()
+        subprocess.run(['curl', '--fail', '--location', '--silent', '--show-error',
+                        '--connect-timeout', '10', '--max-time', '60', '--output', str(datafile),
+                        url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        body = datafile.read_bytes().strip()
+        if len(body) < 10 or len(body) > 1024 * 1024:
+            raise RuntimeError('unexpected subscription size')
+        if b'vless://' in body:
+            decoded = body.decode('utf-8-sig')
+        else:
+            decoded = base64.b64decode(b''.join(body.split()), validate=True).decode('utf-8-sig')
+        lines = [line.strip() for line in decoded.splitlines() if line.strip().startswith('vless://')]
+        if not lines:
+            raise RuntimeError('subscription contains no VLESS entries')
+        accepted = []
+        for i, line in enumerate(lines, 1):
+            label = unquote(urlsplit(line).fragment).strip().casefold()
+            if any(word in label for word in EXCLUDED):
+                continue
+            outbound, _ = create_outbound(line, i)
+            accepted.append(outbound)
+        if not accepted:
+            raise RuntimeError('all subscription servers excluded')
+        current = json.loads(CONFIG.read_text(encoding='utf-8'))
+        previous = [x for x in current.get('outbounds', []) if x.get('protocol') == 'vless']
+        if not previous:
+            raise RuntimeError('current config has no VLESS servers')
+        first_tag = accepted[0]['tag']
+        other = [x for x in current['outbounds'] if x.get('protocol') != 'vless']
+        current['outbounds'] = accepted + other
+        routing = current.setdefault('routing', {})
+        routing['balancers'] = [{'tag': 'auto', 'selector': ['vpn'],
+                                 'strategy': {'type': 'leastPing'}, 'fallbackTag': first_tag}]
+        routing['rules'] = [{'type': 'field', 'inboundTag': ['local-socks', 'tproxy-in'], 'balancerTag': 'auto'}]
+        current['observatory'] = {'subjectSelector': ['vpn'],
+                                  'probeUrl': 'https://www.gstatic.com/generate_204',
+                                  'probeInterval': '60s', 'enableConcurrency': True}
+        # Compare semantic config, not whitespace, and do not reveal changed parameters.
+        desired = json.dumps(current, ensure_ascii=False, indent=2) + '\n'
+        previous_cfg = json.loads(CONFIG.read_text(encoding='utf-8'))
+        if previous_cfg == current:
+            print('UNCHANGED: active_servers=', len(accepted))
+            return
+        candidate = Path(td) / 'candidate.json'
+        candidate.write_text(desired, encoding='utf-8')
+        os.chmod(candidate, 0o600)
+        test = subprocess.run(['/opt/sbin/xray', 'run', '-test', '-config', str(candidate)],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if test.returncode:
+            raise RuntimeError('new Xray config failed validation; existing config untouched')
+        if not apply:
+            print('VALID_CHANGE: active_servers=', len(accepted), '(no changes applied)')
+            return
+        backup = ROOT / 'config.lastgood.json'
+        backup_tmp = ROOT / '.config.lastgood.new'
+        backup_tmp.write_bytes(CONFIG.read_bytes())
+        os.chmod(backup_tmp, 0o600)
+        os.replace(backup_tmp, backup)
+        next_tmp = ROOT / '.config.new'
+        next_tmp.write_text(desired, encoding='utf-8')
+        os.chmod(next_tmp, 0o600)
+        os.replace(next_tmp, CONFIG)
+        print('UPDATED: active_servers=', len(accepted), 'validated; restart required')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--check', action='store_true')
+    mode.add_argument('--apply', action='store_true')
+    args = parser.parse_args()
+    try:
+        refresh(args.apply)
+    except Exception as exc:
+        print('ERROR:', redact_exception(exc), '- previous config retained unless already updated', file=sys.stderr)
+        sys.exit(1)
