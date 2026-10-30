@@ -62,3 +62,14 @@ Existing job `0d4abb7b-f93f-4612-a3d8-de5d2a086c19` completed, exit 0; agent dia
 - Watchdog log documents SOCKS5 unavailability and automatic Xray recovery at **2026-10-30 06:52** and **07:50 MSK**. The log does not demonstrate present outage, but raises a reliability concern; no restart triggered by this audit.
 
 Read-only job `492fd1a7-409e-4497-af1a-a6ca71259ce1` queued to check IPv6 default route, FORWARD counters, mangle rules, kill-switch rules and upstream addresses. Do not resubmit. Full Wi-Fi end-to-end proof still requires a client to generate actual external traffic through Keenetic.
+
+## IPv6 follow-up resolved as current non-routing, not proven leak
+Read-only job `492fd1a7-409e-4497-af1a-a6ca71259ce1` completed exit 0:
+- `ip -6 route show default` returned **no IPv6 default route**.
+- `br0` has ULA `fd78:f3d6:9214:0:52ff:20ff:fe46:775d/64` and link-local `fe80::...`. A global-looking `2001:2::c633:640b/128` exists only on **DOWN / NO-CARRIER** interface `ezcfg0`; this does not establish usable WAN IPv6.
+- `ip6tables FORWARD` policy **DROP**, every displayed forwarding counter **0**, no Xray IPv6 TPROXY rules; IPv6 mangle PREROUTING contains only `_NDM_*` native chains. Therefore **no evidence of current IPv6 internet egress or leak**, but also **no tested IPv6-over-VPN support**. Future WAN IPv6 activation must trigger a new leak test; avoid a blanket claim of permanent leak protection.
+- IPv4 Xray Wi-Fi PREROUTING hooks exist for TCP and UDP from `192.168.1.0/24`, `br0`; `XRAY_KS_HOME` returns for `192.168.0.0/16` and DROPs remaining `br0` traffic from `192.168.1.0/24`. IPv4 default route via `192.168.0.1` on `apclii0`.
+- Still **0 TCP and UDP TPROXY-target hits** at the last sampling. This cannot prove that a live client has made an external request.
+
+### Test gate: real client action required
+To verify transparent routing without changing production, connect a phone to **Keenetic LAN/Wi-Fi network 192.168.1.0/24** (not the upstream 192.168.0.0/24 network), disable cellular data for the test, open a normal HTTPS page (e.g. `https://ifconfig.me/ip`) and report whether it opens and which **public IP** it shows. Do not send credentials or private IPs. Follow up by sampling existing counters and public egress. No automatic route/iptables/kill-switch changes are authorized by this test.
