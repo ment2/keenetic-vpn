@@ -33,4 +33,4 @@ jobs:
           print('PASS: parsed', len(files), 'Python source files')
           PY
       - name: Run non-mutating static source contract tests
-        run: python -m unittest discover -s tests -p 'test_xray_source_contracts.py' -v
+        run: python -m unittest discover -s tests -p 'test_xray_*.py' -v
