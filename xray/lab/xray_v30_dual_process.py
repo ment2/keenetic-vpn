@@ -80,9 +80,9 @@ def udp_associate(socks_port, payload):
     # SOCKS5 UDP ASSOCIATE, RFC 1928; control TCP remains open.
     with socket.create_connection(("127.0.0.1", socks_port), timeout=15) as control:
         control.settimeout(15)
-        control.sendall(b"\\x05\\x01\\x00")
-        assert control.recv(2) == b"\\x05\\x00"
-        control.sendall(b"\\x05\\x03\\x00\\x01\\x00\\x00\\x00\\x00\\x00\\x00")
+        control.sendall(b"\x05\x01\x00")
+        assert control.recv(2) == b"\x05\x00"
+        control.sendall(b"\x05\x03\x00\x01\x00\x00\x00\x00\x00\x00")
         reply = control.recv(64)
         assert len(reply) >= 10 and reply[1] == 0 and reply[3] == 1, reply
         relay_ip = socket.inet_ntoa(reply[4:8])
@@ -91,10 +91,10 @@ def udp_associate(socks_port, payload):
             relay_ip = "127.0.0.1"
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
             udp.settimeout(15)
-            packet = b"\\x00\\x00\\x00\\x01\\x7f\\x00\\x00\\x01" + (19000).to_bytes(2, "big") + payload
+            packet = b"\x00\x00\x00\x01\x7f\x00\x00\x01" + (19000).to_bytes(2, "big") + payload
             udp.sendto(packet, (relay_ip, relay_port))
             result, _ = udp.recvfrom(4096)
-            assert result[:3] == b"\\x00\\x00\\x00"
+            assert result[:3] == b"\x00\x00\x00"
             assert result.endswith(b"UDP:" + payload), result
             return result
 
