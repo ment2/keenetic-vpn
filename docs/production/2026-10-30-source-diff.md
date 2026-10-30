@@ -81,3 +81,14 @@ Static analysis of the ten already captured production snapshots identified:
 - The existing archived `S97xray` source manages `/opt/etc/xray/config.json` and has start/stop/restart branches. The archived `S99xray-watchdog` is a **different** service, not evidence that `S99xray` exists. The production inventory found `S97xray` and `S99xray-watchdog`, but did not list `S99xray`. Both production `xray-auto-update.sh` and `xray-safe-v23.sh` refer to `S99xray`. **Likely stale service reference, not yet a proven live fault:** actual cron invocation and whether `S99xray` exists must be checked read-only.
 - The requested complete SHA256 comparison cannot be concluded without further router-side checksum results or independent hashing of all corresponding exact source bytes. Keep production hashes as reference; do not report hash equality without verification.
 - **Safety:** no changes to production router, Xray, cron, firewall, routing or kill-switch.
+
+## Queue state transition: running → unknown
+Read-only polling of the same nine IDs showed a new outcome:
+- `da2d6c64-d60d-4cc5-bd67-66b8b3a16908` (read_file `xray-watchdog-migrate-v25.sh`) now returns **status `unknown`**, with `created_at=2026-10-30T20:25:16.079Z` and unchanged `lease_until=1793392309114` (`2026-10-30T20:31:49.114Z`). No `output` or `exit_code` was returned. **Do not label it done or failed** without additional evidence; possible expired lease or missing job state requires investigation.
+- The other eight existing IDs still return **queued**; no completed source content or cron inspection has been returned.
+- Worker permission status remains `remote_enabled=true`, `owner_admin_enabled=true`, revision 2. This does not prove the router agent is polling or acknowledging jobs.
+- **No duplicate submissions**, no new router jobs, no new source snapshots, and no production changes were made.
+- Because there is no fresh cron output, `S97xray` versus `S99xray` remains an unverified mismatch. Because there are no new checksum results, full SHA256 equality remains unverified.
+
+### Safe next diagnostic decision
+Investigate the existing queue/lease handling and agent liveness via already-available read-only telemetry or Worker/GitHub source, without resubmitting these jobs. Preserve all nine IDs and their statuses. Do not unblock, cancel, or change the router or production until queue semantics are understood.
