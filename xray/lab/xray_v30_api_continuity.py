@@ -94,7 +94,7 @@ def config(api_port, socks_port, a_port, b_port):
         ],
         "routing": {
             "domainStrategy": "AsIs",
-            "balancers": [{"tag": "lab-balancer", "selector": ["lab-a", "lab-b"],
+            "balancers": [{"tag": "lab-balancer", "selector": ["lab-a", "lab-b", "lab-c"],
                            "strategy": {"type": "random"}, "fallbackTag": "lab-a"}],
             "rules": [
                 {"type": "field", "inboundTag": ["lab-api"], "outboundTag": "lab-api"},
@@ -141,11 +141,12 @@ def run(xray):
     result = subprocess.run([xray, "version"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0 and "26.2.6" in result.stdout.splitlines()[0], (
         "lab requires Xray 26.2.6; " + result.stdout[:160])
-    a, b = EchoBackend("A"), EchoBackend("B")
+    a, b, c = EchoBackend("A"), EchoBackend("B"), EchoBackend("C")
     api_port, socks_port = free_port(), free_port()
-    assert len({api_port, socks_port, a.port, b.port}) == 4
+    assert len({api_port, socks_port, a.port, b.port, c.port}) == 5
     a.start()
     b.start()
+    c.start()
     proc = None
     try:
         with tempfile.TemporaryDirectory(prefix="xray-v30-ci-") as td:
@@ -190,7 +191,18 @@ def run(xray):
                 with socks_connect(socks_port) as new:
                     assert echo(new, b"after") == "B"
                 assert echo(old, b"still-alive") == "A", "existing TCP connection was disrupted"
-                print("LAB_RESULT: PASS old TCP=A after BO; new TCP=B")
+                print("LAB_RESULT: PASS old TCP=A after BO; new TCP=B", flush=True)
+                added = Path(td) / "add-c.json"
+                added.write_text(json.dumps({"outbounds": [
+                    {"tag": "lab-c", "protocol": "freedom",
+                     "settings": {"redirect": f"127.0.0.1:{c.port}"}}
+                ]}))
+                api("ado", str(added))
+                api("bo", "-b", "lab-balancer", "lab-c")
+                with socks_connect(socks_port) as newest:
+                    assert echo(newest, b"added") == "C"
+                assert echo(old, b"still-alive-after-ado") == "A"
+                print("LAB_RESULT: PASS dynamic ADO outbound C; old TCP still A", flush=True)
             finally:
                 old.close()
     finally:
@@ -203,6 +215,7 @@ def run(xray):
                 proc.communicate(timeout=5)
         a.close()
         b.close()
+        c.close()
 
 
 def main():
