@@ -1,0 +1,41 @@
+#!/bin/sh
+# Keenetic Entware: run under flock from cron. Never print subscription secrets.
+PATH=/opt/bin:/opt/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+LOG=/opt/var/log/xray-update.log
+CONF=/opt/etc/xray/config.json
+BACKUP=/opt/etc/xray/config.lastgood.json
+SERVICE=/opt/etc/init.d/S99xray
+UPDATER=/opt/bin/update_xray_subscription.py
+mkdir -p /opt/var/log
+chmod 700 /opt/var/log 2>/dev/null || true
+log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$LOG"; }
+probe() {
+    [ -n "$(pidof xray)" ] || return 1
+    code=$(/opt/bin/curl --silent --show-error --max-time 25 --socks5-hostname 127.0.0.1:10808 -o /dev/null -w '%{http_code}' https://www.gstatic.com/generate_204 2>/dev/null) || return 1
+    [ "$code" = 204 ]
+}
+# Do not touch working Xray on updater errors.
+result=$(/opt/bin/python3 "$UPDATER" --apply 2>&1)
+status=$?
+if [ "$status" -ne 0 ]; then log 'ERROR: updater failed; current process left running'; exit 1; fi
+case "$result" in
+  UNCHANGED:*) log 'UNCHANGED: no restart'; exit 0 ;;
+  UPDATED:*) log 'UPDATED: new config staged; restarting' ;;
+  *) log 'ERROR: unexpected updater response; inspect manually'; exit 1 ;;
+esac
+# The updater itself backed up the prior config before replacing it.
+if [ ! -s "$BACKUP" ]; then log 'ERROR: prior config missing; no safe restart'; exit 1; fi
+"$SERVICE" stop >> "$LOG" 2>&1
+sleep 2
+"$SERVICE" start >> "$LOG" 2>&1
+sleep 5
+if probe; then log 'SUCCESS: new config passed live VPN probe'; exit 0; fi
+log 'ERROR: new config failed live probe; rolling back'
+cp -p "$BACKUP" "$CONF" || { log 'CRITICAL: rollback copy failed'; exit 1; }
+"$SERVICE" stop >> "$LOG" 2>&1
+sleep 2
+"$SERVICE" start >> "$LOG" 2>&1
+sleep 5
+if probe; then log 'ROLLBACK_OK: previous config restored and VPN healthy'; exit 1; fi
+log 'CRITICAL: rollback completed but live VPN probe failed; investigate'
+exit 1
