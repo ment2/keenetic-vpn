@@ -57,3 +57,18 @@ The production inventory also lists additional scripts, backups and self-tests. 
 - `73553c5a-5253-455b-a760-5a8c6ea21e59` — redacted cron inspection and checksums
 
 Retrieve existing results through `get_router_task_result`, validate and capture only safe nonsecret content. All were queued when this note was written.
+
+## Follow-up poll and static dependency review
+All nine saved jobs were queried again without resubmission. At the latest poll, `da2d6c64-d60d-4cc5-bd67-66b8b3a16908` was **running** and the other eight were **queued**. No new read_file contents or cron output were available; no additional files were committed. These statuses must not be interpreted as successful completion.
+
+Static analysis of the ten already captured production snapshots identified:
+- `xray-ks-home-watch.sh` calls `xray-ks-home.sh` every 15 seconds. Its init service is `S96xray-killswitch`.
+- `S98xray-wifi` invokes `xray-wifi-rules.sh` on a 60-second loop; that script manages `ip rule` and iptables. Both are active network-policy dependencies, not optional archival extras.
+- `xray-fc-cron-guard.sh` checks the presence of `/opt/tmp/xray-fc-guard-enabled` before invoking `/opt/bin/xray-fc-recover.sh`. The recovery script is among the queued reads.
+- `xray-safe-v23.sh` refers to `/opt/etc/init.d/S99xray`, while the live inventory confirmed `S97xray` and a running Xray process. **Potential service-name mismatch**; do not assume this historical wrapper is the active production updater or run it before checking the actual service path.
+- `xray-auto-update.sh` also invokes `/opt/etc/init.d/S99xray`; the same service-name concern applies.
+- A `127.0.0.1` SOCKS port or running process does not prove upstream VPN, Telegram or OpenAI reachability.
+
+**Hash validation scope:** production SHA256 was captured for 11 primary paths. Exact SHA256 equivalence between all GitHub production snapshots and live files has **not** yet been computed/verified. Existing string comparisons were recorded separately. Avoid a false 'hashes match' claim.
+
+**No production modification** was performed.
