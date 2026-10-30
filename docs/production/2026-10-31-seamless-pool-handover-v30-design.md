@@ -96,3 +96,21 @@ GitHub Actions **41132677348**: **SUCCESS**. Offline suite now includes **43 tes
 Expanded isolated loopback lab to run **both** `random` and `leastPing` balancer strategies against the real official Xray 26.2.6 linux/amd64 binary. GitHub Actions **41132772990** completed **SUCCESS**, with both steps successful. In each strategy, API `bo` switched new TCP A -> B, `ado` added C and redirected new TCP to C, `rmo` removed drained B, and the pre-existing TCP flow continued through A.
 
 **Caution:** The test uses an explicit API override and synthetic loopback backends. It **does not** validate automatic leastPing selection or automatic fallback on failure, nor prove real VLESS/mipsle session continuity. This is an important positive result for the intended API-based control plane, not deployment authorization.
+
+## Generation/CAS offline model: SUCCESS
+
+Added `xray/lab/pool_generation_v30.py` and `tests/test_xray_pool_generation_v30.py`: 9 synthetic state-machine tests cover preservation of active endpoint, replacement on failure, empty candidate hold, failed validation/API/continuity gates and rejection of stale concurrent proposals. GitHub Actions **41132870489** completed **SUCCESS**. Offline suite now has **52 tests** (43 prior + 9 new).
+
+The model is **in-memory only**: it is not an atomic production transaction and has no durable journal, real lock, live session metrics, automatic rollback, watchdog coordination or Xray API integration. These are required before activation.
+
+## Controlled production migration gate (NOT APPROVED)
+Current Xray process has no API. Live API-enabled handover cannot be achieved simply by applying the new staged config: a first migration of the running listener/process is required, and `S97xray` uses `killall xray`. Until an exact migration and rollback plan is approved, maintain the existing staging-only updater and working process.
+
+Pre-approval checklist:
+1. Exact source snapshot, active config hash, process identity/start ticks and backups; all secrets remain local.
+2. Isolated MIPSLE Xray API/BO/ADO/RMO verification if feasible, including watchdog isolation.
+3. Explicit ingress ownership plan for existing SOCKS5 10808 and TPROXY 12345, existing TCP/UDP drain, firewall/kill-switch invariants, and an expected interruption budget (cannot promise zero downtime for first API migration).
+4. Lock/generation CAS, durable journal and rollback; fail-closed on invalid/empty pool or control-plane failure.
+5. Exact commands and rollback script separately approved by user before any production edit, restart, merge or deploy.
+
+At this checkpoint **no production modification, merge or deploy** was made.
