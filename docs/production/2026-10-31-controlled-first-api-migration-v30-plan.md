@@ -122,3 +122,11 @@ The previously successful dual-process TCP lab was restored to its known-working
 - No real watchdog was started, fenced or changed; no real TPROXY ingress handoff or kernel fail-closed test. Synthetic lock and journal tests are not substitutes for live process supervisor verification.
 
 **Decision:** Do not authorize production migration based on these tests. Next engineering work is a fully isolated *stable ingress owner* with actual client-to-process redirection and rollback, separate UDP diagnosis, and watchdog race integration using a disposable watchdog implementation (not the production `killall` script). Production untouched, no merge/deploy.
+
+## 2026-10-31 UDP handshake root cause resolved in disposable MIPSLE lab
+
+The previously failed SOCKS5 UDP test used **double-escaped byte literals** in its Python wire-format client. It sent literal backslash/x text instead of binary SOCKS5 greeting bytes. Increasing timeout was ineffective because the client request was malformed. The isolated lab client was corrected, and real MIPSLE Xray 26.2.6 under QEMU now passes **SOCKS5 UDP ASSOCIATE** on both independent loopback SOCKS listeners and again on the old process after the candidate is terminated. It also preserves the prior TCP continuity and rollback assertions.
+
+**GitHub CI 41136096595 SUCCESS**. Log markers: `PASS SOCKS5 UDP ASSOCIATE on both processes`, `PASS UDP old process after candidate failure`, `PASS old TCP stays alive while candidate handles new TCP`. The synthetic UDP echo uses an outbound `freedom` redirect **only to 127.0.0.1** as a test fixture; it is not a real VPN route and does not establish production fail-closed. The lab's default config remains UDP-disabled for static contract compatibility; its integration invocation explicitly enables UDP. These results supersede the earlier failed UDP diagnostic, but **do not** establish TPROXY UDP, kernel kill-switch, a stable production ingress port, or real watchdog coordination.
+
+**Remaining blockers:** actual ingress handoff and rollback on one stable port, real TPROXY TCP/UDP, supervised watchdog race, fail-closed kernel policy. No production changes authorized or made.
