@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/xray-v30-mips32le-lab.yml'
       - 'xray/lab/xray_v30_api_continuity.py'
+      - 'xray/lab/xray_v30_dual_process.py'
   workflow_dispatch:
 
 permissions:
@@ -48,4 +49,11 @@ jobs:
           chmod 700 "$RUNNER_TEMP/xray-mipsle/xray-qemu"
           export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
           python3 xray/lab/xray_v30_api_continuity.py \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
+
+      - name: Execute real dual-process MIPSLE cutover and rollback lab
+        shell: bash
+        run: |
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.xray_v30_dual_process \
             --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
