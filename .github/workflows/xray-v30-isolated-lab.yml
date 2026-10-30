@@ -32,8 +32,14 @@ jobs:
           unzip -j "$RUNNER_TEMP/xray/xray.zip" xray -d "$RUNNER_TEMP/xray"
           chmod 700 "$RUNNER_TEMP/xray/xray"
           "$RUNNER_TEMP/xray/xray" version
-      - name: Run isolated loopback API balancer and old TCP continuity
+      - name: Run isolated loopback API balancer (random) and old TCP continuity
         shell: bash
         run: |
           python xray/lab/xray_v30_api_continuity.py \
             --xray "$RUNNER_TEMP/xray/xray" --run
+
+      - name: Run isolated loopback API balancer (leastPing) and old TCP continuity
+        shell: bash
+        run: |
+          python xray/lab/xray_v30_api_continuity.py \
+            --xray "$RUNNER_TEMP/xray/xray" --strategy leastPing --run
