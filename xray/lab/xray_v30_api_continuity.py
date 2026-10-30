@@ -203,6 +203,12 @@ def run(xray):
                     assert echo(newest, b"added") == "C"
                 assert echo(old, b"still-alive-after-ado") == "A"
                 print("LAB_RESULT: PASS dynamic ADO outbound C; old TCP still A", flush=True)
+                # Remove B only after its test socket has closed; never remove active A.
+                api("rmo", "lab-b")
+                with socks_connect(socks_port) as post_remove:
+                    assert echo(post_remove, b"after-drain") == "C"
+                assert echo(old, b"still-alive-after-rmo") == "A"
+                print("LAB_RESULT: PASS RMO drained B; new TCP=C; old TCP=A", flush=True)
             finally:
                 old.close()
     finally:
