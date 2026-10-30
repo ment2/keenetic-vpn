@@ -72,3 +72,12 @@ Static analysis of the ten already captured production snapshots identified:
 **Hash validation scope:** production SHA256 was captured for 11 primary paths. Exact SHA256 equivalence between all GitHub production snapshots and live files has **not** yet been computed/verified. Existing string comparisons were recorded separately. Avoid a false 'hashes match' claim.
 
 **No production modification** was performed.
+
+## Repeated queue audit (same nine IDs, no resubmission)
+- Re-read this report and queried all nine existing Keenetic jobs again.
+- Job `da2d6c64-d60d-4cc5-bd67-66b8b3a16908` remains **running** with the same reported lease deadline `1793392309114` (epoch milliseconds); all eight subsequent jobs remain **queued**. This persistent state may indicate delayed or stalled agent processing; **not enough evidence yet** to diagnose the cause.
+- The permission endpoint independently confirms `remote_enabled=true`, `owner_admin_enabled=true`, revision 2, and scopes `diagnostic`, `exec`, `read_file`, `write_file`. This verifies authorization, **not** that the queued tasks are executing.
+- No completed readback or cron output was returned. No new production snapshots were committed, and no existing job was resubmitted.
+- The existing archived `S97xray` source manages `/opt/etc/xray/config.json` and has start/stop/restart branches. The archived `S99xray-watchdog` is a **different** service, not evidence that `S99xray` exists. The production inventory found `S97xray` and `S99xray-watchdog`, but did not list `S99xray`. Both production `xray-auto-update.sh` and `xray-safe-v23.sh` refer to `S99xray`. **Likely stale service reference, not yet a proven live fault:** actual cron invocation and whether `S99xray` exists must be checked read-only.
+- The requested complete SHA256 comparison cannot be concluded without further router-side checksum results or independent hashing of all corresponding exact source bytes. Keep production hashes as reference; do not report hash equality without verification.
+- **Safety:** no changes to production router, Xray, cron, firewall, routing or kill-switch.
