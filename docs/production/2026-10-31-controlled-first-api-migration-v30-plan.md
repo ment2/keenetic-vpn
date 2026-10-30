@@ -113,3 +113,12 @@ The lab has subsequently been extended with a local UDP echo backend and SOCKS5 
 CI **41135006860** and retry **41135112889** failed in the added SOCKS5 UDP ASSOCIATE handshake on the first real MIPSLE Xray process: the client timed out waiting for the initial SOCKS5 authentication response (5 seconds, then 15 seconds). Both Xray processes had started and reported real PID/start ticks. Root cause is **not established**; may be a configuration/routing issue or emulator behavior. Increasing timeout did not fix it. No claim of UDP continuity or UDP fail-closed is justified.
 
 The previously successful dual-process TCP lab was restored to its known-working SOCKS `udp: false` configuration and UDP claims removed. The separate `UdpEcho`/UDP-associate probe remains in source for further isolated diagnostics but is **not invoked** by the TCP regression job. No production change was made. The UDP failure is a deployment blocker, not permission to bypass UDP through direct Internet.
+
+## Latest verification checkpoint (dual process and races)
+
+- **41135279245 SUCCESS:** two real MIPSLE Xray processes under QEMU with distinct loopback SOCKS ports; old TCP stream survives while new process handles TCP; candidate process killed; old process still accepts new TCP. Existing API continuity lab also passes.
+- **41135363480 SUCCESS:** **117/117 offline tests**, including four deterministic synthetic watchdog-fence and competing-controller race tests in `tests/test_xray_cutover_races_v30.py`.
+- UDP experiment **41135006860** and **41135112889** failed on SOCKS5 handshake, documented above. UDP path remains **unverified**. Latest passing dual-process test intentionally uses TCP-only SOCKS settings and makes no UDP continuity claim.
+- No real watchdog was started, fenced or changed; no real TPROXY ingress handoff or kernel fail-closed test. Synthetic lock and journal tests are not substitutes for live process supervisor verification.
+
+**Decision:** Do not authorize production migration based on these tests. Next engineering work is a fully isolated *stable ingress owner* with actual client-to-process redirection and rollback, separate UDP diagnosis, and watchdog race integration using a disposable watchdog implementation (not the production `killall` script). Production untouched, no merge/deploy.
