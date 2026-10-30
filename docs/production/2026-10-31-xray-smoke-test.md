@@ -51,3 +51,14 @@ Existing job `0d4abb7b-f93f-4612-a3d8-de5d2a086c19` remains `queued` after repea
 **Unresolved security exposure:** `br0` has a global-scope ULA IPv6 address (`fd78:...`), while observed kill-switch rules use IPv4 iptables. No conclusion about IPv6 leak protection can be drawn without read-only `ip6tables` and route checks. Avoid disabling IPv6 or firewall rules based on suspicion.
 
 **Safe next:** await the existing read-only jobs, inspect exact `XRAY_WIFI` rule ordering and counters and IPv6 forwarding; then request a user-initiated Wi-Fi client test only if necessary to demonstrate end-to-end forwarding. No production changes made.
+
+## Follow-up: TPROXY detail and IPv6 firewall — completed
+Existing job `0d4abb7b-f93f-4612-a3d8-de5d2a086c19` completed, exit 0; agent diagnostic `9ce78213-55c8-42a8-b6b2-ee21193dabdd` completed exit 0 (Keenetic ONLINE, Python 3.13.9, load 0.79/0.52/0.5, 3.53 GB free).
+
+- `XRAY_WIFI` has **two PREROUTING references**. Packet counters: 27 RETURN packets for `192.168.0.0/16` and 37 RETURN packets for `224.0.0.0/4`. Both TCP and UDP TPROXY targets have **0 packets**. Thus traffic reaching the chain in this sample was excluded; no external TCP/UDP traffic intercepted.
+- Xray process PID 13546; `S98xray-wifi`, `xray-ks-home-watch.sh`, and `xray-watchdog.sh` processes running.
+- ARP/neighbor entries show one `STALE` IPv4 neighbor `192.168.1.81` and several `FAILED` neighbors. `FAILED` alone does not prove a Wi-Fi outage or a specific client's status.
+- IPv6 `FORWARD` policy is **DROP** and includes router-native `_NDM_*` chains plus `RELATED,ESTABLISHED` ACCEPT, but no explicit `XRAY_KS_HOME` or TPROXY IPv6 rule in the displayed FORWARD chain. This is **not proof** of IPv6 leak or fail-closed behavior; require complete ruleset, IPv6 default route and counters.
+- Watchdog log documents SOCKS5 unavailability and automatic Xray recovery at **2026-10-30 06:52** and **07:50 MSK**. The log does not demonstrate present outage, but raises a reliability concern; no restart triggered by this audit.
+
+Read-only job `492fd1a7-409e-4497-af1a-a6ca71259ce1` queued to check IPv6 default route, FORWARD counters, mangle rules, kill-switch rules and upstream addresses. Do not resubmit. Full Wi-Fi end-to-end proof still requires a client to generate actual external traffic through Keenetic.
