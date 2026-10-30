@@ -34,3 +34,40 @@ jobs:
           PY
       - name: Run non-mutating static source contract tests
         run: python -m unittest discover -s tests -p 'test_xray_*.py' -v
+
+      - name: Execute synthetic first-migration dry-run and assert NO DEPLOY
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = {
+              "config_sha256": "a"*64, "xray_binary_sha256": "b"*64,
+              "pid": 1234, "start_ticks": 123456,
+              "socks_listener": "127.0.0.1:10808",
+              "tproxy_listener": "0.0.0.0:12345",
+              "watchdog_mode": "legacy-killall",
+              "kill_switch": True, "tproxy_chain": True,
+              "route_table_100": True, "candidate_test": True,
+              "candidate_api": True, "rollback_artifact": True,
+              "outbound_direct_count": 0, "outbound_block_count": 1,
+              "subscription_staging_only": True,
+              "ingress_handoff_proven": False,
+          }
+          Path("/tmp/xray-v30-synthetic-inventory.json").write_text(json.dumps(data))
+          PY
+          rc=0
+          python xray/lab/first_migration_dry_run_v30.py \
+            --inventory /tmp/xray-v30-synthetic-inventory.json \
+            --output /tmp/xray-v30-dry-run-result.json || rc=$?
+          test "$rc" -eq 2
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("/tmp/xray-v30-dry-run-result.json").read_text())
+          assert result["decision"] == "NOT_AUTHORIZED"
+          assert result["production_commands"] == []
+          assert result["required_manual_approval"] is True
+          print("PASS: synthetic first-migration dry-run blocks unproven ingress handoff")
+          PY
