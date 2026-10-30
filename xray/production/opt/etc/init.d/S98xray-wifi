@@ -1,0 +1,40 @@
+#!/bin/sh
+
+PIDFILE=/opt/var/run/xray-wifi.pid
+SCRIPT=/opt/bin/xray-wifi-rules.sh
+IPT=/opt/sbin/iptables
+
+case "$1" in
+  start)
+    [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && exit 0
+
+    (
+      while true
+      do
+        if ! $IPT -t mangle -C PREROUTING \
+             -s 192.168.1.0/24 -i br0 -p tcp \
+             -j XRAY_WIFI 2>/dev/null ||
+           ! $IPT -t mangle -C PREROUTING \
+             -s 192.168.1.0/24 -i br0 -p udp \
+             -j XRAY_WIFI 2>/dev/null ||
+           ! $IPT -t mangle -L XRAY_WIFI -n 2>/dev/null | grep -q TPROXY ||
+           ! ip route show table 100 | grep -q 'local default'
+        then
+          "$SCRIPT"
+        fi
+
+        sleep 60
+      done
+    ) >/opt/var/log/xray-wifi.log 2>&1 &
+
+    echo $! > "$PIDFILE"
+    ;;
+  stop)
+    [ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null
+    rm -f "$PIDFILE"
+    ;;
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+esac
