@@ -59,3 +59,24 @@ Implement **pure offline pool reconciliation** and behavioral tests with synthet
 2. Implement **canonical secret-safe endpoint fingerprints**, durable stable tags, live endpoint observation, last-known-good state, concurrency lock and generation CAS.
 3. Prove zero direct/freedom fallback, no `killall xray`, no listener interruption, watchdog coordination and rollback under lab fault injection.
 4. Obtain separate explicit approval for any live change. No production changes were performed in this phase.
+
+## v30 REAL Xray API isolated lab: SUCCESS (CI runner, no router interaction)
+
+Created `xray/lab/xray_v30_api_continuity.py` and branch-only GitHub Actions workflow `.github/workflows/xray-v30-isolated-lab.yml`. Workflow downloads pinned **Xray 26.2.6 linux/amd64** official release to an ephemeral GitHub runner. Router production is **linux/mipsle** and uses a different Go build; these results validate API behavior for the same Xray release, **not architecture-specific parity**.
+
+Lab topology: one disposable Xray process, loopback-only API/SOCKS listeners on dynamically allocated ports, three local synthetic TCP echo backends A/B/C, synthetic freedom redirect outbounds **only inside the loopback lab**, blackhole catchall. No real VPN credentials, subscription or external VPN destinations. CLI `xray api bo/ado/rmo` calls are against the disposable loopback process, **not production**.
+
+GitHub Actions:
+- **41132417231 SUCCESS**: initial `bo` override A -> B; old established TCP stayed on A and continued echo; new TCP connected through B.
+- **41132507202 SUCCESS**: dynamically `ado` added outbound C, `bo` selected C; new TCP used C and old A TCP still worked.
+- **41132562144 SUCCESS**: after B's test socket was closed, `rmo` removed B; new TCP continued via C, old A TCP remained usable. Exact CI logs: `LAB_RESULT: PASS old TCP=A after BO; new TCP=B`, `PASS dynamic ADO outbound C; old TCP still A`, `PASS RMO drained B; new TCP=C; old TCP=A`.
+
+During development CI initially failed due invalid catchall rule, missing observatory dependency for balancer and a Python newline syntax issue. All corrected in lab code; the final run **41132562144** completed success. The observatory is required for this configured balancer in the tested Xray 26.2.6 build; missing observatory produced `core: not all dependencies are resolved`.
+
+### Confirmed and NOT confirmed
+
+**Confirmed:** Dynamic HandlerService outbound addition, RoutingService balancer override, removal of an already-drained outbound, and persistence of an unrelated existing TCP stream on the original outbound without restarting the disposable Xray process.
+
+**NOT confirmed:** real VLESS/REALITY/gRPC pool updates, leastPing observatory behavior, stable active endpoint detection, actual Telegram/OpenAI traffic, UDP/TProxy flows, deletion of an outbound **with active sessions**, zero packet loss, production API migration, production watchdog coordination or mipsle-specific behavior. The lab deliberately does not remove an outbound with active TCP flows.
+
+**Next:** implement stable canonical endpoint fingerprint and stable tag mapping, generation-safe two-phase update, separate policy for preserving current server when still qualified; expand isolated lab with controlled failure and rollback, then review exact production migration commands for explicit approval. No merge/deploy/restart or production modifications performed.
