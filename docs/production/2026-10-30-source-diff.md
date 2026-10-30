@@ -175,3 +175,16 @@ All twelve had `done` exit 0, untruncated text and no detected credential patter
 Two remaining readback jobs: `ba1d017b-ea65-4a9f-9352-a5f503e1c106` (`test-vpn-servers.py`) and `9d71fd03-3475-4ef5-99d6-1ed90265193d` (`xray-killswitch-v2-test.sh`). No duplicates.
 
 **Branch scope:** 10 prior + 7 + 6 + 6 + 6 = **35 production source snapshots** currently under `xray/production/`. Historical backups, sensitive generated configs and other supporting services are not yet all captured; this is **not yet a full identical production snapshot**.
+
+## FINAL snapshot reconciliation — supersedes earlier queued statuses
+**Completed:** All **63/63** enumerated nonsecret source and backup files under `/opt/bin` and `/opt/etc/init.d` from the original project-file inventory have been copied to `xray/production/opt/` in this branch. The original unknown job was not replayed; a separately authorized new read-only readback of the missing source completed successfully. All 20 historical/backup readbacks also completed. There are no outstanding readback or checksum jobs in this snapshot workstream.
+
+**Exact content verification:** Independent SHA256 over the GitHub UTF-8 bytes matched router `sha256sum` for **63/63 files**. The complete per-path hash table and Git modes are in `xray/production/MANIFEST.sha256`. SHA256 verification was performed in batches of 15, 18, 8, 20 and 2 files; all matched.
+
+**Git mode parity:** The branch stores 44 executable files as Git `100755` and 19 non-executable files as Git `100644`. Git does **not** preserve router-specific 0600/0700 permissions, owner/group or timestamps. Restore scripts must apply exact router permissions separately.
+
+**Active execution chain:** The actual root crontab calls `xray-safe-hourly.sh` every 15 minutes. The captured script invokes `xray-update-v23.py` with `--output` and stages a candidate `config.pending.json`, explicitly without applying it or restarting Xray. The active watchdog script refers to `S97xray`, which exists. `S99xray` is confirmed absent, but is referenced by older, non-cron scripts; do not classify those as active failures without evidence.
+
+**Scope limits:** The snapshot is byte-identical for the 63 enumerated source/backup files, **not** a complete router clone. Secrets, generated Xray config, subscription, live cron content, executable Xray binary, packages, installed Agent and Cloudflare Worker are outside this snapshot. These exclusions are intentional. No production changes, deploy, merge, restart, cron edit or network-policy change were made.
+
+**Next action requiring owner decision:** Whether to expand this branch into a disaster-recovery repository for Xray runtime dependencies and Agent/Worker (without secrets) and whether to propose merging this source snapshot into main. Neither is done automatically.
