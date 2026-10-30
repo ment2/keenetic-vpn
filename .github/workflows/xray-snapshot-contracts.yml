@@ -71,3 +71,11 @@ jobs:
           assert result["required_manual_approval"] is True
           print("PASS: synthetic first-migration dry-run blocks unproven ingress handoff")
           PY
+
+      - name: Execute isolated cutover simulator with synthetic PID and journal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python xray/lab/cutover_controller_v30.py | tee /tmp/xray-v30-cutover-simulation.log
+          grep -q 'SWITCHED_SIMULATION_ONLY' /tmp/xray-v30-cutover-simulation.log
+          grep -q 'handoff_proven=True is SYNTHETIC' /tmp/xray-v30-cutover-simulation.log
