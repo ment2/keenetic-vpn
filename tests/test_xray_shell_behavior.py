@@ -111,7 +111,7 @@ class WatchdogBehavior(unittest.TestCase):
             if port_ready else 'exit 0\n'))
         fake_netstat.chmod(0o700)
         service = self.bin / "service"
-        service.write_text("#!/bin/sh\nprintf "restart\\n" >> "$RESTART_LOG"\n")
+        service.write_text('#!/bin/sh\\nprintf "restart\\\\n" >> "$RESTART_LOG"\\n')
         service.chmod(0o700)
         script = (SOURCE / "xray-watchdog.sh").read_text()
         script = script.replace("LOG=/opt/tmp/xray-watchdog.log",
