@@ -1,0 +1,30 @@
+#!/bin/sh
+
+PIDFILE=/opt/var/run/xray-ks-home.pid
+SCRIPT=/opt/bin/xray-ks-home-watch.sh
+
+case "$1" in
+  start)
+    /opt/bin/xray-ks-home.sh || exit 1
+
+    if [ -f "$PIDFILE" ] &&
+       kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        exit 0
+    fi
+
+    "$SCRIPT" >/dev/null 2>&1 &
+    echo $! > "$PIDFILE"
+    ;;
+
+  stop)
+    if [ -f "$PIDFILE" ]; then
+        kill "$(cat "$PIDFILE")" 2>/dev/null
+        rm -f "$PIDFILE"
+    fi
+    ;;
+
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+esac
