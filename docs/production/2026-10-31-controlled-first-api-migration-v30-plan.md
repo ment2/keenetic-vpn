@@ -76,3 +76,20 @@ Proposed order:
 - **41134057510 SUCCESS**: Xray 26.2.6 linux/mipsle under QEMU, API BO/ADO/RMO TCP continuity on synthetic loopback.
 
 **No real production inventory has been read or used in this dry-run.** Its SHA256/PID/ports are synthetic test inputs. The first-switch mechanism remains unimplemented and requires a future reviewed change request and separate approval.
+
+## Executable isolated cutover/rollback fault model
+
+Added `xray/lab/cutover_controller_v30.py` and `tests/test_xray_cutover_controller_v30.py`. This is an **executable Python simulator**, **not a router deployment script**. It never executes shell commands, binds production ports, accesses router files, or modifies iptables. Its `FakeProcess` objects, SOCKS/TPROXY readiness flags and `owner` pointer are deliberately synthetic.
+
+Implemented:
+- Exclusive nonblocking `flock` on a temporary local lab file; reject concurrent migration.
+- CAS generation and `(PID,start_ticks)` identity checks before changing synthetic ingress ownership.
+- Atomic JSON journal write with file and parent-directory `fsync`.
+- Watchdog fence flag in journal, simulated readiness gates for SOCKS5, TPROXY and API, fail-closed check and no direct fallback.
+- Fault injection before and after synthetic cutover; rollback to healthy old owner or blocked state if old owner unavailable.
+- Recovery after simulated crash from prepared/switched journal, with process identity validation.
+- Old TCP counter retained; no false claim that existing TCP sessions migrated.
+
+**Important limitations before real cutover:** `handoff_proven=True` in the simulator is a *synthetic test flag*. It does not validate actual port rebinding, TPROXY, packet forwarding, real watchdog suppression or any kernel state. In-memory state and the JSON journal are not a complete crash-safe router transaction. A production implementation must re-read actual listeners and PIDs, implement safe port transfer/restart, watchdog fencing and out-of-band rollback, and prove all checks on matching KeeneticOS hardware. Never deploy the simulator to router.
+
+CI **41134617393 SUCCESS** covered the 21 additional synthetic fault-injection tests, bringing the offline suite to **105 tests**. The source-contract workflow was further updated to execute the simulator demo explicitly and assert its output is marked `SWITCHED_SIMULATION_ONLY`; final CI result is recorded separately.
