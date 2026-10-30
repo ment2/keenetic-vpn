@@ -1,0 +1,10 @@
+#!/bin/sh
+case "$1" in
+start)
+  pidof xray >/dev/null && exit 0
+  /opt/sbin/xray run -config /opt/etc/xray/config.json >>/opt/tmp/xray.log 2>&1 &
+  ;;
+stop)
+  killall xray 2>/dev/null
+  ;;
+esac
