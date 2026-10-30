@@ -1,0 +1,32 @@
+#!/bin/sh
+
+XRAY=/opt/sbin/xray
+CONFIG=/opt/etc/xray/config.json
+LOG=/opt/tmp/xray.log
+
+running() {
+    for pid in $(pidof xray 2>/dev/null); do
+        if [ -r "/proc/$pid/stat" ]; then
+            state=$(awk '{print $3}' "/proc/$pid/stat")
+            [ "$state" != "Z" ] && return 0
+        fi
+    done
+    return 1
+}
+
+case "$1" in
+    start)
+        if running; then
+            exit 0
+        fi
+        "$XRAY" run -config "$CONFIG" >> "$LOG" 2>&1 &
+        ;;
+    stop)
+        killall xray 2>/dev/null
+        ;;
+    restart)
+        "$0" stop
+        sleep 2
+        "$0" start
+        ;;
+esac
