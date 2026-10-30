@@ -1,0 +1,57 @@
+--- a/xray-update-v23.py
++++ b/xray-update-v23.py
+@@
+-from xray_server_check import probe
+ from xray_openai_probe import check as check_openai
+@@
+-            result = probe(outbound)
+-
+-            status = result.get('status')
+-            country = result.get('country_code')
+-            ip = result.get('ip')
+-
+-            if status != 'ok' or not ip or not country:
+-                unverified.append(tag)
+-                state = 'UNVERIFIED'
+-
+-            else:
+-                api_status = check_openai(outbound)
+-                if api_status == 'reachable':
+-                    allowed.append(outbound)
+-                    state = 'ALLOWED'
+-                else:
+-                    unverified.append(tag)
+-                    state = 'API_' + api_status.upper()
++            api_status = check_openai(outbound)
++            if api_status == 'reachable':
++                allowed.append(outbound)
++                state = 'ALLOWED'
++            else:
++                unverified.append(tag)
++                state = 'API_' + api_status.upper()
+@@
+-                '%s %-10s country=%s ip=%s' %
+-                (tag, state, country or '-', ip or '-'),
++                '%s %-10s openai=%s' %
++                (tag, state, api_status),
+@@
+-    routing['balancers'] = [{
+-        'tag': 'auto',
+-        'selector': ['vpn'],
+-        'strategy': {'type': 'leastPing'},
+-        'fallbackTag': first_tag
+-    }]
++    # No Google probe or unverified HTTP-401 observatory behavior.
++    # Route via a server independently verified against OpenAI.
++    routing.pop('balancers', None)
+@@
+-        'balancerTag': 'auto'
++        'outboundTag': first_tag
+@@
+-    candidate['observatory'] = {
+-        'subjectSelector': ['vpn'],
+-        'probeUrl': 'https://www.google.com/generate_204',
+-        'probeInterval': '60s',
+-        'enableConcurrency': True
+-    }
++    candidate.pop('observatory', None)
