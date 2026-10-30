@@ -156,3 +156,22 @@ Second group:
 `9d71fd03-3475-4ef5-99d6-1ed90265193d`.
 
 **Secrets excluded:** subscription URL, raw Xray config, tokens, credentials, Telegram sessions. GitHub branch is a nonsecret snapshot, not a raw full-disk clone. Router/Worker/Xray production remains unchanged by this audit.
+
+## Actual cron inspection and service mismatch confirmed
+Read-only job `176488fc-bd06-42a7-9883-4ef14cc8295c` completed, exit 0. Root crontab (`/opt/var/spool/cron/crontabs/root`) includes:
+```cron
+*/15 * * * * /opt/bin/flock -n /opt/tmp/xray-update.lock /opt/bin/xray-safe-hourly.sh >> /opt/var/log/xray-update.log 2>&1
+* * * * * /opt/bin/flock -n /opt/tmp/keenetic-agent.lock /opt/bin/python3 /opt/telegram-ai/keenetic_agent.py >> /opt/var/log/keenetic-agent.log 2>&1
+* * * * * sleep 30; /opt/bin/flock -n /opt/tmp/keenetic-agent.lock /opt/bin/python3 /opt/telegram-ai/keenetic_agent.py >> /opt/var/log/keenetic-agent.log 2>&1
+```
+Root crontab SHA256 `51a27f0244984325fcfb478a262ddd0b4ee028a52942244b39655faf7bf54d50`. System `/opt/etc/crontab` SHA256 `8fe99361db0997e77db117044d41a3b64c87f26407e949b81c249f1fb3f8ce63` (runs periodic run-parts directories). Only selected relevant cron lines are included, not the full crontab.
+`S99xray` **confirmed absent** on live filesystem; `S97xray` and `S99xray-watchdog` exist. Cron directly calls `xray-safe-hourly.sh`, **not** `xray-auto-update.sh` or `xray-safe-v23.sh`. The latter two have stale references to missing `S99xray`, but that does not establish a fault in the active cron path. Verify active script's service calls before proposing changes.
+
+### More production source snapshots
+Six completed readbacks copied: `xray-watchdog-v25-safe-service.sh`, `xray-v25-migration-preflight.sh`, `xray-failclosed-audit-v25.sh`, `xray-v25-process-audit.sh`, `xray-watchdog.sh`, `xray-watchdog-switch-v26.py`.
+Six more copied: `xray-update-v21.py`, `xray-v22-safety.py`, `xray-update-v2.py`, `xray-failclosed-test.sh`, `xray-ks-rollback.sh`, `xray-wifi-test.sh`.
+All twelve had `done` exit 0, untruncated text and no detected credential patterns; full SHA256 equivalence awaits job `a667edbc-adec-4f1b-9f95-2acdd9889ae6` (queued). Source may contain multibyte UTF-8 text, so character count need not equal router `ls` byte size.
+
+Two remaining readback jobs: `ba1d017b-ea65-4a9f-9352-a5f503e1c106` (`test-vpn-servers.py`) and `9d71fd03-3475-4ef5-99d6-1ed90265193d` (`xray-killswitch-v2-test.sh`). No duplicates.
+
+**Branch scope:** 10 prior + 7 + 6 + 6 + 6 = **35 production source snapshots** currently under `xray/production/`. Historical backups, sensitive generated configs and other supporting services are not yet all captured; this is **not yet a full identical production snapshot**.
