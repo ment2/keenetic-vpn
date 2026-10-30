@@ -115,3 +115,44 @@ The original nine existing job IDs were polled again; `da2d6c64-d60d-4cc5-bd67-6
 
 ### Audit boundary
 No new router jobs, no auto-unblock, no Cloudflare or router production mutation. No new production source copies or SHA256 equality claims because the existing jobs have not completed.
+
+## Production snapshot branch update: recovered queue
+Working branch: `snapshot/keenetic-production-2026-10-30` (main remains unchanged).
+
+Owner's queue recovery is documented in `ment2/keenetic-control`, `docs/incidents/queue-recovery-2026-10-30.md` (branch `fix/worker-v5-auto-unblock`). Live follow-up on our **nine original job IDs** returned:
+- `da2d6c64-d60d-4cc5-bd67-66b8b3a16908`: **failed**, exit -1, no source recovered. Do **not** re-execute this previously unknown operation without a separate safety decision.
+- Seven other `read_file` jobs: **done**, exit 0. Copied their untruncated, nonsecret source to `xray/production/opt/bin/`: `xray-fc-recover.sh`, `xray-killswitch-enable.sh`, `xray-main-pid.py`, `xray-preflight-v24.sh`, `xray-control-selftest.py`, `xray-rollback-selftest.sh`, `xray-killswitch-test.sh`.
+- Cron/checksum job `73553c5a-5253-455b-a760-5a8c6ea21e59`: **done**, exit 0, but initial cron search missed the actual root crontab.
+
+An additional read-only inventory `b946db3b-956a-47b4-b14d-d1b42251ea0b` completed and confirmed:
+- `/opt/etc/init.d/S97xray` **exists**.
+- `/opt/etc/init.d/S99xray` **does not exist**.
+- `/opt/etc/init.d/S99xray-watchdog` **exists** (distinct service).
+- Actual root crontab path: `/opt/var/spool/cron/crontabs/root`, 1978 bytes; `/opt/etc/crontab` also exists. Earlier search omitted the actual root crontab, so absence of cron matches in that earlier output was inconclusive.
+- Redacted cron inspection job `176488fc-bd06-42a7-9883-4ef14cc8295c` is queued; **do not requeue**.
+
+### SHA256 byte-equivalence, VERIFIED
+Computed SHA256 independently over GitHub UTF-8 file bytes and compared with live router `sha256sum` output. All **15/15** tested production snapshot files matched exactly:
+`xray-fc-recover.sh`, `xray-killswitch-enable.sh`, `xray-main-pid.py`, `xray-preflight-v24.sh`, `xray-control-selftest.py`, `xray-rollback-selftest.sh`, `xray-killswitch-test.sh`, `xray-update-v23.py`, `xray-safe-hourly.sh`, `S96xray-killswitch`, `S98xray-wifi`, `xray-ks-home-watch.sh`, `xray-ks-home.sh`, `xray-wifi-rules.sh`, `xray-fc-cron-guard.sh`. SHA256 algorithm sanity-checked with standard `abc` test vector. This establishes equality for these **specific files at the sampled time**, not whole-router identity.
+
+Six more untruncated, nonsecret readbacks were copied to the branch: `xray-update-v23.1.py`, `xray-control-v24.py`, `xray-control-v24-next.py`, `xray-identity-v24.py`, `xray-watchdog-migrate-v252.py`, `xray-watchdog-v25-service.sh`. Their SHA256 equivalence has **not yet been independently checked**.
+
+### Outstanding queued readbacks
+First group:
+`c8390211-e4ab-4876-8193-5fa6b3a8ca9d`,
+`284bbc5f-88dc-4d9c-a886-4738ea112cd2`,
+`40a3b5cb-9c36-4082-82cc-97721cb6c68c`,
+`6e138295-28fc-4735-8761-71062daa2729`.
+Second group:
+`58bf020d-4de1-4566-90e8-32c721b9bc20`,
+`4bdabea8-a062-467c-a4f6-b3abe95b0d87`,
+`e43f6831-68bb-47e4-bf31-d62925f2d401`,
+`8a6f5447-bbfb-42f8-a134-e34fc8d1162d`,
+`e3f31bf3-27fe-43a0-9ad4-9201c7eea972`,
+`19ce61bc-b2ae-4f27-86d1-25c1bd970ad7`,
+`cf0abe6f-d229-4844-a313-ec0bbdc26840`,
+`e837bcd5-d386-410a-9b03-c282fd1b222b`,
+`ba1d017b-ea65-4a9f-9352-a5f503e1c106`,
+`9d71fd03-3475-4ef5-99d6-1ed90265193d`.
+
+**Secrets excluded:** subscription URL, raw Xray config, tokens, credentials, Telegram sessions. GitHub branch is a nonsecret snapshot, not a raw full-disk clone. Router/Worker/Xray production remains unchanged by this audit.
