@@ -80,3 +80,13 @@ During development CI initially failed due invalid catchall rule, missing observ
 **NOT confirmed:** real VLESS/REALITY/gRPC pool updates, leastPing observatory behavior, stable active endpoint detection, actual Telegram/OpenAI traffic, UDP/TProxy flows, deletion of an outbound **with active sessions**, zero packet loss, production API migration, production watchdog coordination or mipsle-specific behavior. The lab deliberately does not remove an outbound with active TCP flows.
 
 **Next:** implement stable canonical endpoint fingerprint and stable tag mapping, generation-safe two-phase update, separate policy for preserving current server when still qualified; expand isolated lab with controlled failure and rollback, then review exact production migration commands for explicit approval. No merge/deploy/restart or production modifications performed.
+
+## Stable identity prototype and 43-test offline CI
+
+Added `xray/lab/endpoint_identity_v30.py`: canonical JSON encoding of the full VLESS outbound (excluding positional `tag`), HMAC-SHA256 using an externally provisioned **durable secret key** (minimum 32 bytes), and deterministic `vpn-<24 hex>` tag. It detects duplicate identities and tag collisions. **Prototype only**, not production canonicalizer: full outbound JSON may include non-semantic fields, key rotation changes identity, and transport normalization must be reviewed before deployment. Never commit the HMAC key or log raw canonical JSON. Changing credentials/transport correctly changes the identity.
+
+Added `tests/test_xray_endpoint_identity_v30.py`: 10 tests for subscription reordering, tag independence, credential/host changes, duplicate rejection, key strength, unsupported protocol, key rotation and safe tags.
+
+GitHub Actions **41132677348**: **SUCCESS**. Offline suite now includes **43 tests**: 11 static source contracts + 5 updater behavior + 7 shell staging/watchdog behavior + 10 pure pool reconciliation + 10 endpoint identity. This CI validates prototypes and frozen-source contracts, not production switching.
+
+**Critical architectural distinction:** A stable endpoint fingerprint solves subscription reordering, **not** live balancer selection. Before deploying, observe actual selected outbound for new flows and implement a sticky policy with controlled failover; Xray `leastPing` alone can change selection without a subscription refresh. API `bo` was demonstrated in lab but must be coordinated with leastPing/fallback and actual health checks.
