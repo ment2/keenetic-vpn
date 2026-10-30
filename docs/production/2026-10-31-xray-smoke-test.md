@@ -94,3 +94,8 @@ Read-only job `6470e4f5-82b8-4ffd-8a36-b606f40f904d` completed exit 0:
 - The 63-file snapshot scope under `/opt/bin` and `/opt/etc/init.d` remains complete for the enumerated Xray/VPN files; related Agent source, runtime binary, package metadata and config are separate inventory categories.
 
 Read-only Agent hash/identity and balancer metadata job `ffe26251-aefc-4d62-b052-fcbd5cb95ec5` queued; no repeat submission. Keep production unchanged.
+
+## Source provenance risk: Agent
+GitHub `ment2/keenetic-control` branch `fix/worker-v5-auto-unblock` contains `agent/src/keenetic_agent.py` (9357 UTF-8 chars) and `agent/agent_safety.py` (15038 UTF-8 chars). The live filesystem inventory shows `keenetic_agent.py` 9454 bytes and `agent_safety.py` 15039 bytes. **Do not infer mismatch from char count vs byte count** (UTF-8 multibyte characters, newline normalization and wrappers can differ). Wait for actual router SHA256 and compare GitHub bytes before claiming parity. The agent is outside this VPN source snapshot and should not be overwritten from an unverified branch.
+
+No production edits. The Agent hash job `ffe26251-aefc-4d62-b052-fcbd5cb95ec5` remains queued at this checkpoint.
