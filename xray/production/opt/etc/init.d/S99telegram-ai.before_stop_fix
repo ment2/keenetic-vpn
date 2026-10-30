@@ -1,0 +1,57 @@
+#!/opt/bin/sh
+
+NAME=telegram-ai
+DIR=/opt/telegram-ai
+PY=/opt/bin/python3
+APP=$DIR/assistant.py
+PIDFILE=/opt/var/run/telegram-ai.pid
+LOG=$DIR/service.log
+
+start() {
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "$NAME already running: $PID"
+            return 0
+        fi
+        rm -f "$PIDFILE"
+    fi
+
+    (
+        trap 'exit 0' TERM INT
+        cd "$DIR" || exit 1
+
+        while :; do
+            if ! netstat -lnt 2>/dev/null | grep -q '127.0.0.1:10808'; then
+                sleep 5
+                continue
+            fi
+
+            echo "$(date) Starting Telegram AI" >> "$LOG"
+            "$PY" -u "$APP" >> "$LOG" 2>&1
+            echo "$(date) Telegram AI exited; retrying" >> "$LOG"
+            sleep 10
+        done
+    ) </dev/null >/dev/null 2>&1 &
+
+    echo $! > "$PIDFILE"
+    echo "$NAME started"
+}
+
+stop() {
+    if [ -f "$PIDFILE" ]; then
+        PID=$(cat "$PIDFILE")
+        kill "$PID" 2>/dev/null
+        rm -f "$PIDFILE"
+    fi
+
+    pkill -f '/opt/telegram-ai/assistant.py' 2>/dev/null
+    echo "$NAME stopped"
+}
+
+case "$1" in
+    start) start ;;
+    stop) stop ;;
+    restart) stop; sleep 2; start ;;
+    *) echo "Usage: $0 {start|stop|restart}" ;;
+esac
