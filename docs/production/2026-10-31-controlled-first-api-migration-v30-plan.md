@@ -107,3 +107,9 @@ The lab has subsequently been extended with a local UDP echo backend and SOCKS5 
 - Model watchdog race against real supervised processes (current `S97xray` killall is unsafe) and prove independent kernel fail-closed for TCP/UDP/DNS/IPv6.
 - Prove MIPSLE QEMU API readiness and PID-specific recovery are compatible with actual KeeneticOS/Entware kernel and firewall.
 - Obtain separate explicit approval for any router access or production change.
+
+### UDP diagnostic: failed, not silently passed
+
+CI **41135006860** and retry **41135112889** failed in the added SOCKS5 UDP ASSOCIATE handshake on the first real MIPSLE Xray process: the client timed out waiting for the initial SOCKS5 authentication response (5 seconds, then 15 seconds). Both Xray processes had started and reported real PID/start ticks. Root cause is **not established**; may be a configuration/routing issue or emulator behavior. Increasing timeout did not fix it. No claim of UDP continuity or UDP fail-closed is justified.
+
+The previously successful dual-process TCP lab was restored to its known-working SOCKS `udp: false` configuration and UDP claims removed. The separate `UdpEcho`/UDP-associate probe remains in source for further isolated diagnostics but is **not invoked** by the TCP regression job. No production change was made. The UDP failure is a deployment blocker, not permission to bypass UDP through direct Internet.
