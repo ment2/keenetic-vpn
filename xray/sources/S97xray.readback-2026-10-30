@@ -1,0 +1,42 @@
+#!/bin/sh
+
+XRAY=/opt/sbin/xray
+CONFIG=/opt/etc/xray/config.json
+LOG=/opt/tmp/xray.log
+
+port_ready() {
+    netstat -lnt 2>/dev/null | grep -q '127.0.0.1:10808'
+}
+
+stop_xray() {
+    killall xray 2>/dev/null
+
+    i=0
+    while [ "$i" -lt 10 ]; do
+        if ! port_ready; then
+            return 0
+        fi
+        sleep 1
+        i=$((i + 1))
+    done
+
+    echo "$(date) Xray did not stop within 10 seconds" >> "$LOG"
+    return 1
+}
+
+case "$1" in
+    start)
+        if port_ready; then
+            exit 0
+        fi
+
+        "$XRAY" run -config "$CONFIG" >> "$LOG" 2>&1 &
+        ;;
+    stop)
+        stop_xray
+        ;;
+    restart)
+        stop_xray || exit 1
+        "$0" start
+        ;;
+esac
