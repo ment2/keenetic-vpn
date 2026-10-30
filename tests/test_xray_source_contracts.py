@@ -78,7 +78,7 @@ class XraySourceContracts(unittest.TestCase):
 
     def test_known_limitations_are_explicit(self):
         self.assertNotIn('api.openai.com', source("xray-watchdog.sh"))
-        self.assertIn('killall xray', (ROOT.parent.parent / "etc/init.d/S97xray").read_text())
+        self.assertIn('killall xray', (ROOT.parent / "etc/init.d/S97xray").read_text())
         self.assertIn("'protocol':'freedom'", source("setup_xray.py"))
 
 
