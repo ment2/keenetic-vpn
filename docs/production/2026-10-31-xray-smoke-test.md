@@ -121,3 +121,12 @@ Reviewed the actual 63-file snapshot source:
 - No isolated runtime fault-injection, subscription refresh, kill-switch outage or restart test was performed on production.
 
 Runtime balancer confirms `('auto',['vpn'],'leastPing','vpn01')`, observatory enabled, 7 VLESS outbounds, no freedom outbound.
+
+## Agent SHA256 mismatch RESOLVED — newline-only, semantic source parity PASS
+Read-only jobs `2fe66a1a-cee2-42c8-98ab-b6802f087d77` and `be721bd6-395b-42d2-a59c-dcc57dbbeb70` both completed exit 0.
+- Live `keenetic_agent.py` is 9454 bytes, has 239 LF bytes and ends with LF (0x0a). Removing **exactly its final LF byte in memory** (no file write) yields SHA256 `09cb1488396446baf3c7d660ce84c02d5cb0ea2b38475a8ef785fc18a95b0c28`, **identical** to GitHub `agent/src/keenetic_agent.py` (9453 bytes, 238 LF bytes, no final LF).
+- Live `agent_safety.py` is 15039 bytes, has 327 LF bytes and ends with LF. Removing **exactly its final LF byte in memory** yields SHA256 `1138a0e2f6fe37738e0c6a2ac87298a96e510fea820a6b980172217e71d44ba1`, **identical** to GitHub `agent/agent_safety.py` (15038 bytes, 326 LF bytes, no final LF).
+- Thus both installed Agent source files are **byte-identical to the GitHub branch except one trailing newline each**. No functional/source drift detected in these two modules; raw SHA256 parity is false due solely to newline. Previous mismatch note remains as an audit trail but is **resolved by this follow-up**.
+- No Agent code or files changed on router or GitHub source branch.
+
+**Overall snapshot scope:** 63/63 Xray source files byte-identical and mode-matched; Agent's 2 main Python source files semantically identical to separate `keenetic-control` branch (trailing LF only). Live Worker deployment parity, runtime config secrets, and router packages are not a fully reproducible disaster-recovery clone.
