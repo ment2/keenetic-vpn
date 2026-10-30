@@ -77,7 +77,8 @@ class EchoBackend:
 def config(api_port, socks_port, a_port, b_port):
     return {
         "log": {"loglevel": "warning"},
-        "api": {"tag": "lab-api", "services": ["HandlerService", "RoutingService"]},\n        "observatory": {"subjectSelector": ["lab-a", "lab-b"], "probeURL": "http://127.0.0.1:19000", "probeInterval": "1m"},
+        "api": {"tag": "lab-api", "services": ["HandlerService", "RoutingService"]},
+        "observatory": {"subjectSelector": ["lab-a", "lab-b"], "probeURL": "http://127.0.0.1:19000", "probeInterval": "1m"},
         "inbounds": [
             {"tag": "lab-api", "listen": "127.0.0.1", "port": api_port,
              "protocol": "dokodemo-door", "settings": {"address": "127.0.0.1"}},
