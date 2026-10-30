@@ -43,3 +43,20 @@ Status: **NOT READY FOR LIVE MIGRATION**. Existing Xray is 26.2.6 linux/mipsle a
 - New `xray/lab/first_migration_model_v30.py` and `tests/test_xray_first_migration_v30.py`: 20 fault-injection tests for ingress ownership, watchdog fencing, drain, rollback, generation, direct fallback and fail-closed. **Simulator does not perform actual network handoff.**
 
 No merge, deploy, router jobs, production Xray/cron/firewall/routes/watchdog/kill-switch modifications.
+
+## Verified MIPS32LE emulation (stronger than amd64 parity)
+
+Official XTLS Xray-core v26.2.6 release has `Xray-linux-mips32le.zip` and `.dgst` assets. Created `.github/workflows/xray-v30-mips32le-lab.yml`, running `qemu-mipsel` on a disposable Ubuntu GitHub Actions runner, with **no Keenetic connection**.
+
+**GitHub CI 41134057510: SUCCESS.** The downloaded binary identified itself as `Xray 26.2.6 ... linux/mipsle` and was an ELF32 little-endian MIPS executable. Real loopback SOCKS/API test passed:
+- `LAB_RESULT: PASS old TCP=A after BO; new TCP=B`
+- `LAB_RESULT: PASS dynamic ADO outbound C; old TCP still A`
+- `LAB_RESULT: PASS RMO drained B; new TCP=C; old TCP=A`
+
+This confirms API behavior for the **MIPS32LE release under QEMU**, including live TCP continuity in the synthetic lab. It does **not** prove the exact installed router binary matches the official release byte-for-byte, nor does it exercise router kernel TPROXY, iptables, watchdog, Entware libraries, real VPN protocols or actual client sessions. No production change was made.
+
+## First-migration simulation
+
+GitHub CI **41133986994 SUCCESS** ran the source-contract workflow after adding 20 `first_migration_model_v30` fault-injection tests. Total offline suite **72 tests** (52 previous + 20 new). This checks an abstract ingress ownership state machine, not a live ingress handoff.
+
+**Engineering stop condition:** the current legacy process owns the actual SOCKS5 and TPROXY ports and has no API. The required *first* migration with no disruption is not established. Do not execute any live switch, enable API in production, change watchdog or move firewall hooks until the user explicitly approves an exact migration plan and acceptable interruption budget. Existing periodic staging remains unchanged.
