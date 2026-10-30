@@ -25,3 +25,11 @@
 Snapshot branch `snapshot/keenetic-production-2026-10-30` contains 63/63 source files matching live SHA256 and Git executable bits. The snapshot is not the installed Xray binary or a full router clone. Diagnostic job IDs `7680afb4-ccc4-49a9-b9a0-140c4946e740` and `73b70b97-5818-49dd-ba90-50c0ae553a02` completed with exit code 0.
 
 **Status:** Core Xray and SOCKS5 functional smoke tests PASS; comprehensive VPN integration tests remain partial. Production unchanged.
+
+## Follow-up: traffic counter warning
+Read-only job `bf641e41-f467-4227-b2df-bcaa3b7efa86` completed:
+- Telegram TCP-only probe **not executed** because the router's curl was built without `telnet://` support. Previous HTTPS-to-IP errors cannot establish Telegram availability.
+- `XRAY_WIFI` TPROXY TCP and UDP counters were **both 0 packets** at sampling time.
+- `XRAY_KS_HOME` DROP counter was **956 packets / 382524 bytes**, local RETURN counter 2 packets / 123 bytes. Counters are cumulative, so this is evidence of dropped LAN transit traffic but not its current rate.
+- Agent Python process was running.
+**Important:** This means **Wi-Fi client VPN forwarding is not yet verified and may be broken**, despite working SOCKS5 and present firewall rules. Do not report whole VPN as healthy. Further read-only check of PREROUTING/FORWARD counters and actual Xray inbound is queued as job `c47de0e6-aa51-4fde-8452-3e0b1de885b5`. Do not reset counters, disable kill-switch or alter production without a separate change plan.
