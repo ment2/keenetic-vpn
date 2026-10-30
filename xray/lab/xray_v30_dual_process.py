@@ -24,9 +24,9 @@ def start_ticks(pid):
     return int(tail[19])
 
 
-def config(port, echo_port, api_port=None, udp_port=None):
+def config(port, echo_port, api_port=None, udp_port=None, enable_udp=False):
     inbounds = [{"tag": "socks", "listen": "127.0.0.1", "port": port,
-                 "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}]
+                 "protocol": "socks", "settings": {"auth": "noauth", "udp": enable_udp}}]
     rules = [{"type": "field", "inboundTag": ["socks"], "outboundTag": "echo"},
              {"type": "field", "port": "0-65535", "outboundTag": "blocked"}]
     result = {"log": {"loglevel": "warning"}, "inbounds": inbounds,
@@ -116,7 +116,7 @@ def run(xray):
         try:
             for name, port, api in (("old", old_port, None), ("new", new_port, api_port)):
                 file = Path(td) / f"{name}.json"
-                file.write_text(json.dumps(config(port, backend.port, api, udp_backend.port)))
+                file.write_text(json.dumps(config(port, backend.port, api, udp_backend.port, enable_udp=True)))
                 subprocess.run([xray, "run", "-test", "-config", str(file)],
                                check=True, timeout=25, stdout=subprocess.DEVNULL)
                 p = subprocess.Popen([xray, "run", "-config", str(file)],
