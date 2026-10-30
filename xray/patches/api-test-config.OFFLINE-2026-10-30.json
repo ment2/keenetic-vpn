@@ -1,0 +1,18 @@
+{
+  "log": {"loglevel": "warning"},
+  "api": {"tag": "api", "services": ["HandlerService", "RoutingService"]},
+  "inbounds": [
+    {"tag": "api-loopback", "listen": "127.0.0.1", "port": 18080, "protocol": "dokodemo-door", "settings": {"address": "127.0.0.1"}},
+    {"tag": "test-socks", "listen": "127.0.0.1", "port": 18081, "protocol": "socks", "settings": {"auth": "noauth", "udp": false}}
+  ],
+  "outbounds": [
+    {"tag": "blocked", "protocol": "blackhole", "settings": {}}
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {"type": "field", "inboundTag": ["api-loopback"], "outboundTag": "api"},
+      {"type": "field", "inboundTag": ["test-socks"], "outboundTag": "blocked"}
+    ]
+  }
+}
