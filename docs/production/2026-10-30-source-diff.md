@@ -92,3 +92,26 @@ Read-only polling of the same nine IDs showed a new outcome:
 
 ### Safe next diagnostic decision
 Investigate the existing queue/lease handling and agent liveness via already-available read-only telemetry or Worker/GitHub source, without resubmitting these jobs. Preserve all nine IDs and their statuses. Do not unblock, cancel, or change the router or production until queue semantics are understood.
+
+## Read-only incident investigation: unknown lease and blocked queue
+Source reviewed in `ment2/keenetic-control`, branch `fix/worker-v5-auto-unblock`:
+- `worker/src/coordinator.mjs` `expire(now)` (lines 28–38): expired `running` jobs become `unknown` with `outcome_unverified=1`; receipt/lease and unresolved `recovery_blocks` are retained. This explains the **observed** `running → unknown` transition as consistent with the reviewed implementation, but **deployed Worker source fingerprint is unverified**.
+- `/claim` (lines 138–148) refuses further jobs while any `running` or unresolved `unknown` exists, explaining why queued jobs may not progress. This is intentional fail-closed behavior, not evidence that queued jobs were executed.
+- `/results/:id` (lines 159–179) accepts matching-receipt late results for `unknown` and clears the recovery block; it does not rerun the original task. A receipt mismatch returns 409.
+- The Worker also has a 1-hour queued-job expiry check (line 38). **Actual queued states must be checked before assuming the branch exactly matches production.**
+- `agent/src/keenetic_agent.py` (lines 174–235) documents durable pending-result journal and refusal to replay uncertain operations; a `result_ready` record is only removed after acknowledged HTTP delivery. Archived agent implementation does **not** establish installed Agent identity.
+- `docs/audits/agent-worker-auto-unblock-risk-2026-10-30.md` and `docs/audits/installed-agent-diagnostic-contract-2026-10-30.md` explicitly warn that Worker-only auto-unblock can conflict with Agent's durable claimed record. A root `read_file` job is not an attested safe auto-unblock candidate.
+
+### Live observations
+The original nine existing job IDs were polled again; `da2d6c64-d60d-4cc5-bd67-66b8b3a16908` returned `unknown` with lease `1793392309114` (`2026-10-30T20:31:49.114Z`); eight returned `queued`. No job was resubmitted. Permission state: remote enabled, owner admin enabled, revision 2. These facts do not prove Agent heartbeat or polling. No direct authenticated Cloudflare queue database or Agent journal/heartbeat read is exposed by the current read-only plugin methods; thus **agent liveness and exact failure of result delivery remain unknown**.
+
+### Safe recovery plan (not executed)
+1. Establish deployed Worker and installed Agent version/SHA via authorized read-only control-plane metadata or separately approved read-only filesystem telemetry; compare against reviewed GitHub branch. Do not assume candidate branch is production.
+2. Inspect Durable Object read-only recovery state, audit trail and nine job records (state, lease, receipt presence, generation, blocked_job), **without exporting receipt values, tokens or payloads**. Determine whether the blocking job has a late result or was abandoned.
+3. Inspect Agent heartbeat/last successful poll and **redacted journal metadata only** (claimed/result_ready/job_id/receipt presence, not receipt value), and identify whether result delivery is failing due to network/auth/lease mismatch. Avoid any command execution through the blocked queue.
+4. If `result_ready`, use the existing Agent's normal **receipt-bound result delivery** only after validating installed contract; do not rerun command. If `claimed`/uncertain, keep blocked until operator-reviewed reconciliation proves safe.
+5. Never auto-unblock, clear journal, reset receipt, requeue, or redeploy based solely on elapsed lease. Require explicit operator approval for any later mutation.
+6. After recovery, poll existing jobs and inspect cron and service paths read-only, then compare exact production file SHA256 against GitHub snapshots. Preserve historical archive separately.
+
+### Audit boundary
+No new router jobs, no auto-unblock, no Cloudflare or router production mutation. No new production source copies or SHA256 equality claims because the existing jobs have not completed.
