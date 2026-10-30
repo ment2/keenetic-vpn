@@ -90,3 +90,9 @@ Added `tests/test_xray_endpoint_identity_v30.py`: 10 tests for subscription reor
 GitHub Actions **41132677348**: **SUCCESS**. Offline suite now includes **43 tests**: 11 static source contracts + 5 updater behavior + 7 shell staging/watchdog behavior + 10 pure pool reconciliation + 10 endpoint identity. This CI validates prototypes and frozen-source contracts, not production switching.
 
 **Critical architectural distinction:** A stable endpoint fingerprint solves subscription reordering, **not** live balancer selection. Before deploying, observe actual selected outbound for new flows and implement a sticky policy with controlled failover; Xray `leastPing` alone can change selection without a subscription refresh. API `bo` was demonstrated in lab but must be coordinated with leastPing/fallback and actual health checks.
+
+## Production-like leastPing lab CI SUCCESS
+
+Expanded isolated loopback lab to run **both** `random` and `leastPing` balancer strategies against the real official Xray 26.2.6 linux/amd64 binary. GitHub Actions **41132772990** completed **SUCCESS**, with both steps successful. In each strategy, API `bo` switched new TCP A -> B, `ado` added C and redirected new TCP to C, `rmo` removed drained B, and the pre-existing TCP flow continued through A.
+
+**Caution:** The test uses an explicit API override and synthetic loopback backends. It **does not** validate automatic leastPing selection or automatic fallback on failure, nor prove real VLESS/mipsle session continuity. This is an important positive result for the intended API-based control plane, not deployment authorization.
