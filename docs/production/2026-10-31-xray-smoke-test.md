@@ -99,3 +99,25 @@ Read-only Agent hash/identity and balancer metadata job `ffe26251-aefc-4d62-b052
 GitHub `ment2/keenetic-control` branch `fix/worker-v5-auto-unblock` contains `agent/src/keenetic_agent.py` (9357 UTF-8 chars) and `agent/agent_safety.py` (15038 UTF-8 chars). The live filesystem inventory shows `keenetic_agent.py` 9454 bytes and `agent_safety.py` 15039 bytes. **Do not infer mismatch from char count vs byte count** (UTF-8 multibyte characters, newline normalization and wrappers can differ). Wait for actual router SHA256 and compare GitHub bytes before claiming parity. The agent is outside this VPN source snapshot and should not be overwritten from an unverified branch.
 
 No production edits. The Agent hash job `ffe26251-aefc-4d62-b052-fcbd5cb95ec5` remains queued at this checkpoint.
+
+## Agent SHA256 comparison — **MISMATCH CONFIRMED**
+Existing job `ffe26251-aefc-4d62-b052-fcbd5cb95ec5` completed exit 0. Live router:
+- `/opt/telegram-ai/keenetic_agent.py`: **9454 bytes**, SHA256 `fd9b47e879911a44936851b706c2ae5616bcb962971cc6cb255b2ba2d12df5f3`.
+- `/opt/telegram-ai/agent_safety.py`: **15039 bytes**, SHA256 `ea8ed74763a1ceb14f8505341aa66f88c7f546a4d848aaec2c9c9ce80e664a37`.
+
+GitHub `ment2/keenetic-control` branch `fix/worker-v5-auto-unblock`, fetched as **base64 bytes** and hashed with a locally implemented SHA256 function verified against the standard `abc` test vector:
+- `agent/src/keenetic_agent.py` and `agent/integration_verified/keenetic_agent.py`: **9453 bytes**, SHA256 `09cb1488396446baf3c7d660ce84c02d5cb0ea2b38475a8ef785fc18a95b0c28`.
+- `agent/agent_safety.py` and `agent/integration_verified/agent_safety.py`: **15038 bytes**, SHA256 `1138a0e2f6fe37738e0c6a2ac87298a96e510fea820a6b980172217e71d44ba1`.
+
+**Conclusion:** Installed Agent sources are **NOT byte-identical** to this GitHub branch, each live file is one byte longer. The difference may be a trailing newline, but this is **not yet established**; do not deploy or overwrite the live Agent. Read-only last-byte comparison queued as job `8a5ef4fc-d415-4c91-8d59-8dd5c9b1ee12`.
+
+### Static source contract checks (not runtime execution)
+Reviewed the actual 63-file snapshot source:
+- PASS: subscription HTTPS requirement and private file permissions; empty allowed pool fail-closed; first allowed tag used as fallback; per-outbound OpenAI check; isolated geo probe process cleanup; TCP+UDP TPROXY rule construction; IPv4 Home kill-switch DROP; OpenAI probe treats HTTP 401 as reachable.
+- LIMITATION: watchdog tests only local SOCKS port, **not upstream**. It can restart Xray, but a listening SOCKS socket is insufficient evidence of a healthy VPN tunnel.
+- LIMITATION: service `S97xray` uses `killall xray` on restart, which can terminate isolated probe processes running concurrently. A safe refactor would target the owned main PID, but requires tests and a separate deployment approval.
+- LIMITATION: `setup_xray.py` has a legacy standalone main routine that writes `config.json` with a `freedom` outbound. It is imported by the active updater for `create_outbound` only; **do not execute its main on production**. The live config has `has_freedom=False`.
+- LIMITATION: `xray_server_check.py` uses external `https://ipwho.is/` geolocation as a gate; service outages or inaccurate geo responses can reject otherwise functioning VPN servers. `xray_openai_probe.py` requires HTTP 401 specifically; API response changes can also reject usable servers.
+- No isolated runtime fault-injection, subscription refresh, kill-switch outage or restart test was performed on production.
+
+Runtime balancer confirms `('auto',['vpn'],'leastPing','vpn01')`, observatory enabled, 7 VLESS outbounds, no freedom outbound.
