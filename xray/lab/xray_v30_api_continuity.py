@@ -107,9 +107,9 @@ def config(api_port, socks_port, a_port, b_port):
 def socks_connect(port):
     s = socket.create_connection(("127.0.0.1", port), timeout=3)
     s.settimeout(4)
-    s.sendall(b"\\x05\\x01\\x00")
-    assert s.recv(2) == b"\\x05\\x00", "SOCKS authentication failed"
-    s.sendall(b"\\x05\\x01\\x00\\x01\\x7f\\x00\\x00\\x01" + (19000).to_bytes(2, "big"))
+    s.sendall(b"\x05\x01\x00")
+    assert s.recv(2) == b"\x05\x00", "SOCKS authentication failed"
+    s.sendall(b"\x05\x01\x00\x01\x7f\x00\x00\x01" + (19000).to_bytes(2, "big"))
     response = s.recv(10)
     assert len(response) >= 2 and response[1] == 0, f"SOCKS connect failed: {response!r}"
     return s
@@ -156,7 +156,7 @@ def run(xray):
             wait_port(socks_port, proc)
             wait_port(api_port, proc)
             def api(*args):
-                return subprocess.run([xray, "api", *args, "-s", f"127.0.0.1:{api_port}"],
+                return subprocess.run([xray, "api", args[0], "-s", f"127.0.0.1:{api_port}", *args[1:]],
                                       capture_output=True, text=True, timeout=8, check=True)
             # Force old endpoint A. The first connection is intentionally kept open.
             api("bo", "-b", "lab-balancer", "lab-a")
