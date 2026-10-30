@@ -1,0 +1,225 @@
+#!/opt/bin/sh
+# Xray watchdog migration v25
+# Never restart Xray or modify firewall/routing.
+
+PATH=/opt/bin:/opt/sbin:/usr/bin:/bin:/sbin
+
+OLD_SCRIPT=/opt/bin/xray-watchdog.sh
+NEW_SCRIPT=/opt/bin/xray-watchdog-v25.sh
+
+OLD_PIDFILE=/opt/var/run/xray-watchdog.pid
+NEW_PIDFILE=/opt/var/run/xray-watchdog-v25.pid
+
+LOCK=/opt/tmp/xray-watchdog-migrate-v25.lock
+LOG=/opt/tmp/xray-watchdog-migrate-v25.log
+
+log() {
+    echo "$(date) $*" >> "$LOG"
+    echo "$*"
+}
+
+fail() {
+    log "ERROR: $*"
+    exit 1
+}
+
+# Read process start time (field 22 of /proc/PID/stat).
+start_ticks() {
+    [ -r "/proc/$1/stat" ] || return 1
+    sed 's/^.*) //' "/proc/$1/stat" |
+        awk '{print $20}'
+}
+
+# Require an exact shell invocation of the expected script.
+identity() {
+    pid="$1"
+    script="$2"
+
+    case "$pid" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    [ -r "/proc/$pid/cmdline" ] || return 1
+
+    cmd="$(tr '\000' '\n' < "/proc/$pid/cmdline")"
+
+    expected="$(printf '/opt/bin/sh\n%s' "$script")"
+
+    [ "$cmd" = "$expected" ]
+}
+
+read_pid() {
+    [ -r "$1" ] || return 1
+    cat "$1"
+}
+
+main_identity() {
+    /opt/bin/python3 \
+        /opt/bin/xray-identity-v24.py ||
+        return 1
+}
+
+port_ready() {
+    netstat -lnt 2>/dev/null |
+        grep -q '127.0.0.1:10808'
+}
+
+old_status() {
+    old="$(read_pid "$OLD_PIDFILE")" || return 1
+    identity "$old" "$OLD_SCRIPT"
+}
+
+new_status() {
+    new="$(read_pid "$NEW_PIDFILE")" || return 1
+    identity "$new" "$NEW_SCRIPT"
+}
+
+preflight() {
+    [ -r "$OLD_SCRIPT" ] ||
+        fail "OLD_SCRIPT_MISSING"
+
+    [ -r "$NEW_SCRIPT" ] ||
+        fail "NEW_SCRIPT_MISSING"
+
+    /opt/bin/sh -n "$NEW_SCRIPT" ||
+        fail "NEW_SCRIPT_SYNTAX"
+
+    main_identity ||
+        fail "MAIN_XRAY_NOT_VERIFIED"
+
+    port_ready ||
+        fail "SOCKS5_NOT_LISTENING"
+
+    old_status ||
+        fail "OLD_WATCHDOG_NOT_VERIFIED"
+
+    old_ticks="$(start_ticks "$old")" ||
+        fail "OLD_STARTTIME_UNKNOWN"
+
+    log "PREFLIGHT_PASS OLD_PID=$old START=$old_ticks"
+}
+
+activate() {
+    preflight
+
+    if new_status; then
+        fail "NEW_WATCHDOG_ALREADY_RUNNING"
+    fi
+
+    # Do not overwrite an ambiguous PID file.
+    [ ! -e "$NEW_PIDFILE" ] ||
+        fail "NEW_PIDFILE_ALREADY_EXISTS"
+
+    /opt/bin/sh "$NEW_SCRIPT" >/dev/null 2>&1 &
+    newpid=$!
+
+    echo "$newpid" > "$NEW_PIDFILE" ||
+        fail "NEW_PIDFILE_WRITE_FAILED"
+
+    sleep 2
+
+    new_status ||
+        fail "NEW_WATCHDOG_START_FAILED"
+
+    main_identity ||
+        fail "MAIN_XRAY_CHANGED"
+
+    port_ready ||
+        fail "SOCKS5_LOST"
+
+    # Recheck the old process before signalling it.
+    old_status ||
+        fail "OLD_WATCHDOG_CHANGED"
+
+    current_ticks="$(start_ticks "$old")" ||
+        fail "OLD_STARTTIME_LOST"
+
+    [ "$current_ticks" = "$old_ticks" ] ||
+        fail "OLD_PID_REUSED"
+
+    kill "$old" ||
+        fail "OLD_WATCHDOG_STOP_FAILED"
+
+    sleep 1
+
+    if identity "$old" "$OLD_SCRIPT"; then
+        fail "OLD_WATCHDOG_STILL_RUNNING"
+    fi
+
+    rm -f "$OLD_PIDFILE"
+
+    log "ACTIVATED NEW_PID=$newpid"
+    log "WARNING: OLD_AUTOSTART_NOT_CHANGED"
+}
+
+verify() {
+    main_identity ||
+        fail "MAIN_XRAY_NOT_VERIFIED"
+
+    port_ready ||
+        fail "SOCKS5_NOT_LISTENING"
+
+    new_status ||
+        fail "NEW_WATCHDOG_NOT_RUNNING"
+
+    if old_status; then
+        fail "OLD_WATCHDOG_STILL_RUNNING"
+    fi
+
+    log "VERIFY_PASS NEW_PID=$new"
+    log "AUTOSTART_NOT_MIGRATED"
+}
+
+rollback() {
+    # Conservative rollback:
+    # stop only the verified new watchdog.
+    # Never restart the old dangerous watchdog.
+    if new_status; then
+        ticks="$(start_ticks "$new")" ||
+            fail "NEW_STARTTIME_UNKNOWN"
+
+        new_status ||
+            fail "NEW_IDENTITY_CHANGED"
+
+        [ "$(start_ticks "$new")" = "$ticks" ] ||
+            fail "NEW_PID_REUSED"
+
+        kill "$new" ||
+            fail "NEW_STOP_FAILED"
+
+        sleep 1
+
+        if identity "$new" "$NEW_SCRIPT"; then
+            fail "NEW_STILL_RUNNING"
+        fi
+
+        rm -f "$NEW_PIDFILE"
+        log "NEW_WATCHDOG_STOPPED"
+    else
+        log "NEW_WATCHDOG_NOT_VERIFIED"
+    fi
+
+    log "ROLLBACK_COMPLETE"
+    log "OLD_WATCHDOG_NOT_RESTARTED"
+    log "MAIN_XRAY_NOT_TOUCHED"
+}
+
+case "$1" in
+    preflight|activate|verify|rollback)
+        MODE="$1"
+        ;;
+    *)
+        echo "Usage: $0 preflight|activate|verify|rollback"
+        exit 2
+        ;;
+esac
+
+# Atomic lock acquisition.
+mkdir "$LOCK" 2>/dev/null ||
+    fail "MIGRATION_LOCKED"
+
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+"$MODE"
