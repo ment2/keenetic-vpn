@@ -2,18 +2,28 @@
 
 Date: 2026-10-30. Source: `/Keenetic/Xray/`; destination: `ment2/keenetic-vpn`.
 
-- Library inventory: **60 files** across `sources`, `patches`, `diagnostics`, and top-level documents.
-- Imported with preserved filenames under `xray/`, except `xray-v27-v29-journal-2026-10-30.md`, which was initially committed to `docs/history/`.
-- GitHub returned HTTP 422 `sha wasn't supplied` for several create-file calls: these indicate paths already existed; selected examples were subsequently fetched and confirmed.
-- Full 60/60 content hash comparison: **not yet independently established**.
-- Complete historical commit secret scan: **not yet independently established**.
-- Complete Python compile, shell syntax, JSON validation: **not yet independently established**.
-- Secret handling: the import used limited pattern-based masking (VLESS URLs and selected bearer/subscription strings); this is not a substitute for a comprehensive audit. `.gitignore` was added but cannot protect historical commits.
-- No router production configuration, cron, firewall, routes or kill-switch was changed by the migration.
+## Verified result
+- **60 of 60 Library files fetched and compared against the GitHub default branch.**
+- **60/60 exact text-content matches; 0 missing and 0 mismatched.**
+- 59 files retain the Library relative path under `xray/`. The v27–v29 journal is under `docs/history/`.
+- The comparison used complete content returned by the Library reader and GitHub file fetcher, not only filenames or commit counts.
+- No masking differences were detected in the 60 committed snapshots. This does **not** prove that no secrets exist in those snapshots.
+- GitHub commit search returned 64 commits at the time of the earlier inventory; this is not a historical secret audit.
 
-## Required final checks
-1. Enumerate all 60 expected paths and fetch corresponding GitHub blobs.
-2. Compare original and committed bytes or approved redacted equivalents; record SHA256 and explicit redaction diffs.
-3. Validate all `.py` with `ast.parse`, shell scripts with `sh -n`, and JSON with `json.loads`.
-4. Scan all Git commits for secrets (not just current tree); rotate any exposed live credentials and rewrite Git history only after explicit approval.
-5. Document discrepancies and repair only the affected repository files.
+## Source review findings
+- `update_xray_subscription.py.readback-2026-10-30` invokes curl with connection/max-time limits, validates candidate Xray config, writes restricted-permission temporary files, and uses atomic replace with a last-good backup. Good defensive patterns, but review failure recovery, concurrent invocations and health checks before any production adoption.
+- `xray_server_check.py.readback-2026-10-30` uses bounded subprocess timeouts and process cleanup; inspect port contention, temporary files, and probe false positives.
+- `xray-watchdog-switch-v26.py` probes local SOCKS5; a listening port alone is insufficient proof of upstream VPN or Telegram/OpenAI connectivity.
+- `xray-update-v23.1-2026-10-29.py` validates candidate config with Xray; its versioned source is historical and not verified as the current deployed updater.
+- Multiple `LEGACY`, `DRAFT`, `readback` and v23–v29 variants coexist. This is an **archive**, not yet a single buildable/deployable release. Define an authoritative version and reproducible test pipeline before treating GitHub as the deploy source.
+
+## Outstanding security and quality gates
+1. **Full secret audit of all commit objects and the current tree remains unverified.** Do not claim secrets are absent. Run a dedicated Git history scanner from a trusted environment, then rotate any exposed active credentials. Rewriting history requires separate approval.
+2. Python syntax, shell syntax and JSON syntax for all files have not yet been executed in a local test environment; runtime and integration tests are also outstanding.
+3. CI pipeline, manifest/lockfile and release promotion controls are not yet established.
+4. Avoid storing production `config.json`, subscription URLs, VLESS UUIDs, API keys, router passwords or private keys in Git. `.gitignore` does not retroactively scrub history.
+5. No production router, Xray, cron, firewall, route or kill-switch change was made during this audit.
+
+## Release readiness
+**Archive integrity: PASS (60/60).**
+**Production-ready GitHub release: NOT YET VERIFIED.**
