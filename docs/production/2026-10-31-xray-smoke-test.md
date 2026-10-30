@@ -42,3 +42,12 @@ Job `c47de0e6-aa51-4fde-8452-3e0b1de885b5` completed exit 0:
 - Conntrack text query for source `192.168.1.*` yielded 3 matching entries; insufficient to prove internet egress.
 - Additional read-only snapshot queued: `0d4abb7b-f93f-4612-a3d8-de5d2a086c19` (chain detail, local client neighbor table, processes, IPv6 FORWARD, sanitized recent watchdog/error log). **Do not resubmit**.
 **Conclusion:** Router-local SOCKS5 verified. Wi-Fi transparent interception remains **unverified**, and the active kill-switch has observed dropped packets. A real client-initiated request through Keenetic Wi-Fi is needed for end-to-end proof, after counters are sampled safely without resetting them.
+
+## Continued polling of pending read-only diagnostic
+Existing job `0d4abb7b-f93f-4612-a3d8-de5d2a086c19` remains `queued` after repeated polling. **No execution result exists yet**; no further claim is made about `ip6tables`, neighbor state or detailed TPROXY chain. No duplicate exec job was submitted.
+
+`get_permission_status` still reports `remote_enabled=true`, `owner_admin_enabled=true`, revision 2, but this does not prove agent liveness. A separate `router_status` request returned diagnostic job `9ce78213-55c8-42a8-b6b2-ee21193dabdd` queued; it should be polled rather than repeated.
+
+**Unresolved security exposure:** `br0` has a global-scope ULA IPv6 address (`fd78:...`), while observed kill-switch rules use IPv4 iptables. No conclusion about IPv6 leak protection can be drawn without read-only `ip6tables` and route checks. Avoid disabling IPv6 or firewall rules based on suspicion.
+
+**Safe next:** await the existing read-only jobs, inspect exact `XRAY_WIFI` rule ordering and counters and IPv6 forwarding; then request a user-initiated Wi-Fi client test only if necessary to demonstrate end-to-end forwarding. No production changes made.
