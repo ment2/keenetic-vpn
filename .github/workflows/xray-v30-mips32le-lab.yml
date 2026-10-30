@@ -1,0 +1,51 @@
+name: Xray v30 isolated MIPS32LE compatibility
+
+on:
+  push:
+    branches:
+      - snapshot/keenetic-production-2026-10-30
+    paths:
+      - '.github/workflows/xray-v30-mips32le-lab.yml'
+      - 'xray/lab/xray_v30_api_continuity.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mips32le:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install QEMU user emulator on disposable runner
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-user
+      - name: Download official pinned Xray 26.2.6 mips32le
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/xray-mipsle"
+          curl -fL --retry 3 --max-time 120 \
+            -o "$RUNNER_TEMP/xray-mipsle/xray.zip" \
+            https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip
+          curl -fL --retry 3 --max-time 30 \
+            -o "$RUNNER_TEMP/xray-mipsle/xray.zip.dgst" \
+            https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip.dgst
+          cat "$RUNNER_TEMP/xray-mipsle/xray.zip.dgst"
+          unzip -j "$RUNNER_TEMP/xray-mipsle/xray.zip" xray -d "$RUNNER_TEMP/xray-mipsle"
+          chmod 700 "$RUNNER_TEMP/xray-mipsle/xray"
+          file "$RUNNER_TEMP/xray-mipsle/xray"
+          qemu-mipsel "$RUNNER_TEMP/xray-mipsle/xray" version
+      - name: Execute API continuity lab under MIPS32LE QEMU
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/xray-mipsle/xray-qemu" <<'SH'
+          #!/bin/sh
+          exec qemu-mipsel "$XRAY_MIPS_BINARY" "$@"
+          SH
+          chmod 700 "$RUNNER_TEMP/xray-mipsle/xray-qemu"
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 xray/lab/xray_v30_api_continuity.py \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
