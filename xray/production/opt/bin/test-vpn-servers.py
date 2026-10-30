@@ -1,0 +1,36 @@
+import json
+from pathlib import Path
+
+src = json.loads(Path('/opt/etc/xray/config.json').read_text())
+servers = [x for x in src['outbounds'] if x.get('protocol') == 'vless']
+
+test = {
+    'log': {'loglevel': 'warning'},
+    'inbounds': [],
+    'outbounds': servers,
+    'routing': {'domainStrategy': 'AsIs', 'rules': []}
+}
+
+for server in servers:
+    tag = server['tag']
+    port = 11000 + int(tag[3:])
+    inbound = 'test-' + tag
+    test['inbounds'].append({
+        'tag': inbound,
+        'listen': '127.0.0.1',
+        'port': port,
+        'protocol': 'socks',
+        'settings': {'auth': 'noauth', 'udp': False}
+    })
+    test['routing']['rules'].append({
+        'type': 'field',
+        'inboundTag': [inbound],
+        'outboundTag': tag
+    })
+
+path = Path('/opt/etc/xray/config-server-test.json')
+path.write_text(json.dumps(test, ensure_ascii=False, indent=2))
+path.chmod(0o600)
+
+for server in servers:
+    print(server['tag'], 11000 + int(server['tag'][3:]))
