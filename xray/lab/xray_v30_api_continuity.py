@@ -74,7 +74,7 @@ class EchoBackend:
         self.thread.join(timeout=2)
 
 
-def config(api_port, socks_port, a_port, b_port):
+def config(api_port, socks_port, a_port, b_port, strategy="random"):
     return {
         "log": {"loglevel": "warning"},
         "api": {"tag": "lab-api", "services": ["HandlerService", "RoutingService"]},
@@ -95,7 +95,7 @@ def config(api_port, socks_port, a_port, b_port):
         "routing": {
             "domainStrategy": "AsIs",
             "balancers": [{"tag": "lab-balancer", "selector": ["lab-a", "lab-b", "lab-c"],
-                           "strategy": {"type": "random"}, "fallbackTag": "lab-a"}],
+                           "strategy": {"type": strategy}, "fallbackTag": "lab-a"}],
             "rules": [
                 {"type": "field", "inboundTag": ["lab-api"], "outboundTag": "lab-api"},
                 {"type": "field", "inboundTag": ["lab-socks"], "balancerTag": "lab-balancer"},
@@ -135,7 +135,7 @@ def wait_port(port, process, timeout=8):
     raise RuntimeError("lab listener not ready")
 
 
-def run(xray):
+def run(xray, strategy="random"):
     if Path("/opt/etc/xray/config.json").exists() or Path("/opt/etc/init.d/S97xray").exists():
         raise RuntimeError("router/Entware detected: lab execution forbidden")
     result = subprocess.run([xray, "version"], capture_output=True, text=True, timeout=10)
@@ -151,7 +151,7 @@ def run(xray):
     try:
         with tempfile.TemporaryDirectory(prefix="xray-v30-ci-") as td:
             cfg = Path(td) / "lab.json"
-            cfg.write_text(json.dumps(config(api_port, socks_port, a.port, b.port)))
+            cfg.write_text(json.dumps(config(api_port, socks_port, a.port, b.port, strategy)))
             baseline = json.loads(cfg.read_text())
             variants = {
                 "full": baseline,
@@ -228,10 +228,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--xray", required=True)
     parser.add_argument("--run", action="store_true", help="explicit opt-in, CI sandbox only")
+    parser.add_argument("--strategy", choices=["random", "leastPing"], default="random")
     args = parser.parse_args()
     if not args.run:
         parser.error("--run required; never execute on production router")
-    run(args.xray)
+    run(args.xray, args.strategy)
 
 
 if __name__ == "__main__":
