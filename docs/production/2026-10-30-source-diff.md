@@ -28,3 +28,19 @@ The production inventory identifies Wi-Fi, kill-switch, fail-closed, cron guard,
 - File content comparisons here are exact strings, not locally computed SHA256 of both copies. The production SHA256 values are in the inventory.
 - Full production file inventory and runtime/cron behavior remain to be confirmed.
 - No production changes were made.
+
+## Additional captured production-only files
+Eight further read-only jobs completed successfully and their returned, non-truncated, nonsecret source text was committed to `xray/production/`:
+- `opt/bin/xray-ks-home-watch.sh`
+- `opt/bin/xray-ks-home.sh`
+- `opt/bin/xray-wifi-rules.sh`
+- `opt/bin/xray-auto-update.sh`
+- `opt/etc/init.d/S96xray-killswitch`
+- `opt/etc/init.d/S98xray-wifi`
+- `opt/bin/xray-fc-cron-guard.sh`
+- `opt/bin/xray-safe-v23.sh`
+
+Total additional captured production snapshots in this audit: **10** (including the differing v23 updater and hourly script). These were stored separately from the historical Library archive. A heuristic credential scan was applied before committing, but this is not a comprehensive secret audit.
+
+## Remaining coverage
+The production inventory also lists additional scripts, backups and self-tests. These have **not all been copied or compared**. A production-identical GitHub working tree is therefore **not yet proven**. In particular, a full review of cron contents, generated configuration redaction, installed source selection, and all runtime dependencies is still required.
