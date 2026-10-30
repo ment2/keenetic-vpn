@@ -1,0 +1,17 @@
+# Runtime credentials and generated VPN configurations
+subscription.url
+*.secret
+*.secrets
+.env
+.env.*
+!.env.example
+config.json
+config.lastgood.json
+config.pending.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.sqlite
+__pycache__/
+*.pyc
