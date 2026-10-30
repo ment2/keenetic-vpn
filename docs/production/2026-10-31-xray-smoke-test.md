@@ -73,3 +73,14 @@ Read-only job `492fd1a7-409e-4497-af1a-a6ca71259ce1` completed exit 0:
 
 ### Test gate: real client action required
 To verify transparent routing without changing production, connect a phone to **Keenetic LAN/Wi-Fi network 192.168.1.0/24** (not the upstream 192.168.0.0/24 network), disable cellular data for the test, open a normal HTTPS page (e.g. `https://ifconfig.me/ip`) and report whether it opens and which **public IP** it shows. Do not send credentials or private IPs. Follow up by sampling existing counters and public egress. No automatic route/iptables/kill-switch changes are authorized by this test.
+
+## Source-level functional review: update pipeline and watchdog
+Static review of **SHA256-verified production sources**, without executing any mutating script:
+- Actual cron target `xray-safe-hourly.sh` creates a private temporary directory, calls `xray-update-v23.py --output <candidate>`, checks nonempty output, validates with `/opt/sbin/xray run -test`, compares to active and pending configs and only stages `config.pending.json`. It **does not deploy/restart Xray**. Note: it may remove an obsolete pending file when candidate equals active config; this is part of production behavior, not performed in this audit.
+- `xray-update-v23.py` reads the HTTPS subscription (rejects unsafe permissions), accepts raw or base64 VLESS entries, runs per-server probe and OpenAI reachability checks, builds only an allowed VLESS pool, sets `fallbackTag` to the first allowed tag, adds a blackhole catchall, and validates generated config with Xray. **No allowed servers** raises an error and leaves the active config unchanged. Its `excluded` list is initialized but never appended to; reporting `EXCLUDED: 0` therefore does **not** mean all rejected servers were independently classified.
+- `xray-watchdog.sh` checks local SOCKS listener every 30s and calls `S97xray restart` when unavailable. This is a **single-point liveness check**, not proof of VPN upstream health, OpenAI/Telegram reachability or actual client forwarding. The watchdog can restart Xray automatically in production independent of this audit.
+- `xray-fc-recover.sh` is **mutating**, restores PREROUTING hooks and removes `XRAY_FC_TEST` rules. It must **never** be used as a read-only test.
+- Existing source `xray-control-selftest.py` creates/kills a test sleep process; do not run it on production merely to validate snapshot parity.
+- The snapshot's source parity is already 63/63 SHA256, but true end-to-end failover and kill-switch outage tests are **not** passed until isolated simulation or an approved maintenance window.
+
+Additional read-only inventory job `6470e4f5-82b8-4ffd-8a36-b606f40f904d` is queued for runtime components, Xray routing tags, service inventory and package versions; **do not resubmit**.
