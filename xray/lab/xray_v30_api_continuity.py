@@ -98,7 +98,7 @@ def config(api_port, socks_port, a_port, b_port):
             "rules": [
                 {"type": "field", "inboundTag": ["lab-api-in"], "outboundTag": "lab-api"},
                 {"type": "field", "inboundTag": ["lab-socks"], "balancerTag": "lab-balancer"},
-                {"type": "field", "outboundTag": "lab-blocked"},
+                {"type": "field", "port": "0-65535", "outboundTag": "lab-blocked"},
             ],
         },
     }
