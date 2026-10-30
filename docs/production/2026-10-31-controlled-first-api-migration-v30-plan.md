@@ -93,3 +93,17 @@ Implemented:
 **Important limitations before real cutover:** `handoff_proven=True` in the simulator is a *synthetic test flag*. It does not validate actual port rebinding, TPROXY, packet forwarding, real watchdog suppression or any kernel state. In-memory state and the JSON journal are not a complete crash-safe router transaction. A production implementation must re-read actual listeners and PIDs, implement safe port transfer/restart, watchdog fencing and out-of-band rollback, and prove all checks on matching KeeneticOS hardware. Never deploy the simulator to router.
 
 CI **41134617393 SUCCESS** covered the 21 additional synthetic fault-injection tests, bringing the offline suite to **105 tests**. The source-contract workflow was further updated to execute the simulator demo explicitly and assert its output is marked `SWITCHED_SIMULATION_ONLY`; final CI result is recorded separately.
+
+## Real dual-process MIPS32LE lab checkpoint
+
+New `xray/lab/xray_v30_dual_process.py` launches **two real Xray 26.2.6 linux/mipsle binaries via QEMU** on disposable GitHub Actions runner, with **distinct loopback SOCKS listeners**, a synthetic local echo backend, and a candidate-only loopback API. It records real process PID and Linux `/proc/<pid>/stat` start ticks. The old TCP connection stays alive while new TCP uses the candidate's *different* SOCKS port; candidate is then terminated, and the old process continues serving TCP. GitHub CI **41134880794 SUCCESS** (both original API and new dual-process job steps passed). Static source-contract tests extended to **113** (105 previous + 8 lab contracts), CI **41134950130 SUCCESS**.
+
+**Do not confuse client-selected ports with a real ingress handoff:** the test client deliberately connects to one of two independent SOCKS ports; there is no shared stable production listener, kernel TPROXY transfer, packet routing or actual watchdog process. A dead candidate listener refusing TCP is not equivalent to kernel fail-closed verification. The test does not measure first-cutover outage duration.
+
+The lab has subsequently been extended with a local UDP echo backend and SOCKS5 UDP ASSOCIATE tests on both processes and after candidate failure; CI verification for that extension is tracked in the next run. UDP test is **SOCKS UDP only**, not TPROXY UDP.
+
+### Outstanding gates
+- Demonstrate a **real** stable ingress owner and controlled cutover with live port transfer or explicit bounded restart; prove no double listener and automatic rollback under a crash.
+- Model watchdog race against real supervised processes (current `S97xray` killall is unsafe) and prove independent kernel fail-closed for TCP/UDP/DNS/IPv6.
+- Prove MIPSLE QEMU API readiness and PID-specific recovery are compatible with actual KeeneticOS/Entware kernel and firewall.
+- Obtain separate explicit approval for any router access or production change.
