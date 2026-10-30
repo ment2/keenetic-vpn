@@ -137,3 +137,8 @@ Read-only jobs `2fe66a1a-cee2-42c8-98ab-b6802f087d77` and `be721bd6-395b-42d2-a5
 - GitHub source is now documented as matching installed Agent files **except a single final LF byte** each. Production not modified.
 
 **Next:** inspect CI run status; if workflow does not start, verify repository Actions enablement/branch policy rather than claiming success. Continue only non-mutating validation until an explicit production change is approved.
+
+## GitHub Actions offline CI VERIFIED SUCCESS
+Workflow `Xray snapshot offline source contracts`, run **41130663516**, head commit `0807acb71c4d06427073448b5a332b2f54ab5242`, status `completed`, conclusion **success**. All steps succeeded, including `ast.parse` compilation of frozen Python sources and **11 unittest source-contract checks**. Verified from GitHub run and job steps. Link: https://github.com/ment2/keenetic-vpn/actions/runs/41130663516
+
+**Interpretation:** CI validates offline source structure and documented safety contracts, **not** live server selection, tunnel failover, Wi-Fi client egress or outage behavior. No production changes, merge or deploy.
