@@ -1,0 +1,27 @@
+#!/bin/sh
+
+PIDFILE=/opt/var/run/xray-watchdog.pid
+SCRIPT=/opt/bin/xray-watchdog.sh
+
+case "$1" in
+    start)
+        if [ -f "$PIDFILE" ] &&
+           kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+            exit 0
+        fi
+
+        "$SCRIPT" >/dev/null 2>&1 &
+        echo $! > "$PIDFILE"
+        ;;
+    stop)
+        if [ -f "$PIDFILE" ]; then
+            kill "$(cat "$PIDFILE")" 2>/dev/null
+            rm -f "$PIDFILE"
+        fi
+        ;;
+    restart)
+        "$0" stop
+        sleep 1
+        "$0" start
+        ;;
+esac
