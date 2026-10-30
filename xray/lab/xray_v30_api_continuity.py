@@ -150,6 +150,28 @@ def run(xray):
         with tempfile.TemporaryDirectory(prefix="xray-v30-ci-") as td:
             cfg = Path(td) / "lab.json"
             cfg.write_text(json.dumps(config(api_port, socks_port, a.port, b.port)))
+            baseline = json.loads(cfg.read_text())
+            variants = {
+                "full": baseline,
+                "no_api": {**baseline, "api": None,
+                           "inbounds": [x for x in baseline["inbounds"] if x["tag"] != "lab-api"],
+                           "routing": {**baseline["routing"],
+                                       "rules": [x for x in baseline["routing"]["rules"]
+                                                 if x.get("outboundTag") != "lab-api"]}},
+                "no_balancer": {**baseline,
+                                "routing": {**baseline["routing"], "balancers": [],
+                                            "rules": [dict(x, outboundTag="lab-a")
+                                                      if x.get("balancerTag") else x
+                                                      for x in baseline["routing"]["rules"]]}},
+            }
+            for label, obj in variants.items():
+                obj = {k: v for k, v in obj.items() if v is not None}
+                vfile = Path(td) / (label + ".json")
+                vfile.write_text(json.dumps(obj))
+                v = subprocess.run([xray, "run", "-test", "-config", str(vfile)],
+                                   capture_output=True, text=True, timeout=10)
+                print("CONFIG_MATRIX", label, "exit", v.returncode,
+                      (v.stdout + v.stderr)[-350:], flush=True)
             subprocess.run([xray, "run", "-test", "-config", str(cfg)], check=True, timeout=10)
             proc = subprocess.Popen([xray, "run", "-config", str(cfg)],
                                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
