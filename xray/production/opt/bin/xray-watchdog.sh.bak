@@ -1,0 +1,15 @@
+#!/opt/bin/sh
+
+LOG=/opt/tmp/xray-watchdog.log
+
+while :; do
+    if ! netstat -lnt 2>/dev/null | grep -q '127.0.0.1:10808'; then
+        echo "$(date) Xray SOCKS5 unavailable; restarting" >> "$LOG"
+
+        /opt/etc/init.d/S97xray stop
+        sleep 2
+        /opt/etc/init.d/S97xray start
+    fi
+
+    sleep 30
+done
