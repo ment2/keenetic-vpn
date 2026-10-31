@@ -5,6 +5,7 @@ surface does not export full udpWorker.activeConn snapshots in these three
 services; it does NOT prove no external instrumentation is possible.
 """
 import argparse
+import hashlib
 from pathlib import Path
 import re
 
@@ -66,16 +67,32 @@ def review(sources):
         "decision":"HARD_NO_GO_PRODUCTION",
     }
 
+def read_verified_sources(root, expected=BLOBS):
+    """Verify exact Git blob SHA1, NOT ordinary raw-file SHA1.
+
+    Git's blob ID hashes b"blob <length>\\0" + bytes. Missing, modified,
+    or unexpected sources must never produce a source-authority claim.
+    """
+    if set(expected)!=set(BLOBS):
+        raise SourceDrift("PINNED_SOURCE_FILE_SET_DRIFT")
+    sources={}
+    for rel,sha in expected.items():
+        path=Path(root)/rel
+        if not path.is_file():
+            raise SourceDrift("PINNED_SOURCE_ABSENT:"+rel)
+        raw=path.read_bytes()
+        git_blob=hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+b"\\0"+raw).hexdigest()
+        if git_blob!=sha:
+            raise SourceDrift("GIT_BLOB_SHA_MISMATCH:"+rel)
+        sources[rel]=raw.decode("utf-8")
+    return sources
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--root",type=Path,required=True)
     a=p.parse_args()
     sources={}
-    for rel in BLOBS:
-        candidate=(a.root/rel)
-        if not candidate.is_file():
-            raise SourceDrift("PINNED_SOURCE_ABSENT:"+rel)
-        sources[rel]=candidate.read_text(encoding="utf-8")
+    sources=read_verified_sources(a.root)
     out=review(sources)
     print("RC36_SOURCE_PINNED_XRAY_26_2_6_UDP_ACTIVE_CONN_PRIVATE_MAP_CONFIRMED")
     print("RC36_SOURCE_GRPC_NO_COMPLETE_UDP_SESSION_OWNER_SNAPSHOT_IN_THREE_SERVICES")

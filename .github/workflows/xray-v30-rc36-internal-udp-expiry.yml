@@ -1,0 +1,77 @@
+name: Xray v30 RC36 actual MIPS49 Xray internal UDP owner through nf_conntrack expiry
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc36-internal-udp-expiry.yml'
+      - 'xray/lab/rc36_*'
+      - 'tests/test_xray_v30_rc36_*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-xray-udp-internal-reuse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source mutation and real packet contract tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_xray_v30_rc36_*.py' -v
+          python3 -m py_compile xray/lab/rc36_pinned_xray_udp_source_audit.py
+          bash -n xray/lab/rc36_xray_internal_udp_expiry_runner.sh
+          bash -n xray/lab/rc36_xray_internal_udp_expiry_netns.sh
+          sh -n xray/lab/rc36_xray_internal_udp_expiry_guest.sh
+      - name: Verify five actual Xray 26.2.6 source Git blobs before claiming private-session meaning
+        env:
+          CI_PINNED_XRAY: 12ee51e4bb1d02ece4ef4b7114efa2bcdc130995
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/rc36-upstream-verified"
+          mkdir -p "$S"
+          while IFS=' ' read -r sha path; do
+            mkdir -p "$S/$(dirname "$path")"
+            curl -fLSs --retry 3 --max-time 35 \
+              "https://raw.githubusercontent.com/XTLS/Xray-core/$CI_PINNED_XRAY/$path" -o "$S/$path"
+            actual="$(git hash-object "$S/$path")"
+            if [ "$actual" != "$sha" ]; then
+              echo "RC36_HARD_NO_GO_UPSTREAM_SOURCE_BLOB_DRIFT $path"
+              exit 13
+            fi
+          done <<'PINNED_BLOBS'
+          ef454d21195e2df878cd129f907dfaa65f7cdff0 app/proxyman/inbound/worker.go
+          71f8f0dcf0e9ae83204550aa9e02eba8384cb6b0 app/proxyman/command/command.proto
+          9c3f9131d087a6cd5c831a5ff708d93351b865f2 app/stats/command/command.proto
+          22ae95b9844039f7460d1a5db5bfc54aa251487e app/router/command/command.proto
+          e56363db0a8dd0b059b0bf705067d6c65ed0b6aa proxy/dokodemo/dokodemo.go
+          PINNED_BLOBS
+          python3 -m xray.lab.rc36_pinned_xray_udp_source_audit --root "$S" | tee "$RUNNER_TEMP/rc36-source-audit.log"
+          grep -Fq RC36_SOURCE_PINNED_XRAY_26_2_6_UDP_ACTIVE_CONN_PRIVATE_MAP_CONFIRMED "$RUNNER_TEMP/rc36-source-audit.log"
+          grep -Fq RC36_SOURCE_HARD_NO_GO_ATOMIC_FREEZE_ROOT_FENCING_NOT_IMPLEMENTED "$RUNNER_TEMP/rc36-source-audit.log"
+      - name: Install disposable QEMU MIPS full-system and cross-build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Check real Xray proxy.Process reuse while nf_conntrack expires without any TPROXY cutover
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc36_xray_internal_udp_expiry_runner.sh | tee "$RUNNER_TEMP/rc36-result.log"
+          grep -Fq RC36_PASS_REAL_MIPS49_XRAY_UDP_WORKER_REUSED_ACROSS_CONNTRACK_EXPIRY_NO_CUTOVER "$RUNNER_TEMP/rc36-result.log"
+          grep -Fq RC36_HARD_NO_GO_NO_COMPLETE_XRAY_UDP_OWNER_OR_ATOMIC_FREEZE "$RUNNER_TEMP/rc36-result.log"
+      - name: Preserve exact packet and negative-proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc36-mips49-xray-internal-udp-reuse-only-HARD-NO-GO
+          path: |
+            ${{ runner.temp }}/rc36-xray-internal-udp-expiry/serial.log
+            ${{ runner.temp }}/rc36-xray-internal-udp-expiry/qemu-errors.log
+            ${{ runner.temp }}/rc36-xray-internal-udp-expiry/backend.log
+            ${{ runner.temp }}/rc36-result.log
+            ${{ runner.temp }}/rc36-source-audit.log
+          if-no-files-found: warn
+          retention-days: 14
