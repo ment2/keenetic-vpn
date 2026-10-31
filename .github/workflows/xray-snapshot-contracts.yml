@@ -23,6 +23,9 @@ on:
       - 'xray/staging/v30_kernel49_cooperative_ledger.py'
       - 'xray/lab/v30_kernel49_cooperative_lab.py'
       - 'xray/lab/v30_kernel49_descendant_guard_lab.py'
+      - 'xray/lab/v30_sealed_descendant_inventory.py'
+      - 'xray/lab/v30_guardian_generation_race.py'
+      - 'xray/lab/v30_review_rescue_bundle.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -277,6 +280,43 @@ jobs:
           grep -q 'DESCENDANT49: PASS direct child died but detached grandchild TCP+UDP remained' "$RUNNER_TEMP/v30-kernel49-orphan.log"
           grep -q 'DESCENDANT49: PASS guardian refuses restart while orphan retains TCP+UDP' "$RUNNER_TEMP/v30-kernel49-orphan.log"
           grep -q 'DESCENDANT49: PASS after voluntary orphan exit guardian can reconcile without PID signals' "$RUNNER_TEMP/v30-kernel49-orphan.log"
+
+      - name: Competing independent guardian processes must preserve owner generation and UNCERTAIN
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_guardian_generation_race --demo "$RUNNER_TEMP/v30-guardian-cas-race" |
+            tee "$RUNNER_TEMP/v30-guardian-cas-race.log"
+          grep -q 'GENERATION_CAS: PASS after first guardian SIGKILL exactly one of 8 took over claim' "$RUNNER_TEMP/v30-guardian-cas-race.log"
+          grep -q 'GENERATION_CAS: PASS UNCERTAIN recorded exactly once' "$RUNNER_TEMP/v30-guardian-cas-race.log"
+
+      - name: Build and verify deterministic five-file rescue review archive (not bootable)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_review_rescue_bundle --build "$RUNNER_TEMP/v30-kernel49-rescue-review.tar" |
+            tee "$RUNNER_TEMP/v30-rescue-build.json"
+          python -m xray.lab.v30_review_rescue_bundle --verify "$RUNNER_TEMP/v30-kernel49-rescue-review.tar" |
+            tee "$RUNNER_TEMP/v30-rescue-check.json"
+          python - <<'PY'
+          from pathlib import Path
+          import os,json
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"v30-rescue-check.json").read_text())
+          assert r["status"]=="PASS_REVIEW_ONLY_ARCHIVE"
+          assert r["originals"]==5
+          assert r["production_authorized"] is False
+          assert r["physical_rescue_proven"] is False
+          print("PASS: content-addressed 5/5 recovery originals in 0600 read-only archive; NO BOOT PROOF")
+          PY
+
+      - name: Publish review-only rescue source archive for independent inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-kernel49-offline-rescue-review-rc4
+          path: ${{ runner.temp }}/v30-kernel49-rescue-review.tar
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
