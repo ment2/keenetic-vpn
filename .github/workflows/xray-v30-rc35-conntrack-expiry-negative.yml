@@ -20,7 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p test_xray_v30_rc35_conntrack_expiry.py -v
-          python3 -m py_compile xray/lab/rc35_conntrack_module_pack.py
+          python3 -m py_compile xray/lab/rc34_conntrack_module_pack.py
           bash -n xray/lab/rc35_conntrack_expiry_runner.sh
           bash -n xray/lab/rc35_conntrack_expiry_netns.sh
           sh -n xray/lab/rc35_conntrack_expiry_guest.sh
@@ -43,8 +43,8 @@ jobs:
           name: rc35-mips49-nf-conntrack-expiry-negative-no-deploy
           path: |
             ${{ runner.temp }}/rc35-conntrack-expiry-negative/serial.log
-            ${{ runner.temp }}/rc35-conntrack-idle-tproxy-handover/qemu-errors.log
-            ${{ runner.temp }}/rc35-conntrack-idle-tproxy-handover/backend.log
+            ${{ runner.temp }}/rc35-conntrack-expiry-negative/qemu-errors.log
+            ${{ runner.temp }}/rc35-conntrack-expiry-negative/backend.log
             ${{ runner.temp }}/rc35-result.log
           if-no-files-found: warn
           retention-days: 14
