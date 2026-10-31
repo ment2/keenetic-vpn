@@ -34,7 +34,7 @@ The outstanding gates above document the **initial 2026-10-30 Library archive mi
 
 - A distinct `xray/production/` snapshot has 63/63 enumerated nonsecret production source/backup files copied and independently matched against live router SHA256 **as of 2026-10-30**, plus Git executable mode metadata. See `xray/production/README.md` and `xray/production/MANIFEST.sha256`.
 - `tools/verify_production_snapshot.py` now enforces GitHub checkout SHA256, exact 63-file manifest coverage and Git executable mode parity; **it does not compare to the currently running router**. Selected production shell syntax and Python source AST checks run in GitHub CI.
-- Source contracts and isolated model tests total **125/125 passing** in `Xray snapshot offline source contracts`, run **41189273992**.
+- Source contracts and isolated model tests total **131/131 passing** in `Xray snapshot offline source contracts`, run **41189579857**.
 - MIPS32LE QEMU staging laboratory runs real Xray 26.2.6 and supports SOCKS5 TCP/UDP and API continuity, but not the router kernel or real production cutover. `Xray v30 isolated MIPS32LE compatibility` run **41136161172 SUCCESS**.
 - Full historic Git credential scanning, a faithful restore environment, current live hash refresh and the 2026-10-31 MenttwoGPT memory-sync patch parity are **still not complete**. Refer to `docs/production/2026-10-31-github-snapshot-staging-gap.md`.
 
