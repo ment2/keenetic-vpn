@@ -6,6 +6,11 @@ export PATH=/bin
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev
+# Load only reviewed guest modules embedded from the matching Ubuntu kernel.
+for module in /mods/*.ko; do
+  [ -f "$module" ] || continue
+  insmod "$module" || echo "RC7_VM: guest module load skipped $(basename "$module")"
+done
 mkdir -p /run /mnt/rescue /mnt/active
 echo "RC7_VM: GUEST_KERNEL_BOOTED"
 echo "RC7_VM: kernel $(uname -r) actual full-system guest, not user-mode QEMU"
