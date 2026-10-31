@@ -83,8 +83,13 @@ def verify(root: Path, *, simulate_restore):
         try:
             saved = journal.load()
             if saved.phase == expected:
-                result = (root / "guard-result").read_text()
-                assert result == "SYNTHETIC_" + expected.upper() + "_NO_PROCESS_SIGNALS\n"
+                # Journal is fsynced BEFORE the detached process writes its
+                # marker. Await BOTH artifacts, otherwise CI races the writer.
+                marker = root / "guard-result"
+                result = marker.read_text() if marker.exists() else ""
+                if result != "SYNTHETIC_" + expected.upper() + "_NO_PROCESS_SIGNALS\n":
+                    time.sleep(0.1)
+                    continue
                 print("V30_GUARD_LAB: PASS independent detached guard recovered journal; phase="+expected)
                 print("V30_GUARD_LAB: NEVER kills Xray, freezes watchdog or modifies firewall")
                 return
