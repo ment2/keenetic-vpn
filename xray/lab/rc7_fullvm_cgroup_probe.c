@@ -104,7 +104,7 @@ int main(int argc,char **argv){
    char buf[64];snprintf(buf,sizeof(buf),"%d\n",getpid());
    /* A root process may attempt to migrate to parent cgroup via cgroup.procs.
       A successful migration proves scope is NOT sealed. */
-   int fd=open("/sys/fs/cgroup/pids/cgroup.procs",O_WRONLY);
+   int fd=open("/run/cgroup-pids/cgroup.procs",O_WRONLY);
    if(fd>=0){
       if(write(fd,buf,strlen(buf))==(ssize_t)strlen(buf))
           dprintf(1,"RC7_GUEST: PRIVILEGED_CGROUP_ESCAPE_SUCCEEDED_HARD_NO_GO\n");
@@ -114,14 +114,14 @@ int main(int argc,char **argv){
    sleep(2);close(t);close(u);return 0;
  }
  if(geteuid()!=0)stop("guest not root");
- mkdir("/sys/fs/cgroup",0700);mkdir("/sys/fs/cgroup/pids",0700);
- if(mount("none","/sys/fs/cgroup/pids","cgroup",0,"pids")) {
+ mkdir("/run/cgroup-pids",0700);
+ if(mount("none","/run/cgroup-pids","cgroup",0,"pids")) {
    dprintf(1,"RC7_GUEST: CGROUP_V1_UNAVAILABLE_HARD_NO_GO errno=%d\n",errno);
    return 77;
  }
- mkdir("/sys/fs/cgroup/pids/v30",0700);
+ mkdir("/run/cgroup-pids/v30",0700);
  char self[48];snprintf(self,sizeof(self),"%d\n",getpid());
- put("/sys/fs/cgroup/pids/v30/cgroup.procs",self);
+ put("/run/cgroup-pids/v30/cgroup.procs",self);
  pid_t pid=fork();if(pid<0)stop("fork");
  if(pid==0){
    execl("/bin/rc7cgroup","rc7cgroup","child",(char*)0);
@@ -129,7 +129,7 @@ int main(int argc,char **argv){
  }
  int found=0;
  for(int i=0;i<200;i++){
-   if(present("/sys/fs/cgroup/pids/v30/cgroup.procs",pid)){found=1;break;}
+   if(present("/run/cgroup-pids/v30/cgroup.procs",pid)){found=1;break;}
    usleep(10000);
  }
  if(!found)stop("child not inherited");
@@ -145,7 +145,7 @@ int main(int argc,char **argv){
  int status=0;
  waitpid(pid,&status,0);
  if(!WIFEXITED(status)||WEXITSTATUS(status)!=0)stop("child exit");
- if(present("/sys/fs/cgroup/pids/v30/cgroup.procs",pid))stop("child still in scope");
+ if(present("/run/cgroup-pids/v30/cgroup.procs",pid))stop("child still in scope");
  dprintf(1,"RC7_GUEST: REAL_CGROUP_V1_FORK_EXEC_DRAIN_PASS\n");
  guardian_races();
  dprintf(1,"RC7_GUEST: KERNEL49_PHYSICAL_CONTAINMENT_UNPROVEN\n");
