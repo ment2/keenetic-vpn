@@ -45,7 +45,6 @@
     "only_cap_net_raw_success_tcp": true,
     "only_cap_net_raw_success_udp": true,
     "only_cap_net_raw_effective_hex": "0000000000002000",
-    "true_xray透明_inbound_listener": true,
     "child_pid_start_ticks_pinned": true,
     "crashed_parent_dies_by_sigkill": true,
     "pdeathsig_real_xray_child_listener_closed": true,
@@ -55,7 +54,8 @@
     "native_kernel_tproxy_packet_redirection_not_tested_in_rc9": true,
     "full_xray_traffic_ipv6_dns_failclosed_not_proven": true,
     "legacy_privileged_processes_not_fenced": true,
-    "child_ambient_caps_outside_approved_mask": false
+    "child_ambient_caps_outside_approved_mask": false,
+    "real_xray_tproxy_inbound_listener": true
   },
   "rescue": {
     "qemu_sigkill_after_fsynced_two_of_five": true,
