@@ -7,6 +7,8 @@ on:
     paths:
       - '.github/workflows/xray-v30-rc10-native-cap-tproxy.yml'
       - 'xray/lab/rc10_native_tproxy_minimal_caps.sh'
+      - 'xray/lab/rc11_pidfd_guard.py'
+      - 'tests/test_xray_v30_rc11_pidfd.py'
       - 'xray/lab/xray_v30_kernel_tproxy_echo.py'
   workflow_dispatch:
 
@@ -19,6 +21,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: RC11 fail-closed PID identity regression suite
+        run: |
+          python3 -m unittest discover -s tests -p test_xray_v30_rc11_pidfd.py -v
+          bash -n xray/lab/rc10_native_tproxy_minimal_caps.sh
       - name: Install disposable kernel network namespace and capabilities utilities
         shell: bash
         run: |
