@@ -20,9 +20,6 @@ test "$(/bin/busybox cat /proc/sys/net/ipv4/ip_forward)" = 0 || {
 old=$!
 /bin/rc33capwrap raw xray >/lab/candidate.log 2>&1 &
 new=$!
-old_ticks=$(/bin/busybox awk '{print $22}' /proc/$old/stat)
-new_ticks=$(/bin/busybox awk '{print $22}' /proc/$new/stat)
-test -n "$old_ticks" && test -n "$new_ticks" && test "$old_ticks" -gt 0 && test "$new_ticks" -gt 0
 ready=0
 for n in $(/bin/busybox seq 1 180); do
  if /bin/busybox grep -q ':3039 ' /proc/net/tcp /proc/net/tcp6 2>/dev/null && \
@@ -39,6 +36,16 @@ if [ "$ready" != 1 ];then
  /bin/busybox tail -n 55 /lab/legacy.log /lab/candidate.log
  exit 2
 fi
+# Sample identity only after BOTH MIPS processes expose their TCP/UDP/API
+# listeners. An early /proc/$pid/stat read races exec and transient failures.
+test -r /proc/"$old"/stat && test -r /proc/"$new"/stat || {
+ echo RC33_GUEST_HARD_NO_GO_LISTENER_WITHOUT_PROCESS_IDENTITY;exit 2;
+}
+old_ticks=$(/bin/busybox awk '{print $22}' /proc/$old/stat)
+new_ticks=$(/bin/busybox awk '{print $22}' /proc/$new/stat)
+test -n "$old_ticks" && test -n "$new_ticks" && test "$old_ticks" -gt 0 && test "$new_ticks" -gt 0 || {
+ echo RC33_GUEST_HARD_NO_GO_EMPTY_PROCESS_STARTTICKS;exit 2;
+}
 for p in "$old" "$new";do
  uid=$(/bin/busybox awk '/^Uid:/ {print $2}' /proc/$p/status)
  caps=$(/bin/busybox awk '/^CapEff:/ {print $2}' /proc/$p/status)
