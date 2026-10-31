@@ -76,3 +76,16 @@ Single job `ea140581-a4db-42f5-ac4d-46c8c6c462ba`: **done, exit_code=0**. Result
 Native Linux TPROXY TCP/UDP works in the **isolated amd64 kernel control**, and the Keenetic currently has the required module/rules/listener. **These are different observations, not an end-to-end Keenetic TPROXY integration test**. The real first handover, UDP session continuity, watchdog cooperation, route-repair races, original destination preservation under the exact MIPS router kernel, real DNS/IPv6 leaks and recoverability are **still not proven**.
 
 The proposed 02:00–02:30 **Moscow-time** maintenance window (plus 15 minutes verification) remains a *proposal* until the owner chooses a date and separately approves the exact, reviewed first-cutover/rollback commands. Until then: **NO PRODUCTION CUTOVER**.
+
+
+## CI separation after experimental kernel gate
+
+To avoid a known QEMU limitation masking healthy regression tests, kernel-TPROXY-under-MIPS-user-emulation was moved into a **separate, explicitly experimental** workflow `.github/workflows/xray-v30-mips-kernel-tproxy-experiment.yml`. The established MIPS32LE workflow was restored to its previously demonstrated API/BO/ADO/RMO, dual-process SOCKS TCP/UDP, stable TCP ingress and dokodemo TCP/UDP coverage. No tests were deleted; the incompatible kernel-TPROXY experiment remains separately visible and failing.
+
+- **[41193317783](https://github.com/ment2/keenetic-vpn/actions/runs/41193317783): SUCCESS**, all MIPS32LE user-mode regression steps green.
+- **[41193333727](https://github.com/ment2/keenetic-vpn/actions/runs/41193333727): FAILURE**, isolated MIPS32LE QEMU kernel-TPROXY experiment, known `IP_TRANSPARENT` blocker. The red outcome is intentional evidence of an unmet compatibility gate, **not** an approved release.
+- **[41192977443](https://github.com/ment2/keenetic-vpn/actions/runs/41192977443): SUCCESS**, native amd64 Xray 26.2.6 kernel TPROXY TCP+UDP and after-death fail-closed control.
+- **[41192692034](https://github.com/ment2/keenetic-vpn/actions/runs/41192692034): SUCCESS**, 187/187 source and harness safety tests.
+- This architecture keeps successful functionality checks separate from a clear unsupported emulator/kernel test. It does not waive the **real Keenetic TPROXY/UDP, watchdog, first-cutover, rollback and owner-approval gates**.
+
+**Next action that requires the owner:** select a specific Moscow-time 02:00–02:30 maintenance date and explicitly acknowledge that the *first* non-API -> API-enabled switch may interrupt existing TCP/UDP sessions. This only schedules an approval review; it does NOT authorize execution, which must be approved separately against a fully versioned command/rollback bundle after outstanding live safety evidence.
