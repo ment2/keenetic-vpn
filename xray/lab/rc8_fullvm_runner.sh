@@ -103,6 +103,20 @@ echo "RC8: QEMU_POWER_CUT_AFTER_EXACTLY_TWO_FSYNC_WRITES"
 kill -KILL "$FIRST_PID" || true
 wait "$FIRST_PID" 2>/dev/null || true
 trap - EXIT
+# Crash leaves journaled ext4 unclean. Journal replay can otherwise undo
+# offline debugfs injections, silently producing a false positive. First
+# recover the *disposable virtual* filesystems with e2fsck.
+for disk in active rescue; do
+  set +e
+  e2fsck -fy "$WORK/$disk.img" >"$WORK/$disk-offline-fsck.log" 2>&1
+  rc=$?
+  set -e
+  if [ "$rc" -gt 1 ]; then
+    echo "RC8: offline ext4 fsck unsafe status=$rc $disk" >&2
+    tail -20 "$WORK/$disk-offline-fsck.log"
+    exit 1
+  fi
+done
 # Take byte-for-byte snapshots of every active script AFTER the first crash.
 # These are inspected after the second boot: fail-closed means ZERO writes.
 mkdir -p "$WORK/active-before" "$WORK/active-after"
@@ -114,11 +128,19 @@ case "$SCENARIO" in
     printf 'CORRUPTED_NOT_STAGE_2\n' > "$WORK/corrupted-journal"
     debugfs -w -R "rm /journal" "$WORK/active.img" >/dev/null 2>&1
     debugfs -w -R "write $WORK/corrupted-journal /journal" "$WORK/active.img" >/dev/null 2>&1
+    debugfs -R "dump /journal $WORK/corruption-check" "$WORK/active.img" >/dev/null 2>&1
+    cmp "$WORK/corrupted-journal" "$WORK/corruption-check" || {
+      echo "RC8: JOURNAL_CORRUPTION_INJECTION_NOT_APPLIED" >&2;exit 1;
+    }
     echo "RC8: INJECTED_CORRUPT_JOURNAL_IN_VIRTUAL_ACTIVE_DISK" ;;
   rescue-corrupt)
     printf 'CORRUPTED_FROZEN_RC1_SOURCE\n' > "$WORK/corrupted-source"
     debugfs -w -R "rm /originals/S97.sh" "$WORK/rescue.img" >/dev/null 2>&1
     debugfs -w -R "write $WORK/corrupted-source /originals/S97.sh" "$WORK/rescue.img" >/dev/null 2>&1
+    debugfs -R "dump /originals/S97.sh $WORK/corruption-check" "$WORK/rescue.img" >/dev/null 2>&1
+    cmp "$WORK/corrupted-source" "$WORK/corruption-check" || {
+      echo "RC8: RESCUE_CORRUPTION_INJECTION_NOT_APPLIED" >&2;exit 1;
+    }
     echo "RC8: INJECTED_CORRUPT_SOURCE_IN_VIRTUAL_RESCUE_DISK" ;;
   baseline) ;;
 esac
