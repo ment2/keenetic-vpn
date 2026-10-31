@@ -1,0 +1,48 @@
+name: Xray v30 RC11 MIPS32LE archived kernel and Xray hash discovery ONLY
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc11-mips49-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mips49-discovery-no-exec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download archival source and report exact hashes without executing binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/rc11-mips49-discovery"
+          mkdir -p "$D"
+          cd "$D"
+          echo "RC11: DISCOVERY_ONLY_NO_QEMU_NO_EXECUTION_NO_PRODUCTION"
+          KERNEL_URL="https://archive.debian.org/debian/pool/main/l/linux/linux-image-4.9.0-13-4kc-malta_4.9.228-1_mipsel.deb"
+          XRAY_URL="https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip"
+          curl -fL --retry 3 --max-time 150 -o kernel49-mipsel.deb "$KERNEL_URL"
+          curl -fL --retry 3 --max-time 150 -o xray-mips32le.zip "$XRAY_URL"
+          dpkg-deb -x kernel49-mipsel.deb kernel-root
+          find kernel-root/boot -maxdepth 1 -type f | sort
+          KERNEL="$(find kernel-root/boot -maxdepth 1 -name 'vmlinux-*4kc-malta*' -type f | head -1)"
+          test -s "$KERNEL"
+          unzip -j xray-mips32le.zip xray -d unpacked
+          file "$KERNEL" unpacked/xray
+          sha256sum kernel49-mipsel.deb "$KERNEL" xray-mips32le.zip unpacked/xray |
+            tee "$D/rc11-discovered-sha256.txt"
+          echo "RC11: DISCOVERED_ARCHIVE_SHA_ONLY_NOT_BOOTED_PHYSICAL_HARD_NO_GO"
+      - name: Upload only human-readable hashes
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rc11-mips49-discovery-SHA256-only-NO-EXEC
+          path: ${{ runner.temp }}/rc11-mips49-discovery/rc11-discovered-sha256.txt
+          if-no-files-found: warn
+          retention-days: 14
