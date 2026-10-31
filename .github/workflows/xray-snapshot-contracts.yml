@@ -116,6 +116,10 @@ jobs:
           grep -q 'PASS: old real TCP and UDP -> candidate real TCP and UDP' "$RUNNER_TEMP/v30-real-process-recovery.log"
           grep -q 'PASS: independent detached guardian acquired lock and restored old TCP+UDP' "$RUNNER_TEMP/v30-real-process-recovery.log"
           grep -q 'LIMITATION: fake endpoints, not Xray' "$RUNNER_TEMP/v30-real-process-recovery.log"
+          python -m xray.lab.v30_fenced_process_recovery_lab --demo "$RUNNER_TEMP/v30-prepared-journal-crash" --kill-at prepared |
+            tee "$RUNNER_TEMP/v30-prepared-journal-crash.log"
+          grep -q 'PASS: guarded recovery from candidate_prepared journal boundary' "$RUNNER_TEMP/v30-prepared-journal-crash.log"
+          grep -q 'PASS: independent detached guardian acquired lock and restored old TCP+UDP' "$RUNNER_TEMP/v30-prepared-journal-crash.log"
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
