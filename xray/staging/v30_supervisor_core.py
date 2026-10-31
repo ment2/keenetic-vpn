@@ -134,6 +134,7 @@ def atomic_journal(path, data):
     try:
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            fd = -1  # fdopen owns and closes it, including when json.dump fails
             json.dump(data, stream, sort_keys=True)
             stream.flush()
             os.fsync(stream.fileno())
