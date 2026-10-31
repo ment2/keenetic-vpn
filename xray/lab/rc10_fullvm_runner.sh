@@ -46,6 +46,7 @@ gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc8_guest_privdrop.c" -o "$WORK/in
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_capwrap.c" -o "$WORK/initramfs/bin/rc9capwrap"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc10_guest_socket_cap_probe.c" -o "$WORK/initramfs/bin/rc9socket"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_parent_crash.c" -o "$WORK/initramfs/bin/rc9owner"
+gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc10_guest_guardian_generation_cas.c" -o "$WORK/initramfs/bin/rc10cas"
 if [ -z "$XRAY_NATIVE_BINARY" ] || [ ! -f "$XRAY_NATIVE_BINARY" ]; then echo "RC10: official binary unavailable"; exit 77; fi
 cp "$XRAY_NATIVE_BINARY" "$WORK/initramfs/bin/xray"
 mkdir -p "$WORK/initramfs/etc"
@@ -65,7 +66,7 @@ chmod 644 "$WORK/initramfs/etc/xray.json"
 cp "$ROOT/xray/lab/rc10_fullvm_init" "$WORK/initramfs/init"
 chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/rc7fsync" "$WORK/initramfs/bin/busybox"
 chmod 755 "$WORK/initramfs/bin/rc8privdrop"
-chmod 755 "$WORK/initramfs/bin/rc9capwrap" "$WORK/initramfs/bin/rc9socket" "$WORK/initramfs/bin/xray" "$WORK/initramfs/bin/rc9owner"  # must be executable AFTER dropping UID before exec
+chmod 755 "$WORK/initramfs/bin/rc9capwrap" "$WORK/initramfs/bin/rc9socket" "$WORK/initramfs/bin/xray" "$WORK/initramfs/bin/rc9owner" "$WORK/initramfs/bin/rc10cas"  # must be executable AFTER dropping UID before exec
 (
   cd "$WORK/initramfs"
   find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$WORK/initramfs.img.gz"
@@ -198,6 +199,8 @@ grep -q 'RC10_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN
 grep -q 'RC10_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN_PASS' "$SECOND_LOG"
 grep -q 'RC10_VM: ACTUAL_LINUX49_GUEST_VERSION_CONFIRMED' "$FIRST_LOG"
 grep -q 'RC10_VM: ACTUAL_LINUX49_GUEST_VERSION_CONFIRMED' "$SECOND_LOG"
+grep -q 'RC10_CAS: REAL_LINUX49_8X3_GENERATION_FLOCK_PREPARED_CRASH_RECOVERY_PASS' "$FIRST_LOG"
+grep -q 'RC10_CAS: REAL_LINUX49_8X3_GENERATION_FLOCK_PREPARED_CRASH_RECOVERY_PASS' "$SECOND_LOG"
 grep -q 'RC10_SOCKET: VERIFIED_NO_NEW_PRIVS_SURVIVED_EXEC_ON_KERNEL49' "$FIRST_LOG"
 grep -q 'RC10_SOCKET: VERIFIED_NO_NEW_PRIVS_SURVIVED_EXEC_ON_KERNEL49' "$SECOND_LOG"
 grep -q 'RC10_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS' "$FIRST_LOG"
