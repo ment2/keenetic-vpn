@@ -20,7 +20,7 @@ MIN_PIDFD_OPEN = (5,3)
 def parse_release(name):
     if not isinstance(name,str):
         raise ValueError("no valid kernel release")
-    m=re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?(?:[-+._].*)?$",name)
+    m=re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?(?:[-+._][A-Za-z0-9._+-]*)?$",name)
     if not m:
         raise ValueError("bad kernel release")
     return int(m.group(1)),int(m.group(2)),int(m.group(3) or 0)
