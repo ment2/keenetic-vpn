@@ -18,6 +18,8 @@ on:
       - 'xray/lab/v30_nonusb_rescue_lab.py'
       - 'xray/lab/v30_outofusb_mount_gate.py'
       - 'xray/lab/v30_archived_kernel_pidfd_gate.py'
+      - 'xray/lab/v30_parent_owned_kernel49.py'
+      - 'xray/lab/v30_parent_owned_mips_recovery.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
