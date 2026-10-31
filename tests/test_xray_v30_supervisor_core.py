@@ -125,6 +125,20 @@ class SupervisorCoreSafetyTests(unittest.TestCase):
         self.assertEqual(json.loads(self.journal.read_text())["phase"], "candidate_prepared")
         self.assertEqual(self.journal.stat().st_mode & 0o777, 0o600)
 
+    def test_atomic_numeric_pidfile_is_private(self):
+        path = self.root / "xray-watchdog.pid"
+        c.atomic_pidfile(path, 32713)
+        self.assertEqual(path.read_text(), "32713\\n")
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        c.atomic_pidfile(path, 41234)
+        self.assertEqual(path.read_text(), "41234\\n")
+
+    def test_pidfile_symlink_refused(self):
+        path = self.root / "xray-wifi.pid"
+        path.symlink_to(self.root / "target")
+        with self.assertRaisesRegex(c.FenceError, "symlink"):
+            c.atomic_pidfile(path, 24097)
+
     def test_journal_symlink_refused(self):
         self.journal.symlink_to(self.root / "other")
         with self.assertRaisesRegex(c.FenceError, "symlink"):
