@@ -39,6 +39,11 @@ jobs:
           unzip -j "$RUNNER_TEMP/v30-rc9-xray-official/xray.zip" xray \
             -d "$RUNNER_TEMP/v30-rc9-xray-official"
           chmod 755 "$RUNNER_TEMP/v30-rc9-xray-official/xray"
+          printf '29ce535b56e207a406ffa1c2d4842dcc410be003eff8ec508bb732abc9f8e385  %s\n' \
+            "$RUNNER_TEMP/v30-rc9-xray-official/xray.zip" | sha256sum --check --status
+          printf '3f650abf1fc4a4fbf5abe7fc9990a2658020907cd984214e9c075b4b00989fea  %s\n' \
+            "$RUNNER_TEMP/v30-rc9-xray-official/xray" | sha256sum --check --status
+          echo "RC9: Verified exact SHA256 official 26.2.6 archive and xray executable"
           "$RUNNER_TEMP/v30-rc9-xray-official/xray" version |
             tee "$RUNNER_TEMP/v30-rc9-xray-version.log"
           grep -q 'Xray 26.2.6' "$RUNNER_TEMP/v30-rc9-xray-version.log"
