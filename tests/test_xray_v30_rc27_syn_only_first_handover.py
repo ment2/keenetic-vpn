@@ -20,7 +20,10 @@ class RC27SynOnlyHandover(unittest.TestCase):
         self.assertIn('"--tcp-flags","SYN,RST,ACK","SYN"',SRC)
         self.assertNotIn('"--ctstate", "NEW"',SRC)
         self.assertIn('"REDIRECT","--to-ports",str(new_port)',SRC)
-        self.assertIn('exec_(*rollback_rule)',SRC)
+        self.assertIn('def guarded_remove():',SRC)
+        self.assertIn('HARD_NO_GO_ROLLBACK_NAT_OWNERSHIP_DRIFT',SRC)
+        self.assertIn('EXACT_SYN_ONLY_NAT_REMOVED_AND_READBACK_VERIFIED',SRC)
+        self.assertIn('guarded_remove()',SRC)
         self.assertIn('exec_(*nat_rule)',SRC)
     def test_real_socket_identity_for_legacy_stream(self):
         self.assertIn('os.fstat(sock.fileno()).st_ino',SRC)
