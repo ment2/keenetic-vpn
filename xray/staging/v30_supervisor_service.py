@@ -271,6 +271,106 @@ class Broker:
                 return "WIFI_TPROXY_HEALTHY"
             return self._wifi_repair_under_lock()
 
+    def _actor_path(self, role):
+        if role not in ("watchdog", "wifi"):
+            raise FenceError("unknown actor role")
+        return self.p.run / ("xray-v30-" + role + "-actor.json")
+
+    def _actor_prepared(self, role):
+        return self.p.run / ("xray-v30-" + role + "-prepared.json")
+
+    def _actor_pidfile(self, role):
+        return self.p.run / ("xray-" + role + ".pid")
+
+    def _actor_expected_cmd(self, role):
+        return (sys.executable, str(Path(__file__).resolve()), role + "-loop")
+
+    def _actor_load(self, role):
+        path = self._actor_path(role)
+        if path.is_symlink() or not path.exists():
+            raise FenceError("actor must be individually bootstrapped")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data.get("phase") not in ("active", "stopped") or data.get("schema") != 1:
+            raise FenceError("invalid actor journal")
+        ident = data.get("identity")
+        if not isinstance(ident, dict):
+            raise FenceError("actor identity missing")
+        item = Identity(ident["pid"], ident["start_ticks"],
+                        ident["exe"], tuple(ident["argv"]))
+        return data, item
+
+    def actor_bootstrap(self, role, pid, start_ticks):
+        """Bind an existing watcher explicitly, before controlled replacement.
+
+        This is NOT safe unless the old watchdog/S98 cannot concurrently
+        spawn descendants. Requires a separate production migration gate.
+        """
+        with supervisor_lock(self.p.lock):
+            if self._actor_path(role).exists():
+                raise FenceError("actor already registered")
+            identity = proc_identity(pid)
+            old_cmd = ("/opt/bin/xray-watchdog.sh" if role == "watchdog"
+                       else "/opt/etc/init.d/S98xray-wifi")
+            if identity.start_ticks != start_ticks or not any(
+                    old_cmd in item for item in identity.argv):
+                raise FenceError("legacy watcher bootstrap drift")
+            pidfile = self._actor_pidfile(role)
+            if not pidfile.exists() or pidfile.read_text().strip() != str(pid):
+                raise FenceError("watcher pidfile does not match identity")
+            atomic_journal(self._actor_path(role), {
+                "schema": 1, "phase": "active",
+                "identity": asdict(identity), "legacy": True})
+            return "ACTOR_LEGACY_PINNED"
+
+    def actor_control(self, role, op):
+        if op not in ("start", "stop"):
+            raise FenceError("actor op not allowed")
+        with supervisor_lock(self.p.lock):
+            data, old = self._actor_load(role)
+            if op == "stop":
+                if data["phase"] != "active":
+                    raise FenceError("actor not active")
+                if proc_identity(old.pid) != old:
+                    raise FenceError("actor process identity mismatch")
+                scoped_signal(old, signal.SIGTERM)
+                deadline = time.monotonic() + 4
+                while time.monotonic() < deadline:
+                    try:
+                        current = proc_identity(old.pid)
+                        if current.start_ticks != old.start_ticks:
+                            break
+                    except FenceError:
+                        break
+                    time.sleep(0.04)
+                else:
+                    raise FenceError("actor process did not exit")
+                atomic_journal(self._actor_path(role), {
+                    **data, "phase": "stopped"})
+                return "ACTOR_STOPPED_EXACT_IDENTITY"
+            if data["phase"] != "stopped":
+                if proc_identity(old.pid) != old:
+                    raise FenceError("unexpected active actor")
+                return "ACTOR_ALREADY_ACTIVE"
+            cmd = list(self._actor_expected_cmd(role))
+            pid, start = gated_spawn(cmd[0], cmd, self._actor_prepared(role))
+            deadline = time.monotonic() + 4
+            while time.monotonic() < deadline:
+                try:
+                    new = proc_identity(pid)
+                    if (new.start_ticks == start and new.argv == tuple(cmd)):
+                        break
+                except FenceError:
+                    pass
+                time.sleep(0.05)
+            else:
+                raise FenceError("new actor identity never reached intended argv")
+            atomic_journal(self._actor_path(role), {
+                "schema": 1, "phase": "active",
+                "identity": asdict(new), "legacy": False})
+            # Existing script's PID file is separate from this private
+            # journal. A production installation must update it atomically.
+            return "ACTOR_STARTED_WITH_DURABLE_PID_TICKS"
+
     def loop(self, op, seconds):
         if op not in ("watchdog-once", "wifi-once"):
             raise FenceError("unknown loop")
@@ -290,7 +390,9 @@ class Broker:
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("op", choices=("bootstrap", "start", "stop", "restart",
-        "watchdog-once", "watchdog-loop", "wifi-once", "wifi-repair", "wifi-loop"))
+        "watchdog-once", "watchdog-loop", "watchdog-start", "watchdog-stop",
+        "watchdog-bootstrap", "wifi-once", "wifi-repair", "wifi-loop",
+        "wifi-start", "wifi-stop", "wifi-bootstrap"))
     p.add_argument("--expected-pid", type=int)
     p.add_argument("--expected-ticks", type=int)
     a = p.parse_args()
@@ -309,6 +411,14 @@ def main():
         print(b.wifi_once())
     elif a.op == "wifi-repair":
         print(b.wifi_once(force_repair=True))
+    elif a.op.split("-")[0] in ("watchdog", "wifi") and a.op.split("-")[-1] in ("start", "stop", "bootstrap"):
+        role, op = a.op.split("-", 1)
+        if op == "bootstrap":
+            if a.expected_pid is None or a.expected_ticks is None:
+                raise FenceError("exact watcher PID and start ticks required")
+            print(b.actor_bootstrap(role, a.expected_pid, a.expected_ticks))
+        else:
+            print(b.actor_control(role, op))
     else:
         print(b.control(a.op))
 
