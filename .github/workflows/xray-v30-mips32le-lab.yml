@@ -13,6 +13,8 @@ on:
       - 'xray/lab/xray_v30_stable_ingress_demo.py'
       - 'xray/lab/xray_v30_pool_handover_api.py'
       - 'xray/lab/xray_v30_dokodemo_lab.py'
+      - 'xray/lab/xray_v30_kernel_tproxy_echo.py'
+      - 'xray/lab/xray_v30_kernel_tproxy_netns.sh'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +29,7 @@ jobs:
       - name: Install QEMU user emulator on disposable runner
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends qemu-user
+          sudo apt-get install -y --no-install-recommends qemu-user iproute2 iptables
       - name: Download official pinned Xray 26.2.6 mips32le
         shell: bash
         run: |
@@ -83,3 +85,9 @@ jobs:
           export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
           python3 -m xray.lab.xray_v30_dokodemo_lab \
             --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
+
+      - name: Verify disposable Linux kernel TPROXY TCP UDP and fail-closed with network namespaces
+        shell: bash
+        run: |
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          bash xray/lab/xray_v30_kernel_tproxy_netns.sh --run
