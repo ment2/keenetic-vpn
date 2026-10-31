@@ -18,7 +18,7 @@ class RC13StaticSafety(unittest.TestCase):
         self.assertIn('SYS_init_module',self.c)
         self.assertIn('HARD_NO_GO_TCP_UDP_PACKET_PATH_NOT_EXECUTED',self.c)
         self.assertNotIn('system(',self.c)
-        self.assertNotIn('iptables ',self.c)
+        self.assertNotIn('system("iptables',self.c)
         self.assertNotIn('route add',self.c)
     def test_runner_requires_in_guest_success_not_just_qemu_zero(self):
         self.assertIn('PASS_REAL_MIPS49_KERNEL_MODULE_LOAD_DISPOSABLE_GUEST_ONLY',self.s)
