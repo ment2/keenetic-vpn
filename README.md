@@ -22,7 +22,7 @@ Source snapshots originate from ChatGPT Library `/Keenetic/Xray/`, with paths mi
 ## Current verified status (2026-10-31)
 
 - **Frozen 2026-10-30 nonsecret Xray source snapshot:** 63/63 enumerated files and backups with historical live-router SHA256 parity. This is **not** a complete router clone or a current 2026-10-31 parity check.
-- **GitHub CI snapshot integrity:** all 63 committed file bytes and tracked Git executable modes are checked against `xray/production/MANIFEST.sha256`; selected shell syntax, Python AST and 125 unit/contract tests pass in CI.
+- **GitHub CI snapshot integrity:** all 63 committed file bytes and tracked Git executable modes are checked against `xray/production/MANIFEST.sha256`; selected shell syntax, Python AST, limited current-tree secret checks and 131 unit/contract tests pass in CI.
 - **Executable isolated laboratory exists:** Xray 26.2.6 MIPS32LE under QEMU, including two real Xray processes, SOCKS5 TCP and UDP ASSOCIATE, candidate failure, old-process recovery and API `bo/ado/rmo` tests. **This is not a KeeneticOS-faithful staging router**; actual TPROXY, kernel fail-closed, shared ingress, installed watchdog and disaster-recovery bootstrapping remain unverified.
 - **Related memory-sync incident:** MenttwoGPT Cloudflare delivery depends on local SOCKS5. The 2026-10-31 production patch belongs to `ment2/menttwogpt` and is not part of the frozen 63-file Xray snapshot.
 
