@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from xray.staging import v30_cooperative_canary as canary
 from xray.staging.v30_supervisor_core import FenceError, supervisor_lock
@@ -43,6 +44,21 @@ class CooperativeReleaseContracts(unittest.TestCase):
                 with canary.coordinated_trial_lock(lock=Path(d) / "lock",
                                                     no_legacy_writers=True):
                     pass
+
+    def test_same_inode_lock_rejects_supervisor_while_canary_holds_it(self):
+        from xray.staging.v30_supervisor_service import RouterPaths
+        with tempfile.TemporaryDirectory() as temp:
+            lock = Path(temp) / "cooperative.lock"
+            # Point BOTH broker and canary to the same DISPOSABLE inode.
+            with patch.object(canary, "SHARED_LOCK", lock):
+                with patch.object(RouterPaths, "lock", lock):
+                    self.assertEqual(canary.SHARED_LOCK, RouterPaths.lock)
+                    with canary.coordinated_trial_lock(no_legacy_writers=True):
+                        with self.assertRaisesRegex(FenceError, "busy"):
+                            with supervisor_lock(RouterPaths.lock, timeout=0.08):
+                                self.fail("broker bypassed canary mutex")
+                    with supervisor_lock(RouterPaths.lock, timeout=0.2):
+                        pass
 
     def test_actual_cli_rejects_trial(self):
         run = subprocess.run([sys.executable, "-m",
