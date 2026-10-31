@@ -14,7 +14,7 @@ for command_name in qemu-system-x86_64 busybox debugfs gcc cpio mkfs.ext4; do co
 : "${RC10_MODULE_ROOT:?requires extracted archived Debian kernel modules}"
 KERNEL="$RC10_KERNEL_IMAGE"
 test -s "$KERNEL" || { echo "RC10: NO_REAL_FULL_SYSTEM_KERNEL_HARD_NO_GO"; exit 77; }
-case "$KVER" in 4.9.*) ;; *) echo 'RC10: refused non-4.9 kernel';exit 78;; esac
+case "$RC10_KERNEL_VERSION" in 4.9.*) ;; *) echo 'RC10: refused non-4.9 kernel';exit 78;; esac
 echo "RC10: QEMU full-system archive kernel=$KERNEL version=$KVER"
 # Ubuntu packaged kernel is root-readable only; copy inside disposable runner.
 KVER="$RC10_KERNEL_VERSION"
