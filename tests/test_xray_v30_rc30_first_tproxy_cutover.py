@@ -46,6 +46,12 @@ class RC30FirstCutover(unittest.TestCase):
   self.assertIn('rc20_mips49_tproxy_module_pack',RUN)
   self.assertIn('tproxy-mark 0x40000000',GUEST)
   self.assertIn('HARD_NO_GO_BOTH_TPROXY_OWNERS_NOT_WITNESSED',GUEST)
+ def test_udp_old_pin_precedes_broad_rule_at_runtime(self):
+  # iptables -I PREROUTING 1 reverses source insertion order.
+  broad="udp --dport 19301 -j TPROXY --on-port 22345"
+  old="udp --sport 21112 --dport 19301 -j TPROXY --on-port 12345"
+  self.assertLess(GUEST.index(broad),GUEST.index(old))
+  self.assertIn('positive[1]&&positive[2]&&positive[3]&&positive[4]',GUEST)
  def test_rollback_fails_closed_on_unexpected_rule_count(self):
   self.assertIn('HARD_NO_GO_RULE_COUNT',GUEST)
   self.assertIn('HARD_NO_GO_ROLLBACK_RULE_OWNERSHIP',GUEST)
