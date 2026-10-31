@@ -56,6 +56,8 @@ jobs:
           grep -Fq 'POOL_API: PASS new qualified pool retains active A; no BO switch' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
           grep -Fq 'POOL_API: PASS changed pool sends new TCP to C; old A TCP survives' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
           grep -Fq 'POOL_API: PASS explicit BO rollback restores new TCP to A' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+          grep -Fq 'POOL_API: PASS dead selected C blocks new TCP while old A survives' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+          grep -Fq 'POOL_API: PASS SAME_MIPS_XRAY_PID_STARTTICKS_AND_SOCKS_PORT_THROUGH_REFRESH_FAILURE_ROLLBACK' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
           ! grep -Eq 'PRODUCTION_(READY|AUTHORIZED)|DEPLOY_SUCCESS' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
       - name: Retain exact CI witnesses without secrets
         if: always()
