@@ -63,3 +63,10 @@ The remaining work splits into two independent threads:
 ## CI addition: conservative current-source disclosure gate
 
 `tools/check_snapshot_secrets.py` scans only the 63 frozen source files for high-confidence indicators such as an embedded private key, fully formed VLESS credential URI, GitHub/OpenAI-like token, or URL with inline password. It reports **only file path and detector type** on failure, never the matching value. Six isolated synthetic tests validate positive/negative cases. **CI 41189579857 SUCCESS: 131/131 tests; 63/63 frozen SHA256/mode checks; 63 files passed current-source secret heuristics.** This is not a full secret or Git-history audit. Before any publication/merge, separately scan all Git commit objects and review false negatives under an approved security procedure.
+
+## ChatGPT Library archival checkpoint
+
+The verified 2026-10-31 status, CI evidence, cross-project dependency and outstanding gap list were also archived as:
+`/Keenetic/Project/2026-10-31-keenetic-github-staging-status.md`.
+
+GitHub remains the source of code; the ChatGPT Library record is a status/audit note, **not** a package, restore image or production-ready artifact.
