@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "release": "v30-kernel49-rc6-offline-containment-and-rescue-review",
+  "source_branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "LAB_ONLY_REAL_CGROUP_V1_BLOCKED",
+  "paired_rc5": "xray/staging/v30-kernel49-rc5-boot-rescue-review.json",
+  "pinned_git_blobs": {
+    "xray/lab/v30_rc6_cgroup_v1_lab.py": "f2f5a78af5decec3d447a20738b1a45911a50f9b",
+    "xray/lab/v30_rc6_rescue_guardian.sh": "f5d9acb2c0383f87524378dc94bd693ee9336ce3",
+    "xray/lab/v30_rc6_offline_boot_rehearsal.py": "7f39e736ca516e80c059f0474452aea9af21a1b8",
+    "xray/lab/v30_rc6_rescue_package.py": "b90209fa557b1284c502f24001d949ce1154f1df"
+  },
+  "ci_offline": {
+    "run": 41217058331,
+    "conclusion": "success",
+    "tests": 481,
+    "artifact_id": 13048038908,
+    "artifact": "v30-rc6-offline-host-shell-boot-review-NO-DEPLOY"
+  },
+  "ci_real_cgroup_v1": {
+    "run": 41216829749,
+    "workflow_conclusion": "success",
+    "test_conclusion": "BLOCKED_CGROUP_V1_MOUNT_UNAVAILABLE",
+    "artifact_id": 13048181964,
+    "artifact": "v30-rc6-cgroup1-real-capability-evidence-NO-GO",
+    "kernel_mount_error": "none already mounted on /sys/fs/pstore",
+    "real_cgroup_v1_fork_exec_tested": false
+  },
+  "mips_last_proven": {
+    "run": 41215515431,
+    "conclusion": "success",
+    "binary": "Xray 26.2.6 linux/mipsle",
+    "guardians": "8+8",
+    "new_rc6_cgroup_v1_proven": false
+  },
+  "host_posix_recovery": {
+    "five_original_script_sha256_validated": true,
+    "partial_restore_fault_after_files": 2,
+    "corrupted_backup_refusal_before_write": true,
+    "fresh_host_sh_process_restores_all_five": true,
+    "python_or_entware_required_during_restore": false,
+    "physical_usb_device_independent": false,
+    "actual_router_cold_boot_proven": false,
+    "physical_powerloss_fsync_proven": false
+  },
+  "read_only_preflight_evidence_required": [
+    "fresh uname -r and kernel configs feature options, no substitution for archived result",
+    "read /proc/cgroups and actual /proc/self/mountinfo and controller pids hierarchy",
+    "read-only check of actual cgroup membership for every Xray descendant and all privileged actors",
+    "verify all S97 S98 S99 watchdog cron entrypoints, processes and PID/start_ticks",
+    "read-only map IPv4+IPv6 TCP UDP socket inode owners across pids and netns",
+    "read-only physical device mount ID source and boot filesystem for guardian outside Entware USB",
+    "read-only inspect init and boot hook order WITHOUT changing cron/routes",
+    "hash actual production five originals, Xray binary and current canary, compare expected release source",
+    "verify physical kernel 4.9 PR_SET_PDEATHSIG and WNOWAIT semantics under separately authorized non-disruptive proof",
+    "independently prove kill-switch, TPROXY TCP UDP, DNS IPv6 no leak before any cutover"
+  ],
+  "hard_no_go": [
+    "new cgroup1 mount could not be created on GitHub runner; cannot claim real fork inheritance",
+    "Linux 4.9 hardware cgroup1 controller and sealed membership unknown",
+    "physical USB-free persistent boot guardian not installed, no boot proof",
+    "host shell restore does not guarantee powerloss fsync or same mount physical independence",
+    "unfenced legacy services and descendants may survive parent death",
+    "physical MIPS kernel TPROXY and no-leak unverified",
+    "current installed canary old release lock/pins incompatible"
+  ],
+  "authorization": {
+    "router_jobs": 0,
+    "production_install": false,
+    "production_restore": false,
+    "merge": false,
+    "cloudflare": false,
+    "firewall": false,
+    "routes": false,
+    "cron": false
+  },
+  "release_decision": "HARD_NO_GO_PRODUCTION"
+}
