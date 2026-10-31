@@ -22,6 +22,7 @@ class PacketReleaseGate(unittest.TestCase):
   self.assertEqual(p["state"],"OFFLINE_REVIEW_CANDIDATE_ONLY")
   self.assertFalse(p["production_authorized"])
   self.assertFalse(p["hardware_certified"])
+  self.assertFalse(p["tcp_udp_packet_path_proven"])
  def test_rc19_guest_udp_receipt_is_not_udp_return_or_xray(self):
   p=evaluate(Witness(guest_pcnet_ethernet_packet_ingress=True))
   for missing in ["udp_client_received_same_payload","real_xray_mips_inbound_udp_observed","process_death_no_tcp_udp_direct_fallback","privileged_root_cgroup_v1_escape_independently_fenced"]:

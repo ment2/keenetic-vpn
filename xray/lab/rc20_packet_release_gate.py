@@ -34,7 +34,7 @@ def evaluate(w: Witness):
     return {
         "state":"HARD_NO_GO" if failed else "OFFLINE_REVIEW_CANDIDATE_ONLY",
         "reasons":list(failed),
-        "tcp_udp_packet_path_proven":len(failed)==0,
+        "tcp_udp_packet_path_proven":False, # offline booleans are not packet artifacts
         "production_authorized":False,
         "router_commands":[],
         "hardware_certified":False,
