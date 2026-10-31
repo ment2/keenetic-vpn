@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "release": "v30-rc10-linux49-native-tproxy-cas-failclosed",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "DISPOSABLE_LAB_PASS_PRODUCTION_HARD_NO_GO",
+  "source_blobs": {
+    "xray/lab/rc10_fullvm_runner.sh": "508d186eeba27e5958fa9a748c200c7176264daa",
+    "xray/lab/rc10_fullvm_init": "9275a0739b8af6ae2ed4db40d58c0596a511c874",
+    "xray/lab/rc10_guest_socket_cap_probe.c": "6e187fdc46aad344c6b6c77b06828d09573d7934",
+    "xray/lab/rc10_guest_guardian_generation_cas.c": "fa87bea506e1a55a25c2a3630820c310b4e0f903",
+    "xray/lab/rc10_native_tproxy_minimal_caps.sh": "9b5b0f6c14b59d37eaa0fd17c27890e6a8895660",
+    ".github/workflows/xray-v30-rc10-linux49.yml": "bea9c3b20e91b297830b29fa4f1f96552a23c1a5",
+    ".github/workflows/xray-v30-rc10-native-cap-tproxy.yml": "daa65dd41345b8e485a5054772ace2e1aa27648b"
+  },
+  "pin": {
+    "debian_package": "linux-image-4.9.0-13-amd64_4.9.228-1_amd64.deb",
+    "debian_package_sha256": "d410dd577fac677bb50978d5fe91b622d1520b783cb4ef23a1bcd7851606e326",
+    "extracted_vmlinuz_sha256": "cc91d3c764694426a4e830da226da61f60a97d074986aa47bb9102ad8792e4c0",
+    "xray_zip_sha256": "29ce535b56e207a406ffa1c2d4842dcc410be003eff8ec508bb732abc9f8e385",
+    "xray_native_executable_sha256": "3f650abf1fc4a4fbf5abe7fc9990a2658020907cd984214e9c075b4b00989fea",
+    "xray_version": "26.2.6"
+  },
+  "fullsystem": {
+    "ci": 41224765496,
+    "conclusion": "success",
+    "kernel": "4.9.0-13-amd64",
+    "arch": "x86_64",
+    "qemu_mode": "full-system TCG",
+    "scenario_boot_pairs": 3,
+    "scenarios": [
+      "baseline",
+      "rescue-missing",
+      "rescue-absent"
+    ],
+    "kernel49_real_cgroup1_pids_mount": true,
+    "actual_fork_exec_socket_inode_inventory": true,
+    "privileged_cgroup_migration_succeeded": true,
+    "unprivileged_membership_escape_denied": true,
+    "uid_after_exec": 65534,
+    "gid_after_exec": 65534,
+    "cap_net_raw_exact_mask": "0x2000",
+    "no_caps_tcp_udp_ip_transparent_denied": true,
+    "cap_raw_tcp_udp_ip_transparent_allowed": true,
+    "PR_GET_NO_NEW_PRIVS_after_exec_one": true,
+    "real_xray_tproxy_inbound_started": true,
+    "real_xray_pid_start_ticks_tracked": true,
+    "real_xray_parent_sigkill_pdeathsig_direct_child_stopped": true,
+    "guardian_cas_independent_processes_per_generation": 8,
+    "guardian_cas_generations": 3,
+    "crashed_prepared_not_committed_or_replayed": true,
+    "fsync_file_and_parent_directory_before_qemu_sigkill": true,
+    "baseline_restored_originals": 5,
+    "blank_rescue_file_write_count": 0,
+    "physically_detached_rescue_file_write_count": 0,
+    "physical_device_separation_proven": false,
+    "physical_powerloss_proven": false,
+    "real_mips_keenetic_vendor_ndm5_proven": false,
+    "kernel49_full_tproxy_packet_flow_proven": false,
+    "full_legacy_s97_s98_s99_watchdog_cron_fencing_proven": false
+  },
+  "native_packet": {
+    "ci": 41224152158,
+    "conclusion": "success",
+    "kernel": "Ubuntu hosted runner kernel (NOT 4.9)",
+    "architecture": "x86_64",
+    "isolated_netns": 3,
+    "real_xray_uid": 65534,
+    "real_xray_effective_cap_mask": "0000000000002000",
+    "iptables_tproxy_TCP_packets": true,
+    "iptables_tproxy_UDP_packets": true,
+    "fwmark_and_table_100_routed": true,
+    "no_default_route_in_netns": true,
+    "FORWARD_DROP_on_dead_xray": true,
+    "dead_xray_no_fallback_leak": true,
+    "actual_kernel49_same_packet_path_proven": false
+  },
+  "artifacts": [
+    {
+      "run": 41224765496,
+      "id": 13051156793,
+      "name": "v30-rc10-linux49-qemu-fullsystem-no-production",
+      "expires": "2026-11-14"
+    },
+    {
+      "run": 41224152158,
+      "id": 13051425498,
+      "name": "v30-rc10-native-netns-tproxy-raw-only-logs-NO-DEPLOY",
+      "expires": "2026-11-14"
+    }
+  ],
+  "limitations": [
+    "Debian x86_64 Linux4.9.228 is not vendor NDM 4.9-ndm-5 MIPS32LE",
+    "Real TPROXY packet forwarding test executed on Ubuntu host kernel, not Linux4.9 guest",
+    "Root/privileged descendant escapes cgroup v1: legacy actors remain unfenced",
+    "Guardian CAS is guest-only against /run generation ledger, not physical installed watchdog/cron",
+    "Simulated QEMU SIGKILL does not reproduce physical hardware power loss",
+    "Virtual rescue disks share runner hardware and do not prove physical USB-free boot",
+    "Actual router TPROXY IPv6 DNS kill-switch and fallback after reboot unproven"
+  ],
+  "physical_release_gates": {
+    "actual_device_linux49_capabilities_verified": false,
+    "physical_mips_xray_no_leak_verified": false,
+    "all_legacy_writers_fenced": false,
+    "independent_nonusb_boot_guardian_installed": false,
+    "hardware_powerloss_rehearsed": false,
+    "exact_production_SHA_owner_approved": false
+  },
+  "authorization": {
+    "router_jobs": 0,
+    "prod": false,
+    "cloudflare": false,
+    "main": false,
+    "snapshot": false,
+    "firewall": false,
+    "routes": false,
+    "cron": false,
+    "kill_switch": false,
+    "merge": false,
+    "deploy": false,
+    "trial": false,
+    "automatic_rollback": false
+  },
+  "release_decision": "HARD_NO_GO_PRODUCTION",
+  "prior_rc9": "xray/staging/v30-rc9-real-xray-capability-review.json"
+}
