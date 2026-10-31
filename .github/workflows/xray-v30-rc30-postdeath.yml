@@ -1,0 +1,49 @@
+name: Xray v30 RC30 real MIPS49 original-dest postdeath TCP UDP no-direct-fallback
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc30-postdeath.yml'
+      - 'xray/lab/rc30_postdeath_*'
+      - 'tests/test_xray_v30_rc30_postdeath.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mips49-real-original-dest-death:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify separate backend and owned-death no-direct contracts
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc30_postdeath.py -v
+          python3 -m py_compile xray/lab/rc30_postdeath_backend.py
+          bash -n xray/lab/rc30_postdeath_runner.sh
+          bash -n xray/lab/rc30_postdeath_netns.sh
+          sh -n xray/lab/rc30_postdeath_guest.sh
+      - name: Disposable QEMU MIPS crossbuild dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Test original-dest TCP UDP through real Xray and no direct canary after death
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc30_postdeath_runner.sh | tee "$RUNNER_TEMP/rc30-result.log"
+          grep -Fq RC30_PASS_BOUNDED_NO_DIRECT_TCP_UDP_FALLBACK_AFTER_OWNED_XRAY_DEATH_ORIGINAL_DEST "$RUNNER_TEMP/rc30-result.log"
+      - name: Retain negative and positive packet evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc30-mips49-real-original-dest-postdeath-no-production
+          path: |
+            ${{ runner.temp }}/rc30-postdeath/serial.log
+            ${{ runner.temp }}/rc30-postdeath/qemu-errors.log
+            ${{ runner.temp }}/rc30-postdeath/backend.log
+            ${{ runner.temp }}/rc30-result.log
+          if-no-files-found: warn
+          retention-days: 14
