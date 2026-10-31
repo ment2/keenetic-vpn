@@ -26,6 +26,7 @@ test -n "$old_ticks" && test -n "$new_ticks" && test "$old_ticks" -gt 0 && test 
 ready=0
 for n in $(/bin/busybox seq 1 180); do
  if /bin/busybox grep -q ':3039 ' /proc/net/tcp /proc/net/tcp6 2>/dev/null && \
+    /bin/busybox grep -q ':5530 ' /proc/net/tcp /proc/net/tcp6 2>/dev/null && \
     /bin/busybox grep -q ':5749 ' /proc/net/tcp /proc/net/tcp6 2>/dev/null && \
     /bin/busybox cat /proc/net/udp /proc/net/udp6 2>/dev/null | /bin/busybox grep -q ':3039 ' && \
     /bin/busybox cat /proc/net/udp /proc/net/udp6 2>/dev/null | /bin/busybox grep -q ':5749 '; then ready=1;break;fi
@@ -47,7 +48,7 @@ for p in "$old" "$new";do
 done
 /bin/busybox grep -Fq 'no_new_privs=1' /lab/legacy.log
 /bin/busybox grep -Fq 'no_new_privs=1' /lab/candidate.log
-echo RC30_GUEST_OLD_AND_CANDIDATE_XRAY_TCP_UDP_READY
+echo RC30_GUEST_OLD_AND_API_ENABLED_CANDIDATE_XRAY_TCP_UDP_READY
 # Wait until each old-protocol rule sees at least one actual host packet.
 baseline=0
 for n in $(/bin/busybox seq 1 180);do
