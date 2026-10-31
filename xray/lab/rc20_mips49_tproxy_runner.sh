@@ -28,7 +28,7 @@ mkdir -p "$W/initramfs/lab"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/init" xray/lab/rc20_mips49_guest_tproxy_init.c
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/lab/echo" xray/lab/rc20_mips49_tproxy_echo.c
 cp xray/lab/rc20_mips49_tproxy_packet.sh "$W/initramfs/lab/tproxy-packet.sh"
-chmod 755 "$W/initramfs/lab/echo" "$W/initramfs/lab/nic-packet.sh"
+chmod 755 "$W/initramfs/lab/echo" "$W/initramfs/lab/tproxy-packet.sh"
 mkdir -p "$W/initramfs/lab"
 chmod 755 "$W/initramfs/init"
 test -f "$W/initramfs/lib/mipsel-linux-gnu/ld-2.24.so"
