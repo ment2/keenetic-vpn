@@ -14,7 +14,14 @@ done
 mkdir -p /run /mnt/rescue /mnt/active
 echo "RC7_VM: GUEST_KERNEL_BOOTED"
 echo "RC7_VM: kernel $(uname -r) actual full-system guest, not user-mode QEMU"
-/bin/rc7cgroup || echo "RC7_VM: cgroup-v1 guest test unavailable or failed; physical NO-GO"
+/bin/rc7cgroup
+CGROUP_EXIT=$?
+if [ "$CGROUP_EXIT" -eq 77 ]; then
+  echo "RC7_VM: CGROUP_V1_UNAVAILABLE_HARD_NO_GO"
+elif [ "$CGROUP_EXIT" -ne 0 ]; then
+  echo "RC7_VM: FAIL cgroup-v1 guest experiment returned $CGROUP_EXIT"
+  poweroff -f
+fi
 mount -t ext4 /dev/vda /mnt/rescue || { echo "RC7_VM: FAIL independent rescue image missing"; poweroff -f; }
 mount -t ext4 /dev/vdb /mnt/active || { echo "RC7_VM: FAIL active image missing"; poweroff -f; }
 cd /mnt/rescue || exit 1
