@@ -24,16 +24,17 @@ jobs:
           D="$RUNNER_TEMP/rc15-mipsel"
           mkdir -p "$D/root"
           fetch() {
-            local name="$1" url="$2"
+            local name="$1" url="$2" sha="$3"
             curl -fL --retry 3 --max-time 120 -o "$D/$name.deb" "$url"
+            printf '%s  %s\n' "$sha" "$D/$name.deb" | sha256sum -c -
             dpkg-deb -x "$D/$name.deb" "$D/root"
             dpkg-deb -f "$D/$name.deb" Package Version Architecture >> "$D/packages-control.txt"
           }
-          fetch iptables 'https://archive.debian.org/debian/pool/main/i/iptables/iptables_1.6.0+snapshot20161117-6_mipsel.deb'
-          fetch iproute2 'https://archive.debian.org/debian/pool/main/i/iproute2/iproute2_4.9.0-1+deb9u1_mipsel.deb'
-          fetch busybox 'https://archive.debian.org/debian/pool/main/b/busybox/busybox-static_1.22.0-19+b3_mipsel.deb'
+          fetch iptables 'https://archive.debian.org/debian/pool/main/i/iptables/iptables_1.6.0+snapshot20161117-6_mipsel.deb' 'b0bd6d7e4bc7da38672b223cb428315309979a19e008aedafb17253315178b67'
+          fetch iproute2 'https://archive.debian.org/debian/pool/main/i/iproute2/iproute2_4.9.0-1+deb9u1_mipsel.deb' 'c0b0886583db81db0a517e0945be52d23dcc3ee5fe8ea068bfdaa80cb639213d'
+          fetch busybox 'https://archive.debian.org/debian/pool/main/b/busybox/busybox-static_1.22.0-19+b3_mipsel.deb' '0c7e287104914e654a2555e9900302180ff54d1ef17e9faf585529e6eadac8e0'
           sha256sum "$D/"*.deb | tee "$D/sha256.txt"
-          find "$D/root" -type f \( -name iptables -o -name ip -o -name busybox -o -name 'libxt_*.so' \) -print |
+          find "$D/root" \( -type f -o -type l \) \( -name iptables -o -name xtables-multi -o -name ip -o -name busybox -o -name 'libxt_*.so' \) -print |
             sort > "$D/candidate-files.txt"
           : > "$D/elf-dependencies.txt"
           while IFS= read -r file; do
@@ -46,7 +47,25 @@ jobs:
           done < "$D/candidate-files.txt"
           cat "$D/elf-dependencies.txt"
           grep -q '/ip$' "$D/candidate-files.txt" || { echo 'RC15: NO_IP_BINARY_HARD_NO_GO'; exit 1; }
-          grep -q '/iptables$' "$D/candidate-files.txt" || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
+          grep -Eq '/(iptables|xtables-multi) || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
+          grep -q '/busybox$' "$D/candidate-files.txt" || { echo 'RC15: NO_BUSYBOX_BINARY_HARD_NO_GO'; exit 1; }
+          grep -q 'Machine:.*MIPS' "$D/elf-dependencies.txt"
+          grep -q 'Data:.*little endian' "$D/elf-dependencies.txt"
+          echo 'RC15: MIPS32LE_ARCHIVE_BYTES_FOUND_HASHES_DISCOVERED_NO_EXECUTION'
+          echo 'RC15: HARD_NO_GO_DYNAMIC_LIB_CLOSURE_AND_GUEST_PACKET_PATH_UNVERIFIED'
+      - name: Upload metadata only, no foreign binaries or live artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc15-mips49-userland-SHA-and-ELF-discovery-NO-EXEC
+          path: |
+            ${{ runner.temp }}/rc15-mipsel/sha256.txt
+            ${{ runner.temp }}/rc15-mipsel/packages-control.txt
+            ${{ runner.temp }}/rc15-mipsel/candidate-files.txt
+            ${{ runner.temp }}/rc15-mipsel/elf-dependencies.txt
+          retention-days: 14
+          if-no-files-found: warn
+ "$D/candidate-files.txt" || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
           grep -q '/busybox$' "$D/candidate-files.txt" || { echo 'RC15: NO_BUSYBOX_BINARY_HARD_NO_GO'; exit 1; }
           grep -q 'Machine:.*MIPS' "$D/elf-dependencies.txt"
           grep -q 'Data:.*little endian' "$D/elf-dependencies.txt"

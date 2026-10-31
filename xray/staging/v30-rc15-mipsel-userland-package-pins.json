@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "experiment": "RC15_DEBIAN_STRETCH_MIPSEL_USERSPLIT_DISCOVERY",
+  "archive_host": "https://archive.debian.org/debian/pool/main",
+  "packages": [
+    {
+      "name": "iptables",
+      "version": "1.6.0+snapshot20161117-6",
+      "arch": "mipsel",
+      "filename": "iptables_1.6.0+snapshot20161117-6_mipsel.deb",
+      "sha256": "b0bd6d7e4bc7da38672b223cb428315309979a19e008aedafb17253315178b67"
+    },
+    {
+      "name": "iproute2",
+      "version": "4.9.0-1+deb9u1",
+      "arch": "mipsel",
+      "filename": "iproute2_4.9.0-1+deb9u1_mipsel.deb",
+      "sha256": "c0b0886583db81db0a517e0945be52d23dcc3ee5fe8ea068bfdaa80cb639213d"
+    },
+    {
+      "name": "busybox-static",
+      "version": "1.22.0-19+b3",
+      "arch": "mipsel",
+      "filename": "busybox-static_1.22.0-19+b3_mipsel.deb",
+      "sha256": "0c7e287104914e654a2555e9900302180ff54d1ef17e9faf585529e6eadac8e0"
+    }
+  ],
+  "evidence_discovery_ci": 41230207625,
+  "discovery_status": "ARCHIVE_PACKAGE_BYTES_SHA256_OBSERVED_RERUN_REQUIRED",
+  "source_signatures_verified": false,
+  "dynamic_library_closure_verified": false,
+  "foreign_binaries_executed": false,
+  "xtables_guest_kernel_integration_tested": false,
+  "real_tcp_udp_mips_packet_path_verified": false,
+  "hardware_fencing_boot_rescue_verified": false,
+  "production_authorized": false,
+  "decision": "HARD_NO_GO_PRODUCTION",
+  "router_jobs": 0
+}
