@@ -38,3 +38,20 @@ jobs:
         run: |
           export XRAY_NATIVE_BINARY="$RUNNER_TEMP/xray-native/xray"
           bash xray/lab/xray_v30_kernel_tproxy_netns.sh --native-run
+
+      - name: Repeat real TCP UDP native kernel TPROXY fail-closed crash scenario twice
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          export XRAY_NATIVE_BINARY="$RUNNER_TEMP/xray-native/xray"
+          for n in 1 2; do
+            bash xray/lab/xray_v30_kernel_tproxy_netns.sh --native-run > "$RUNNER_TEMP/v30-native-tproxy-run-$n.log" 2>&1 || {
+              tail -n 100 "$RUNNER_TEMP/v30-native-tproxy-run-$n.log"
+              exit 1
+            }
+            grep -q 'KERNEL_TPROXY: PASS IPv4 TCP+UDP through netns mangle/fwmark/table100' "$RUNNER_TEMP/v30-native-tproxy-run-$n.log"
+            grep -q 'KERNEL_TPROXY: PASS isolated TCP+UDP blocked with dead Xray' "$RUNNER_TEMP/v30-native-tproxy-run-$n.log"
+            grep -q 'KERNEL_TPROXY: PASS disposable namespaces, no production kernel change' "$RUNNER_TEMP/v30-native-tproxy-run-$n.log"
+            echo "KERNEL_TPROXY_STRESS: PASS attempt $n positive TCP+UDP and negative fail-closed"
+          done
