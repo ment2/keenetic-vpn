@@ -7,6 +7,9 @@ on:
       - feature/xray-v30-stable-tcp-ingress-lab-20261031
     paths:
       - 'xray/production/opt/**'
+      - 'xray/staging/**'
+      - 'xray/lab/v30_first_migration_transaction.py'
+      - 'xray/lab/v30_autonomous_guard_rehearsal.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -35,6 +38,14 @@ jobs:
               ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
           print('PASS: parsed', len(files), 'Python source files')
           PY
+      - name: Compile proposed first-cutover canary without executing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile xray/staging/v30_first_cutover_canary.py
+          python xray/staging/v30_first_cutover_canary.py --help > /dev/null
+          echo "PASS: candidate CLI imports/compiles; production --trial and --rollback NOT executed"
+
       - name: Verify frozen production snapshot SHA256 and Git modes (offline only)
         shell: bash
         run: |
