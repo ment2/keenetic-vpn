@@ -18,6 +18,8 @@ on:
       - 'xray/lab/v30_parent_owned_mips_recovery.py'
       - 'xray/staging/v30_kernel49_cooperative_ledger.py'
       - 'xray/lab/v30_kernel49_cooperative_lab.py'
+      - 'xray/lab/v30_mips_guardian_cas_recovery.py'
+      - 'xray/lab/v30_kernel49_cgroup_v1_contract.py'
       - 'xray/staging/v30_supervisor_core.py'
   workflow_dispatch:
 
@@ -174,3 +176,17 @@ jobs:
           grep -q 'COOP49: PASS S98 no-rules-mutation, watchdog/cron/S99 shared-flock requests' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
           grep -q 'COOP49: PASS parent and guardian killed; independent owner restored real MIPS TCP/UDP' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
           grep -q 'COOP49: PASS crash mid-RESTART receipt remains UNCERTAIN, not replayed' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
+
+      - name: Real MIPSLE child with two competing cohorts of eight guardian CAS claims
+        shell: bash
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.v30_mips_guardian_cas_recovery \
+            --demo "$RUNNER_TEMP/v30-mips-guardian-cas-rc5" \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" |
+            tee "$RUNNER_TEMP/v30-mips-guardian-cas-rc5.log"
+          grep -q 'MIPS_CAS: PASS competing 8+8 guardians, one CAS claim per generation' "$RUNNER_TEMP/v30-mips-guardian-cas-rc5.log"
+          grep -q 'MIPS_CAS: PASS old RESTART UNCERTAIN exactly once' "$RUNNER_TEMP/v30-mips-guardian-cas-rc5.log"
+          grep -q 'MIPS_CAS: PASS new parent restored real MIPS32LE Xray SOCKS5 TCP+UDP' "$RUNNER_TEMP/v30-mips-guardian-cas-rc5.log"
