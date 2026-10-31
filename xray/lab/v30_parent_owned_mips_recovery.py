@@ -111,8 +111,9 @@ def wait_file(root,name,process,seconds):
         if (root/name).exists():
             return
         if process.poll() is not None:
-            raise FenceError("owned worker died early: "+name+
-                             " (see "+str(root/(process.args[-3] if False else "candidate.log"))+")")
+            logpath=root/("restored.log" if name.startswith("restored") else "candidate.log")
+            tail=logpath.read_text(errors="replace")[-2400:] if logpath.exists() else "(no log)"
+            raise FenceError("owned worker died early: "+name+"; logs="+tail)
         time.sleep(.04)
     raise FenceError("owned worker timeout: "+name)
 
