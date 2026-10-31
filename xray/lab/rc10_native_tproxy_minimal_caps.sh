@@ -103,7 +103,7 @@ JSON
 chmod 644 "$tmp/config.json" # verified unprivileged Xray must be able to read JSON
 sudo ip netns exec xv10g "${xray_cmd[@]}" run -test -config "$tmp/config.json"
 sudo ip netns exec xv10s bash -c 'echo "$$" > "$1"; exec python3 -u -m xray.lab.xray_v30_kernel_tproxy_echo server' _ "$tmp/server.pid" >"$tmp/server.log" 2>&1 &
-sudo ip netns exec xv10g bash -c 'echo "$" > "$1"; shift; exec "$@"' _ "$tmp/xray.pid" \
+sudo ip netns exec xv10g bash -c 'echo "$$" > "$1"; shift; exec "$@"' _ "$tmp/xray.pid" \
   setpriv --reuid=65534 --regid=65534 --clear-groups \
     --inh-caps +net_raw --ambient-caps +net_raw --bounding-set -all,+net_raw \
     --no-new-privs "${xray_cmd[@]}" run -config "$tmp/config.json" >"$tmp/xray.log" 2>&1 &
