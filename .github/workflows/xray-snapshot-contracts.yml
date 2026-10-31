@@ -50,6 +50,8 @@ jobs:
           assert report["full_router_recovery_verified"] is False
           print("PASS: 63 archived files exactly match manifest; NOT a live router comparison")
           PY
+      - name: High-confidence secret check of frozen source files (not history)
+        run: python tools/check_snapshot_secrets.py
       - name: Parse active production shell and init scripts without executing
         shell: bash
         run: |
