@@ -1,0 +1,39 @@
+name: Xray v30 RC21 real MIPS Linux4.9 Xray CAP_NET_RAW TCP UDP TPROXY backend only
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc21-mips49-xray-tproxy.yml'
+      - 'xray/lab/rc21_mips49_*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-mips-xray-tproxy-guest-ingress-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install disposable MIPS Linux4.9 full-system QEMU and cross-compiler
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod
+      - name: Verify real TCP/UDP packet payloads over QEMU loopback-only port-forward
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc21_mips49_tproxy_runner.sh | tee "$RUNNER_TEMP/rc21-result.log"
+          grep -Fq 'RC21: PASS_REAL_MIPS49_XRAY_TCP_UDP_TPROXY_INGRESS_BACKEND_ONLY' "$RUNNER_TEMP/rc21-result.log"
+      - name: Retain guest serial only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc21-mips-xray-udp-return-and-physical-no-go
+          path: |
+            ${{ runner.temp }}/rc21-mips49/serial.log
+            ${{ runner.temp }}/rc21-mips49/qemu-errors.log
+            ${{ runner.temp }}/rc21-result.log
+          if-no-files-found: warn
+          retention-days: 14
