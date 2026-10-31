@@ -1,0 +1,9 @@
+#!/bin/sh
+# LAB-ONLY S98: never apply kernel TPROXY/iptables here.
+set -eu
+: "${XRAY_V30_DISPOSABLE_ROOT:?No lab root; production invocation denied}"
+case "${1:-}" in
+  status|check) ;;
+  *) echo "S98 repair not authorized (LAB ONLY)" >&2; exit 2 ;;
+esac
+exec python3 -m xray.lab.v30_kernel49_cooperative_lab --client "$XRAY_V30_DISPOSABLE_ROOT" S98 CHECK_TPROXY
