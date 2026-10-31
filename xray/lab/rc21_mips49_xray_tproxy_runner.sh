@@ -115,6 +115,11 @@ status=$?
 set -e
 
 grep -E 'RC18_GUEST:|RC13_GUEST:|RC19_GUEST:|RC21_GUEST:|RC9_CAP:' "$W/serial.log" || true
+if grep -Fq 'RC21_GUEST: HARD_NO_GO_UDP_BACKEND_NOT_RECEIVED_WITHIN_DEADLINE' "$W/serial.log"; then
+ echo 'RC21: EXACT_GUEST_COUNTERS_AND_XRAY_LOGS_ON_UDP_BLOCKER_BEGIN'
+ awk '/RC21_GUEST: MANGLE_TCP_UDP_RULE_COUNTERS_BEGIN/{show=1} show{print}' "$W/serial.log" | tail -n 140 || true
+ echo 'RC21: EXACT_GUEST_COUNTERS_AND_XRAY_LOGS_ON_UDP_BLOCKER_END'
+fi
 test "$status" -eq 0
 for marker in 'RC18_GUEST: EXEC_SUCCESS MIPS_IPROUTE2_VERSION' 'RC18_GUEST: EXEC_SUCCESS MIPS_IPTABLES_VERSION'; do
  grep -Fq "$marker" "$W/serial.log" || { echo "RC18_HARD_NO_GO_MISSING_MARKER $marker"; exit 1; }
