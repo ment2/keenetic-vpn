@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "release": "v30-kernel49-rc8-privdrop-failclosed-guest-review",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "DISPOSABLE_FULLSYSTEM_LAB_PASS_PHYSICAL_HARD_NO_GO",
+  "prior_rc7": "xray/staging/v30-rc7-fullsystem-review.json",
+  "source_git_blobs": {
+    "xray/lab/rc8_guest_privdrop.c": "6f2ac2f423f69e39daf094ea60dbe5502ce041d3",
+    "xray/lab/rc8_fullvm_init": "8f7ff7f9a0458eb33232af760aab74c5cb6a4cd4",
+    "xray/lab/rc8_fullvm_runner.sh": "c7e082e16c7fe1481e8fa254e686a37707296f1f",
+    ".github/workflows/xray-v30-rc8-fullsystem.yml": "dc39b5850ffc916ff12cdac337fabfc4cebe8e01"
+  },
+  "verified_fullsystem": {
+    "ci_run": 41220515203,
+    "ci_conclusion": "success",
+    "guest_kernel": "Linux 6.8.0-147-generic",
+    "arch": "x86_64",
+    "vm": "QEMU TCG full-system, six boots across three scenarios",
+    "scenarios": [
+      "baseline",
+      "journal-corrupt",
+      "rescue-corrupt"
+    ],
+    "unprivileged_uid": 65534,
+    "unprivileged_gid": 65534,
+    "no_new_privs_before_exec": true,
+    "unprivileged_fork_setsid_exec_count_per_boot": 8,
+    "unprivileged_cgroup_v1_escape_denied": true,
+    "orphaned_renamed_descendant_retains_no_restart": true,
+    "orphan_drained_before_reconcile": true,
+    "privileged_cgroup_v1_escape_still_possible": true,
+    "scope_is_sealed_against_all_legacy_privileged_processes": false,
+    "root_guest_cgroup_v1_mount": true,
+    "real_socks_xray_process_in_vm": false,
+    "guardian_production_cas_in_vm": false,
+    "separate_ext4_virtual_disks": true,
+    "virtual_usb_not_attached_second_boot": true,
+    "guest_fdatasync_and_directory_fsync": true,
+    "host_qemu_sigkill_after_two_files": true,
+    "fsck_replayed_virtual_ext4_journal_before_damage_injection": true,
+    "corrupted_bytes_read_back_and_confirmed": true,
+    "journal_corruption_blocks_any_active_file_write": true,
+    "rescue_corruption_blocks_any_active_file_write": true,
+    "baseline_originals_restored": 5,
+    "independent_physical_storage_proven": false,
+    "physical_powerloss_verified": false,
+    "keenetic_linux_4_9_tested": false
+  },
+  "github_artifact": {
+    "id": 13050036244,
+    "name": "v30-rc8-fullsystem-privdrop-journal-rescue-NO-DEPLOY",
+    "expires": "2026-11-14T16:37:53Z"
+  },
+  "hard_blockers": [
+    "Physical Keenetic 4.9-ndm-5 kernel cgroup controller and namespace rights unknown",
+    "Privileged legacy S97/S98/S99/watchdog/cron/wifi writers can escape cgroup and are not all fenced",
+    "Potential Xray need for transparent sockets TPROXY privileges not matched to unprivileged test executable",
+    "No verified production owner/guardian full lifecycle integration on physical router",
+    "No independent off-USB physical persistent guardian or cold-boot loss experiment",
+    "Physical DNS IPv6 TPROXY TCP UDP fail-closed routing not independently checked",
+    "Owner has not approved exact production files/modes/checksums/cutover"
+  ],
+  "restrictions": {
+    "router_jobs": 0,
+    "main_write": false,
+    "snapshot_write": false,
+    "cloudflare_write": false,
+    "production_write": false,
+    "cron_write": false,
+    "routes_write": false,
+    "firewall_write": false,
+    "merge": false,
+    "deploy": false,
+    "trial": false,
+    "automatic_restore": false
+  },
+  "release_decision": "HARD_NO_GO_PRODUCTION"
+}
