@@ -11,6 +11,9 @@ on:
       - 'tests/test_xray_v30_rc10_linux49_release.py'
       - 'tests/test_xray_v30_rc14_source_provenance.py'
       - 'tests/test_xray_v30_rc11_pidfd.py'
+      - 'xray/staging/v30-rc15-mipsel-userland-package-pins.json'
+      - '.github/workflows/xray-v30-rc15-mips-userland-discovery.yml'
+      - 'tests/test_xray_v30_rc15_package_pins.py'
   workflow_dispatch:
 
 permissions:

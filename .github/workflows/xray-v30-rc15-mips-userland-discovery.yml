@@ -38,6 +38,12 @@ jobs:
             sort > "$D/candidate-files.txt"
           : > "$D/elf-dependencies.txt"
           while IFS= read -r file; do
+            # Absolute links inside a foreign Debian root must never resolve to
+            # a host x86_64 executable during readelf analysis.
+            if [ -L "$file" ]; then
+              echo "SYMLINK_NOT_EXECUTED: ${file#"$D/root/"} -> $(readlink "$file")" >> "$D/elf-dependencies.txt"
+              continue
+            fi
             if readelf -h "$file" >/dev/null 2>&1; then
               echo "=== ${file#"$D/root/"} ===" >> "$D/elf-dependencies.txt"
               readelf -h "$file" | grep -E 'Class:|Data:|Machine:' >> "$D/elf-dependencies.txt"
@@ -49,6 +55,14 @@ jobs:
           grep -q '/ip$' "$D/candidate-files.txt" || { echo 'RC15: NO_IP_BINARY_HARD_NO_GO'; exit 1; }
           grep -Eq '/(iptables|xtables-multi)$' "$D/candidate-files.txt" || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
           grep -q '/busybox$' "$D/candidate-files.txt" || { echo 'RC15: NO_BUSYBOX_BINARY_HARD_NO_GO'; exit 1; }
+          # These must be MIPS32LE files in the extracted root, never host symlinks.
+          for guest_path in bin/ip sbin/iptables bin/busybox; do
+            test -f "$D/root/$guest_path"
+            test ! -L "$D/root/$guest_path"
+            readelf -h "$D/root/$guest_path" | grep -q 'Class:.*ELF32'
+            readelf -h "$D/root/$guest_path" | grep -q 'Data:.*little endian'
+            readelf -h "$D/root/$guest_path" | grep -q 'Machine:.*MIPS'
+          done
           grep -q 'Machine:.*MIPS' "$D/elf-dependencies.txt"
           grep -q 'Data:.*little endian' "$D/elf-dependencies.txt"
           echo 'RC15: MIPS32LE_ARCHIVE_BYTES_FOUND_HASHES_DISCOVERED_NO_EXECUTION'
