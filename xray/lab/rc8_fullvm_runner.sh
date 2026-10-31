@@ -40,7 +40,8 @@ gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_fullvm_cgroup_probe.c" -o "$WO
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_guest_fdatasync.c" -o "$WORK/initramfs/bin/rc7fsync"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc8_guest_privdrop.c" -o "$WORK/initramfs/bin/rc8privdrop"
 cp "$ROOT/xray/lab/rc8_fullvm_init" "$WORK/initramfs/init"
-chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/rc7fsync" "$WORK/initramfs/bin/rc8privdrop" "$WORK/initramfs/bin/busybox"
+chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/rc7fsync" "$WORK/initramfs/bin/busybox"
+chmod 755 "$WORK/initramfs/bin/rc8privdrop"  # must be executable AFTER dropping UID before exec
 (
   cd "$WORK/initramfs"
   find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$WORK/initramfs.img.gz"
@@ -178,10 +179,12 @@ if [ "$SCENARIO" != baseline ]; then
   done
   echo "RC8: PASS_FAIL_CLOSED_CORRUPT_IMAGE_ZERO_ACTIVE_WRITES $SCENARIO"
 fi
+grep -q 'RC8_GUEST: PRIVILEGES_DROPPED_BEFORE_EXEC_IN_ALL_WORKERS' "$FIRST_LOG"
 grep -q 'RC8_GUEST: EIGHT_REAL_UNPRIV_FORK_SETSID_EXEC_ESCAPE_DENIALS_PASS' "$FIRST_LOG"
 grep -q 'RC8_GUEST: GUARDIAN_DENIES_RESTART_UNKNOWN_REPARENTED_DESCENDANT' "$FIRST_LOG"
 grep -q 'RC8_GUEST: UNPRIVILEGED_ORPHAN_DRAINED_NO_RESTART_BEFORE_ABSENCE' "$FIRST_LOG"
 grep -q 'RC8_GUEST: UNPRIVILEGED_CGROUP_ESCAPE_DENIED' "$FIRST_LOG"
+grep -q 'RC8_GUEST: PRIVILEGES_DROPPED_BEFORE_EXEC_IN_ALL_WORKERS' "$SECOND_LOG"
 grep -q 'RC8_GUEST: EIGHT_REAL_UNPRIV_FORK_SETSID_EXEC_ESCAPE_DENIALS_PASS' "$SECOND_LOG"
 grep -q 'RC8_GUEST: GUARDIAN_DENIES_RESTART_UNKNOWN_REPARENTED_DESCENDANT' "$SECOND_LOG"
 grep -q 'RC8_GUEST: UNPRIVILEGED_CGROUP_ESCAPE_DENIED' "$SECOND_LOG"
