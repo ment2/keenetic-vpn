@@ -32,7 +32,7 @@ for name in S97 S98 S99 watchdog wifi_rules; do
   fi
 done
 # Refuse corrupt/missing *any* source BEFORE writing *any* target.
-(cd "$SRC" && sha256sum -c -s SHA256SUMS) || {
+(cd "$SRC" && sha256sum -c SHA256SUMS >/dev/null 2>&1) || {
   echo "RC6: source SHA mismatch; ZERO recovery writes" >&2
   exit 70
 }
