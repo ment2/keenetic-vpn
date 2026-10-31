@@ -10,6 +10,7 @@ on:
       - 'xray/staging/**'
       - 'xray/lab/v30_first_migration_transaction.py'
       - 'xray/lab/v30_autonomous_guard_rehearsal.py'
+      - 'xray/lab/v30_partial_upgrade_recovery.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -120,6 +121,16 @@ jobs:
             tee "$RUNNER_TEMP/v30-prepared-journal-crash.log"
           grep -q 'PASS: guarded recovery from candidate_prepared journal boundary' "$RUNNER_TEMP/v30-prepared-journal-crash.log"
           grep -q 'PASS: independent detached guardian acquired lock and restored old TCP+UDP' "$RUNNER_TEMP/v30-prepared-journal-crash.log"
+
+      - name: Restore partial five-file supervisor upgrade after killed installer (disposable only)
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_partial_upgrade_recovery --demo "$RUNNER_TEMP/v30-upgrade-crash" |
+            tee "$RUNNER_TEMP/v30-upgrade-crash.log"
+          grep -q 'PARTIAL_UPGRADE: PASS killed updater after 2/5 staged files replaced' "$RUNNER_TEMP/v30-upgrade-crash.log"
+          grep -q 'PARTIAL_UPGRADE: PASS independent interpreter recovered 5/5 original SHA256/modes' "$RUNNER_TEMP/v30-upgrade-crash.log"
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
