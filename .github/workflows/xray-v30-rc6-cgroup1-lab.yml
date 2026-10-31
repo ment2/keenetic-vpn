@@ -1,0 +1,64 @@
+name: Xray v30 RC6 disposable real cgroup v1 capability and fork-escape lab
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc6-cgroup1-lab.yml'
+      - 'xray/lab/v30_rc6_cgroup_v1_lab.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-cgroup1-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Try real cgroup v1 pids inheritance, detached exec and privileged escape only in new mount namespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Probing disposable runner kernel cgroup v1. Cannot imply Keenetic Linux 4.9 support."
+          STATUS="UNSET"
+          for attempt in 1 2 3; do
+            TESTDIR="$RUNNER_TEMP/v30-rc6-cgroup1-$attempt"
+            mkdir -p "$TESTDIR"
+            set +e
+            sudo -E unshare --mount --propagation private python3 -m xray.lab.v30_rc6_cgroup_v1_lab \
+              --run "$TESTDIR" > "$TESTDIR/probe.log" 2>&1
+            result=$?
+            set -e
+            cat "$TESTDIR/probe.log"
+            if [ "$result" -eq 0 ]; then
+              grep -q 'CGROUP1: REAL_FORK_EXEC_INHERITANCE_PASS' "$TESTDIR/probe.log"
+              grep -q 'CGROUP1: REAL_PRIVILEGED_DESCENDANT_' "$TESTDIR/probe.log"
+              grep -q 'CGROUP1: REAL_SCOPE_DRAIN_PASS' "$TESTDIR/probe.log"
+              grep -q 'CGROUP1: HARD_NO_GO' "$TESTDIR/probe.log"
+              STATUS="REAL_CGROUP_V1_LAB_ONLY_NOT_SEALED"
+              continue
+            elif [ "$result" -eq 77 ] || grep -q 'unshare failed' "$TESTDIR/probe.log"; then
+              STATUS="CGROUP_V1_RUNNER_UNAVAILABLE_HARD_NO_GO"
+              echo "CGROUP1: UNAVAILABLE on hosted disposable runner. Real cgroup-v1 proof BLOCKED, NOT PASSED."
+              break
+            else
+              echo "Unexpected real cgroup v1 lab failure: exit=$result" >&2
+              exit "$result"
+            fi
+          done
+          printf '%s\n' "$STATUS" > "$RUNNER_TEMP/v30-cgroup1-disposition.txt"
+          test "$STATUS" = "REAL_CGROUP_V1_LAB_ONLY_NOT_SEALED" ||
+            test "$STATUS" = "CGROUP_V1_RUNNER_UNAVAILABLE_HARD_NO_GO"
+          echo "STATUS=$STATUS; PHYSICAL_KEENETIC_PROVEN=false; PROD_ALLOWED=false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc6-cgroup1-real-capability-evidence-NO-GO
+          path: |
+            ${{ runner.temp }}/v30-rc6-cgroup1-*/probe.log
+            ${{ runner.temp }}/v30-rc6-cgroup1-*/result.json
+            ${{ runner.temp }}/v30-cgroup1-disposition.txt
+          if-no-files-found: error
+          retention-days: 14
