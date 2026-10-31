@@ -22,12 +22,18 @@ SOURCE_PINS = {
     "WIFI_RULES_SHA": "opt/bin/xray-wifi-rules.sh",
 }
 ALL_PINS = (
-    "BACKUP_MANIFEST_SHA", "BIN_SHA", "BASE_SHA", "S97_SHA", "WIFI_SHA",
+    "BACKUP_MANIFEST_SHA", "BIN_SHA", "BASE_SHA", "S97_SHA", "S98_SHA",
     "S99_SHA", "WD_SHA", "WIFI_RULES_SHA",
 )
 LIVE_WD_BACKUP_SHA_20261031 = (
     "dddfcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08"
 )
+
+
+def attr_for_pin(label):
+    # The runtime diagnostic calls the S98 source pin "S98_SHA" even though
+    # the existing module-level variable is named WIFI_SHA.
+    return "WIFI_SHA" if label == "S98_SHA" else label
 
 
 def parse_frozen_manifest():
@@ -72,36 +78,36 @@ class XrayV30PinnedHashSafetyTests(unittest.TestCase):
     def test_reject_missing_character_for_all_pins(self):
         for name in ALL_PINS:
             with self.subTest(name=name):
-                value = getattr(canary, name)
-                with patch.object(canary, name, value[1:]):
+                value = getattr(canary, attr_for_pin(name))
+                with patch.object(canary, attr_for_pin(name), value[1:]):
                     with self.assertRaisesRegex(canary.GateError, name):
                         canary.validate_pinned_hashes()
 
     def test_reject_extra_character_for_all_pins(self):
         for name in ALL_PINS:
             with self.subTest(name=name):
-                with patch.object(canary, name, getattr(canary, name) + "f"):
+                with patch.object(canary, attr_for_pin(name), getattr(canary, attr_for_pin(name)) + "f"):
                     with self.assertRaisesRegex(canary.GateError, name):
                         canary.validate_pinned_hashes()
 
     def test_reject_uppercase_for_all_pins(self):
         for name in ALL_PINS:
             with self.subTest(name=name):
-                with patch.object(canary, name, "A" * 64):
+                with patch.object(canary, attr_for_pin(name), "A" * 64):
                     with self.assertRaisesRegex(canary.GateError, name):
                         canary.validate_pinned_hashes()
 
     def test_reject_nonhex_for_all_pins(self):
         for name in ALL_PINS:
             with self.subTest(name=name):
-                with patch.object(canary, name, "g" * 64):
+                with patch.object(canary, attr_for_pin(name), "g" * 64):
                     with self.assertRaisesRegex(canary.GateError, name):
                         canary.validate_pinned_hashes()
 
     def test_reject_nonstring_for_all_pins(self):
         for name in ALL_PINS:
             with self.subTest(name=name):
-                with patch.object(canary, name, None):
+                with patch.object(canary, attr_for_pin(name), None):
                     with self.assertRaisesRegex(canary.GateError, name):
                         canary.validate_pinned_hashes()
 
