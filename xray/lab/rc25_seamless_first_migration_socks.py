@@ -61,13 +61,22 @@ def first_migration(xray):
     orig_port = 10808
     new_port = 20808
     api_port = 21808
-    nat_rule = [
-        "iptables", "-t", "nat", "-A", "OUTPUT",
-        "-p", "tcp", "-d", "127.0.0.1", "--dport", str(orig_port),
-        "-j", "REDIRECT", "--to-ports", str(new_port)
-    ]
+    # Conntrack must be loaded BEFORE the old socket is established.
+    # Otherwise local loopback connections may be untracked and adding the
+    # first nat OUTPUT rule may reinterpret an EXISTING TCP packet as NEW.
+    # A RETURN baseline forces nf_conntrack creation without redirect.
+    base_rule = ["iptables", "-t", "nat", "-A", "OUTPUT",
+                 "-p", "tcp", "-d", "127.0.0.1",
+                 "--dport", str(orig_port), "-j", "RETURN"]
+    redirect_match = ["-p", "tcp", "-d", "127.0.0.1",
+                      "--dport", str(orig_port), "-m", "conntrack",
+                      "--ctstate", "NEW", "-j", "REDIRECT",
+                      "--to-ports", str(new_port)]
+    nat_rule = ["iptables", "-t", "nat", "-I", "OUTPUT", "1", *redirect_match]
+    rollback_rule = ["iptables", "-t", "nat", "-D", "OUTPUT", *redirect_match]
     with tempfile.TemporaryDirectory(prefix="rc25-first-migration-") as td:
         try:
+            exec_(*base_rule)
             old_config = Path(td)/"legacy.json"
             new_config = Path(td)/"candidate.json"
             # No API in legacy configuration, exactly like current first migration.
@@ -82,6 +91,13 @@ def first_migration(xray):
             old_id=identity(old)
             with socks_connect(orig_port) as old_flow:
                 assert echo(old_flow,b"legacy-before")=="A"
+                ct = exec_("conntrack", "-L", "-p", "tcp", check=False)
+                if ct.returncode != 0 or not any(
+                    "dport=10808" in line and "ESTABLISHED" in line
+                    for line in ct.stdout.splitlines()
+                ):
+                    raise Reject("HARD_NO_GO_OLD_TCP_CONNTRACK_NOT_ESTABLISHED_BEFORE_SWITCH")
+                print("RC25: OLD_10808_TCP_CONNTRACK_ESTABLISHED_BEFORE_REDIRECT",flush=True)
                 print("RC25: LEGACY_SOCKS_10808_TCP_ESTABLISHED_NO_API",flush=True)
                 candidate = subprocess.Popen([xray,"run","-config",str(new_config)],
                                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -139,7 +155,7 @@ def first_migration(xray):
                         # Established candidate TCP remains bound to candidate.
                         if generation!=2 or identity(old)!=old_id or identity(candidate)!=candidate_id:
                             raise Reject("rollback PID/startticks/generation CAS failed")
-                        exec_(*(nat_rule[:3]+["-D"]+nat_rule[4:]))
+                        exec_(*rollback_rule)
                         generation=3
                         with socks_connect(orig_port) as restored:
                             assert echo(restored,b"rollback")=="A"
@@ -148,7 +164,7 @@ def first_migration(xray):
                         print("RC25: PASS_ROLLBACK_SAME_10808_OLD_PROCESS_PID_STARTTICKS_AND_CAS",flush=True)
                 except BaseException:
                     # Remove only exact disposable NAT rule, never host/production.
-                    exec_(*(nat_rule[:3]+["-D"]+nat_rule[4:]),check=False)
+                    exec_(*rollback_rule,check=False)
                     raise
                 assert generation==3
                 print("RC25: HARD_NO_GO_TPROXY_UDP_UNCOOPERATIVE_WATCHDOG_VENDOR_HARDWARE",flush=True)
