@@ -38,13 +38,36 @@ BIN_SHA = "680db07db2b5d53080bfecb8752bc830c6a890367aa3bc57d42d4660506591f2"
 BASE_SHA = "66d074f32fffbf4a251576c8297714e9647174546e9e73e5bf27cf2768efe6d7"
 S97_SHA = "87ea1dc13a9be95d57c0595d7a7f13b03fe97bd56ab1f144a3c94d57cc588d5d"
 S99_SHA = "e8423e15ed2cf4d3662e5725d27d6e58bd08bbdd807b47fcabe30391ac4c738b"
-WD_SHA = "dddcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08"
+WD_SHA = "dddfcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08"
 WIFI_RULES_SHA = "ead5de5555aaab1170a140ca3d41ea546330a99ba873b1961bee536bc12780ef"
 WIFI_SHA = "6742e5e7f2a2bd41b85e9975371e7c46e66f0cfc6f5f843bf2c5dc1434c53601"
 
 
 class GateError(RuntimeError):
     pass
+
+
+def validate_pinned_hashes():
+    """Reject malformed static checksums BEFORE reading any live router files.
+
+    Static correctness does not prove backup freshness. That is separately
+    checked by verify_backup against the root-only manifest and source files.
+    """
+    pins = {
+        "BACKUP_MANIFEST_SHA": BACKUP_MANIFEST_SHA,
+        "BIN_SHA": BIN_SHA,
+        "BASE_SHA": BASE_SHA,
+        "S97_SHA": S97_SHA,
+        "S98_SHA": WIFI_SHA,
+        "S99_SHA": S99_SHA,
+        "WD_SHA": WD_SHA,
+        "WIFI_RULES_SHA": WIFI_RULES_SHA,
+    }
+    alphabet = frozenset("0123456789abcdef")
+    for name, value in pins.items():
+        if not isinstance(value, str) or len(value) != 64 or any(c not in alphabet for c in value):
+            raise GateError("invalid pinned SHA256: " + name)
+    return pins
 
 
 def checksum(path):
@@ -152,6 +175,7 @@ def listeners_owned(pid):
 
 
 def verify_backup():
+    validate_pinned_hashes()
     if checksum(BACKUP / "manifest.json") != BACKUP_MANIFEST_SHA:
         raise GateError("private backup manifest changed")
     entries = json.loads((BACKUP / "manifest.json").read_text())["entries"]
