@@ -121,7 +121,7 @@ def cleanup_lab_pid(pid, expected_ticks):
         pass
 
 
-def controller(root, ports):
+def controller(root, ports, *, kill_at="running"):
     root = require_disposable(root)
     lock = root / "supervisor.lock"
     journal = root / "transaction.json"
@@ -155,6 +155,12 @@ def controller(root, ports):
         atomic_journal(journal, {**state, "phase": "legacy_stopped"})
         cmd = server_cmd("candidate", ports)
         pid, start_ticks = gated_spawn(cmd[0], cmd, root / "candidate-prepared.json")
+        if kill_at == "prepared":
+            # Gated spawn already fsynced the PID/start-ticks journal, but
+            # the transaction has NOT yet reached candidate_running.
+            (root / "prepared-ready").write_text("PID_DURABLE_BEFORE_FULL_TXN\\n")
+            while True:
+                time.sleep(0.2)
         if not await_probe(*ports, "candidate", 3):
             raise FenceError("candidate failed to own both TCP and UDP")
         candidate = proc_identity(pid)
@@ -229,7 +235,7 @@ def guardian(root, ports):
     raise FenceError("guardian timeout: lock never released")
 
 
-def demo(root):
+def demo(root, *, kill_at="running"):
     root = require_disposable(root)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     tcp, udp = allocate_port(), allocate_port()
@@ -250,22 +256,23 @@ def demo(root):
                        {"phase": "legacy", "old": asdict(oldid), "schema": 1})
         ctrl = subprocess.Popen([sys.executable, "-m",
                "xray.lab.v30_fenced_process_recovery_lab", "--controller",
-               str(root), "--tcp", str(tcp), "--udp", str(udp)],
+               str(root), "--tcp", str(tcp), "--udp", str(udp), "--kill-at", kill_at],
                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                start_new_session=True)
         ctrlticks = proc_stat(ctrl.pid)[2]
         tracked.append((ctrl.pid, ctrlticks))
         deadline = time.monotonic() + 6
-        while not (root / "cutover-ready").exists():
+        trigger = "prepared-ready" if kill_at == "prepared" else "cutover-ready"
+        while not (root / trigger).exists():
             if ctrl.poll() is not None:
                 raise FenceError("controller unexpectedly exited")
             if time.monotonic() > deadline:
                 raise FenceError("controller never cut over test TCP/UDP")
             time.sleep(0.03)
-        assert probe(*ports, "candidate")
-        before = read_json(root / "transaction.json")
-        tracked.append((before["candidate"]["pid"],
-                        before["candidate"]["start_ticks"]))
+        if kill_at == "running":
+            assert probe(*ports, "candidate")
+        record = read_json(root / "candidate-prepared.json")
+        tracked.append((record["pid"], record["start_ticks"]))
         guard = read_json(root / "guardian.json")
         tracked.append((guard["pid"], guard["ticks"]))
         ctrl.kill()  # deliberate controlled failure of OWN disposable child
@@ -282,7 +289,7 @@ def demo(root):
             raise FenceError("restoration not proven on TCP and UDP")
         tracked.append((after["restored"]["pid"],
                         after["restored"]["start_ticks"]))
-        print("PASS: old real TCP and UDP -> candidate real TCP and UDP")
+        print("PASS: old real TCP and UDP -> candidate real TCP and UDP" if kill_at == "running" else "PASS: guarded recovery from candidate_prepared journal boundary")
         print("PASS: killed ONLY disposable controller while mutex held")
         print("PASS: independent detached guardian acquired lock and restored old TCP+UDP")
         print("PASS: durable candidate PID/start_ticks journal and bounded recovery")
@@ -315,6 +322,7 @@ def main():
     mode.add_argument("--demo", type=Path)
     p.add_argument("--tcp", type=int)
     p.add_argument("--udp", type=int)
+    p.add_argument("--kill-at", choices=("running", "prepared"), default="running")
     a = p.parse_args()
     if a.server:
         # The server is inert without loopback-only ports and can never be
@@ -325,9 +333,9 @@ def main():
             raise FenceError("no server mode on router")
         server(a.server, a.tcp, a.udp)
     elif a.demo:
-        demo(a.demo)
+        demo(a.demo, kill_at=a.kill_at)
     elif a.controller:
-        controller(a.controller, (a.tcp, a.udp))
+        controller(a.controller, (a.tcp, a.udp), kill_at=a.kill_at)
     else:
         guardian(a.guardian, (a.tcp, a.udp))
 
