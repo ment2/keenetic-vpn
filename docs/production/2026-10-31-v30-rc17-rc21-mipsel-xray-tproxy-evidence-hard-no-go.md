@@ -33,3 +33,14 @@ Guest Debian Linux `4.9.0-13-4kc-malta`: .deb SHA256 `9a5dff9c498bf5736ca9f97cbb
 - **USB-independent boot/rescue:** no physical separate power domain, USB-detached true cold-boot guardian, atomic original-five exact SHA restoration, interrupted fsync/journal recovery and vendor `4.9-ndm-5` hardware. Disposable QEMU proof is not physical certification.
 
 **Disposition: RC17/18/20 SUCCESS in their bounded lab scopes; RC19 and RC21 remain FAIL and must not be presented as full acceptance. Production = HARD_NO_GO_PRODUCTION.** Absolutely no Keenetic jobs, production/main/snapshot/Cloudflare/real firewall/routes/cron/merge/deploy/live trial.
+## RC21 final pinned UDP bind-conflict evidence (CI 41233279539)
+
+The final disposable [RC21 run 41233279539](https://github.com/ment2/keenetic-vpn/actions/runs/41233279539) at source commit `6ab7d13fa86ff9d8c192b43b8552d62b87525358` completed **FAILURE**, correctly preserving HARD NO-GO. This version prints real in-guest `iptables -t mangle -xvnL PREROUTING` counters and actual Xray debug lines:
+
+- TCP TPROXY: **6 packets / 269 bytes**. Host received exact **25-byte TCP echo** through real official Xray MIPS32LE and backend.
+- UDP TPROXY: **3 packets / 159 bytes**. Xray reports original UDP destination `udp:10.0.2.15:19191`, so Linux Netfilter *did* redirect UDP and Xray *did* observe it.
+- Xray: `app/proxyman/inbound: connection ends > fake: socket bind: address already in use` **on each of three UDP attempts**. Guest backend did not receive UDP; host did not receive UDP reply.
+- This lab places the backend UDP listener on the **same guest IP and original destination port**. Binding collision is the strong topology hypothesis, but independent network-namespace/backend-IP evidence is not yet available. Do not attribute this to an intrinsic MIPS Linux4.9 or Xray UDP incompatibility.
+- **Precise isolated prerequisite for a future lab:** move the backend to a separate disposable L3 namespace/IP (never to router/production); preserve SHA-pinned MIPS Xray+kernel, TPROXY counter/byte evidence, exact source PID/start-ticks, fail-closed no-direct-route after crash, and IPv6/DNS no-leak. Do not remove `restrict=on` to make the test green.
+
+**RC21 full TCP+UDP Xray acceptance FAIL; RC20 kernel-level TCP/UDP TPROXY guest PASS; physical production remains HARD_NO_GO_PRODUCTION** due additional independently observed cgroup-v1 privileged root escape and untested USB-free power-independent boot/rescue.
