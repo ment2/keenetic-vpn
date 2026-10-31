@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <grp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,11 +80,13 @@ int main(int argc,char **argv){
    if(setsid()<0)die("orphan setsid");
    drop();
    char id[40];snprintf(id,sizeof(id),"%d\n",getpid());
-   store("/run/rc8-orphan-pid",id);
-   waitfile("/run/rc8-orphan-release");
+   store("/run/rc8-lab/orphan-pid",id);
+   waitfile("/run/rc8-lab/orphan-release");
    return 0;
  }
  if(geteuid()!=0)die("root-only parent test");
+ mkdir("/run/rc8-lab",0777);
+ if(chmod("/run/rc8-lab",0777)!=0)die("private test rendezvous");
  int fd=open(CGROUP,O_WRONLY);
  if(fd<0)die("existing cgroup1 scope not mounted");
  char own[40];snprintf(own,sizeof(own),"%d\n",getpid());
@@ -104,13 +107,13 @@ int main(int argc,char **argv){
    _exit(0);
  }
  waitpid(intermediary,NULL,0);
- waitfile("/run/rc8-orphan-pid");
+ waitfile("/run/rc8-lab/orphan-pid");
  int orphan=atoi("0");
- FILE *f=fopen("/run/rc8-orphan-pid","r");if(!f)die("orphan identity");
+ FILE *f=fopen("/run/rc8-lab/orphan-pid","r");if(!f)die("orphan identity");
  if(fscanf(f,"%d",&orphan)!=1||orphan<=1)die("bad orphan pid");fclose(f);
  if(!member(orphan) || !alive_scope_member(getpid()))die("unknown descendant absent");
  dprintf(1,"RC8_GUEST: GUARDIAN_DENIES_RESTART_UNKNOWN_REPARENTED_DESCENDANT\n");
- store("/run/rc8-orphan-release","OK\n");
+ store("/run/rc8-lab/orphan-release","OK\n");
  for(int i=0;i<150;i++){
     if(!member(orphan))break;
     usleep(20000);
