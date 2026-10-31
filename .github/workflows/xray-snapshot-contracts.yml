@@ -131,6 +131,20 @@ jobs:
             tee "$RUNNER_TEMP/v30-upgrade-crash.log"
           grep -q 'PARTIAL_UPGRADE: PASS killed updater after 2/5 staged files replaced' "$RUNNER_TEMP/v30-upgrade-crash.log"
           grep -q 'PARTIAL_UPGRADE: PASS independent interpreter recovered 5/5 original SHA256/modes' "$RUNNER_TEMP/v30-upgrade-crash.log"
+          python -m xray.lab.v30_partial_upgrade_recovery --demo "$RUNNER_TEMP/v30-frozen-real-upgrade-crash" --frozen-staging |
+            tee "$RUNNER_TEMP/v30-frozen-real-upgrade-crash.log"
+          grep -q 'PARTIAL_UPGRADE: PASS real frozen legacy and staged replacement bytes 5/5' "$RUNNER_TEMP/v30-frozen-real-upgrade-crash.log"
+          python -m xray.staging.v30_cooperative_canary --offline-plan > "$RUNNER_TEMP/v30-cooperative-canary.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.loads((Path(os.environ["RUNNER_TEMP"]) / "v30-cooperative-canary.json").read_text())
+          assert data["common_lock"] == "/opt/var/run/xray-v30-supervisor.lock"
+          assert data["production_trial_allowed"] is False
+          assert data["legacy_supervisors_replaced"] is False
+          assert len(data["template_sha256"]) == 5
+          print("PASS: cooperative canary and S97/S98/S99 staging share lock; live trial remains forbidden")
+          PY
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
