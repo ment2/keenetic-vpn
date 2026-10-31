@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 
-ROW = re.compile(r"^([0-9a-f]{64})  (opt/(?:bin|etc/init\\.d)/[^\\r\\n]+)  (100644|100755)$")
+ROW = re.compile(r"^([0-9a-f]{64})  (opt/(?:bin|etc/init\.d)/[^\r\n]+)  (100644|100755)$")
 FORBIDDEN_NAMES = {
     "subscription.url", "config.json", "config.pending.json",
     "config.lastgood.json", "credentials.json", "secrets.json",
@@ -66,7 +66,7 @@ def verify(root, *, check_modes=True):
                             text=True, capture_output=True, check=True)
         git_modes = {}
         for line in cp.stdout.splitlines():
-            match = re.match(r"^(100644|100755) [0-9a-f]{40,64} \\d+\\t(.+)$", line)
+            match = re.match(r"^(100644|100755) [0-9a-f]{40,64} \d+\t(.+)$", line)
             if not match:
                 raise ValueError("unexpected git ls-files --stage output")
             mode, repo_rel = match.groups()
