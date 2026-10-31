@@ -8,7 +8,8 @@ import sys
 
 def start_ticks(pid: int) -> int:
     # /proc/PID/stat comm may include spaces and parentheses.
-    raw = open(f"/proc/{pid}/stat", "rb").read()
+    with open(f"/proc/{pid}/stat", "rb") as stat_file:
+        raw = stat_file.read()
     end = raw.rfind(b") ")
     if end < 0:
         raise ValueError("invalid /proc stat")
@@ -28,7 +29,8 @@ def guarded_signal(pid: int, expected_ticks: int, sig: int, marker: str) -> bool
         fd = os.pidfd_open(pid, 0)
         if start_ticks(pid) != expected_ticks:
             return False
-        cmdline = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ")
+        with open(f"/proc/{pid}/cmdline", "rb") as cmdline_file:
+            cmdline = cmdline_file.read().replace(b"\0", b" ")
         if marker.encode() not in cmdline:
             return False
         if start_ticks(pid) != expected_ticks:
