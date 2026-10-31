@@ -132,6 +132,19 @@ def guardian(root, role):
                 if s["phase"] == "restored":
                     return
                 if role == "primary":
+                    if meta.get("guardian_crash_at") == "after_candidate_stop":
+                        rec = load(root / "candidate-prepared.json")
+                        if alive(rec["pid"], rec["start_ticks"]):
+                            ident = proc_identity(rec["pid"])
+                            if ident.start_ticks != rec["start_ticks"] or ident.argv != tuple(rec["argv"]):
+                                raise FenceError("primary refuses changed candidate identity")
+                            scoped_signal(ident, signal.SIGTERM)
+                            end = time.monotonic() + 8
+                            while alive(rec["pid"], rec["start_ticks"]) and time.monotonic() < end:
+                                time.sleep(0.04)
+                            if alive(rec["pid"], rec["start_ticks"]):
+                                raise FenceError("candidate stop incomplete before primary crash")
+                        (root / "primary-candidate-stopped").write_text("PID_SCOPED_STOP_DONE\n")
                     (root / "primary-held-lock").write_text("HELD\n")
                     while True:
                         time.sleep(0.4)
@@ -184,7 +197,7 @@ def stop_known(pid, ticks):
         scoped_signal(ident, signal.SIGTERM)
 
 
-def demo(xray, root, at):
+def demo(xray, root, at, guardian_crash_at):
     root = strict_lab(root)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     qemu = str(Path(xray).resolve())
@@ -216,7 +229,8 @@ def demo(xray, root, at):
             (root / filename).write_text(json.dumps(
                 config(port, echo_server.port, udp_port=udp_server.port, enable_udp=True)))
         atomic_journal(root / "runtime.json", {"qemu": qemubin,
-               "mips_binary": str(Path(binary).resolve()), "port": port})
+               "mips_binary": str(Path(binary).resolve()), "port": port,
+               "guardian_crash_at": guardian_crash_at})
         argv = cmd(root, "old.json")
         old = subprocess.Popen(argv, stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -265,6 +279,9 @@ def demo(xray, root, at):
             if time.monotonic() > end:
                 raise FenceError("primary guardian never acquired same mutex")
             time.sleep(0.02)
+        if guardian_crash_at == "after_candidate_stop":
+            if not (root / "primary-candidate-stopped").exists():
+                raise FenceError("did not stop candidate before primary failure")
         guards[0].kill()  # Inject crash while primary guardian holds flock
         guards[0].wait(timeout=3)
         end = time.monotonic() + 35
@@ -283,6 +300,7 @@ def demo(xray, root, at):
         print("MIPS_GUARD: PASS SOCKS5 TCP and UDP ASSOCIATE old/candidate/restore")
         print("MIPS_GUARD: PASS controller crash at " + at)
         print("MIPS_GUARD: PASS primary guardian killed holding common flock")
+        print("MIPS_GUARD: PASS primary guardian fault at " + guardian_crash_at)
         print("MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP")
         print("LIMITATION: 127.0.0.1 SOCKS5 only; no production TPROXY, reboot or real VPN")
     finally:
@@ -316,10 +334,13 @@ def main():
     m.add_argument("--guardian", type=Path)
     p.add_argument("--xray")
     p.add_argument("--role", choices=("primary", "secondary"))
+    p.add_argument("--guardian-crash-at",
+                   choices=("before_repair", "after_candidate_stop"),
+                   default="before_repair")
     p.add_argument("--crash-at", choices=("prepared", "running"), default="running")
     a = p.parse_args()
     if a.demo:
-        demo(a.xray, a.demo, a.crash_at)
+        demo(a.xray, a.demo, a.crash_at, a.guardian_crash_at)
     elif a.controller:
         controller(a.controller, a.crash_at)
     else:
