@@ -32,6 +32,12 @@ unzip -j "$W/xray.zip" xray -d "$W/initramfs/bin"
 printf '3d2588c5ef770a6a7e1bfdd5db511130fb3acd79eb91bfcb108753b3e1dda1f6  %s\n' "$W/initramfs/bin/xray" | sha256sum -c -
 chmod 755 "$W/initramfs/bin/xray"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/bin/rc9capwrap" xray/lab/rc9_guest_capwrap.c
+# Original host-facing destination stays 10.0.2.15:19191 (TPROXY).
+# Deliberately separate the loopback-only backend TCP/UDP bind port 19292:
+# Xray's transparent UDP response socket otherwise competes with an in-guest
+# backend bound to *:19191 and fails with fake: socket bind: EADDRINUSE.
+# This tests real transparent ingress + controlled guest-only redirect,
+# NOT production-style original-destination preservation after outbound.
 cat >"$W/initramfs/etc/xray.json" <<'JSON'
 {
   "log":{"loglevel":"debug"},
@@ -42,7 +48,7 @@ cat >"$W/initramfs/etc/xray.json" <<'JSON'
     "streamSettings":{"sockopt":{"tproxy":"tproxy"}}
   }],
   "outbounds":[
-    {"tag":"local-only","protocol":"freedom","settings":{}},
+    {"tag":"local-only","protocol":"freedom","settings":{"redirect":"127.0.0.1:19292"}},
     {"tag":"blocked","protocol":"blackhole","settings":{}}
   ],
   "routing":{"rules":[
@@ -53,7 +59,7 @@ cat >"$W/initramfs/etc/xray.json" <<'JSON'
 JSON
 chmod 644 "$W/initramfs/etc/xray.json"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/init" xray/lab/rc21_mips49_guest_xray_init.c
-mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/lab/echo" xray/lab/rc19_mips49_tcpudp_echo.c
+mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -DPORT=19292 -o "$W/initramfs/lab/echo" xray/lab/rc19_mips49_tcpudp_echo.c
 cp xray/lab/rc21_mips49_xray_packet.sh "$W/initramfs/lab/xray-packet.sh"
 chmod 755 "$W/initramfs/lab/echo" "$W/initramfs/lab/xray-packet.sh"
 mkdir -p "$W/initramfs/lab"
