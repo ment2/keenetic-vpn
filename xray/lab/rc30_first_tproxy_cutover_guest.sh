@@ -61,8 +61,10 @@ test "$baseline" = 1 || { echo RC30_GUEST_HARD_NO_GO_OLD_BASELINE_PACKETS;exit 3
 # Deliberately pre-register exactly one lab TCP and one lab UDP old tuple.
 # This is a controlled positive packet test, NOT safe generic classifier.
 # Exact old source ports: TCP=21111 UDP=21112, from host 10.77.0.1.
-/sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -s 10.77.0.1 -p udp --sport 21112 --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
+# Broad candidate UDP match MUST be inserted first; subsequent exact old
+# tuple pin is inserted above it, otherwise the old UDP is silently stolen.
 /sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -p udp --dport 19301 -j TPROXY --on-port 22345 --tproxy-mark 0x40000000/0x40000000
+/sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -s 10.77.0.1 -p udp --sport 21112 --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 /sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -p tcp --dport 19301 --tcp-flags SYN,RST,ACK SYN -j TPROXY --on-port 22345 --tproxy-mark 0x40000000/0x40000000
 /sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -s 10.77.0.1 -p tcp --sport 21111 --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 # Check exact known split and fail closed on additional unknown changes.
