@@ -1,0 +1,10 @@
+#!/opt/bin/sh
+# STAGED CANDIDATE ONLY. Replacement of legacy killall requires an approved
+# controlled migration and a root-owned common lock. Never bypass broker.
+set -eu
+case "${1:-}" in
+  start|stop|restart)
+    exec /opt/bin/python3 /opt/bin/v30_supervisor_service.py "$1"
+    ;;
+  *) echo "usage: $0 {start|stop|restart}" >&2; exit 2 ;;
+esac
