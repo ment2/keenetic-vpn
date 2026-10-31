@@ -1,0 +1,47 @@
+name: Xray v30 RC28 real MIPS49 independent TAP UDP return under restricted SLIRP
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc28-dualpath.yml'
+      - 'xray/lab/rc28_dualpath_*'
+      - 'tests/test_xray_v30_rc28_dualpath.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mips49-udp-dualpath:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static isolation contracts and syntax
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc28_dualpath.py -v
+          bash -n xray/lab/rc28_dualpath_runner.sh
+          bash -n xray/lab/rc28_dualpath_netns.sh
+          sh -n xray/lab/rc28_dualpath_guest.sh
+      - name: Install disposable QEMU and cross compiler
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2
+      - name: Guest TCP UDP exact return on isolated TAP and SLIRP
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc28_dualpath_runner.sh | tee "$RUNNER_TEMP/rc28-result.log"
+          grep -Fq RC28_PASS_PRIVATE_TAP_UDP_ONLY_WITH_SLIRP_RESTRICT_ON "$RUNNER_TEMP/rc28-result.log"
+      - name: Retain guest and host evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc28-qemu-mips-tap-slirp-no-production
+          path: |
+            ${{ runner.temp }}/rc28-dualpath/serial.log
+            ${{ runner.temp }}/rc28-dualpath/qemu-errors.log
+            ${{ runner.temp }}/rc28-result.log
+          if-no-files-found: warn
+          retention-days: 14
