@@ -26,7 +26,7 @@ jobs:
           fetch() {
             local name="$1" url="$2" sha="$3"
             curl -fL --retry 3 --max-time 120 -o "$D/$name.deb" "$url"
-            printf '%s  %s\\n' "$sha" "$D/$name.deb" | sha256sum -c -
+            printf '%s  %s\n' "$sha" "$D/$name.deb" | sha256sum -c -
             dpkg-deb -x "$D/$name.deb" "$D/root"
             dpkg-deb -f "$D/$name.deb" Package Version Architecture >> "$D/packages-control.txt"
           }
