@@ -18,7 +18,7 @@ test "$(/bin/busybox cat /proc/sys/net/ipv4/ip_forward)" = 0 || {
 /sbin/iptables -t mangle -A PREROUTING -i eth1 -p udp --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 /bin/rc9capwrap raw xray >/lab/legacy.log 2>&1 &
 old=$!
-/bin/rc33capwrap raw xray >/lab/candidate.log 2>&1 &
+/bin/rc30capwrap raw xray >/lab/candidate.log 2>&1 &
 new=$!
 ready=0
 for n in $(/bin/busybox seq 1 180); do
