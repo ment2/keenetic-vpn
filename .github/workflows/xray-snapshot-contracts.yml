@@ -16,6 +16,7 @@ on:
       - 'xray/lab/v30_legacy_descendant_migration_gate.py'
       - 'xray/lab/v30_two_phase_migration_contract.py'
       - 'xray/lab/v30_nonusb_rescue_lab.py'
+      - 'xray/lab/v30_outofusb_mount_gate.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -59,6 +60,22 @@ jobs:
           assert "MISSING_PIDFD_KERNEL_SUPPORTED" in obj["reason_codes"]
           assert "MISSING_LEGACY_CHILD_TREE_DRAINED" in obj["reason_codes"]
           print("PASS: legacy descendants and unknown pidfd strictly BLOCK production")
+          PY
+
+      - name: Deny unverified rescue mount and boot path (offline evidence only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_outofusb_mount_gate > "$RUNNER_TEMP/v30-rescue-physical-gate.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          result=json.loads((Path(os.environ["RUNNER_TEMP"])/"v30-rescue-physical-gate.json").read_text())
+          assert result["status"]=="INSUFFICIENT_EVIDENCE"
+          assert result["production_rescue_authorized"] is False
+          assert result["physical_router_reboot_proven"] is False
+          assert "MOUNTINFO_UNTRUSTWORTHY" in result["reasons"]
+          print("PASS: no fabricated persistent rescue hardware proof")
           PY
 
       - name: Validate review-only two-phase legacy watchdog S97 S98 S99 cron migration
