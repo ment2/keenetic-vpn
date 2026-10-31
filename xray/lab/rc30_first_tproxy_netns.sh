@@ -42,7 +42,7 @@ qemu=$!
 trap 'kill "$qemu" "$backend" "$backend_ns" 2>/dev/null || true' EXIT
 ready=0
 for n in $(seq 1 200); do
- if grep -Fq RC30_GUEST_OLD_AND_CANDIDATE_XRAY_TCP_UDP_READY "$W/serial.log" 2>/dev/null;then ready=1;break;fi
+ if grep -Fq RC30_GUEST_OLD_AND_API_ENABLED_CANDIDATE_XRAY_TCP_UDP_READY "$W/serial.log" 2>/dev/null;then ready=1;break;fi
  if ! kill -0 "$qemu" 2>/dev/null;then break;fi
  sleep 0.2
 done
@@ -92,7 +92,7 @@ def udp_sock(port):
  s.bind(("10.77.0.1",port))
  s.settimeout(1.1)
  return s
-marker("RC30_GUEST_OLD_AND_CANDIDATE_XRAY_TCP_UDP_READY")
+marker("RC30_GUEST_OLD_AND_API_ENABLED_CANDIDATE_XRAY_TCP_UDP_READY")
 with tcp_conn(21111) as old_tcp, udp_sock(21112) as old_udp:
  tcpecho(old_tcp,"OLD_BEFORE")
  udpecho(old_udp,"OLD_BEFORE")
