@@ -1,0 +1,12 @@
+#!/opt/bin/sh
+# STAGED ONLY. No unscoped kill or shell PID-file trust.
+set -eu
+case "${1:-}" in
+  start) exec /opt/bin/python3 /opt/bin/v30_supervisor_service.py watchdog-start ;;
+  stop) exec /opt/bin/python3 /opt/bin/v30_supervisor_service.py watchdog-stop ;;
+  restart)
+    echo "manual two-phase watchdog replacement requires separate approval" >&2
+    exit 3
+    ;;
+  *) echo "usage: $0 {start|stop}" >&2; exit 2 ;;
+esac
