@@ -1,0 +1,75 @@
+name: Xray v30 RC17 MIPS32LE archived libc and xtables libraries SHA discovery (NO EXEC)
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc17-mipsel-loader-library-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-archived-mipsel-libraries-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover SHA256 of exact archived Stretch library packages without executing them
+        shell: bash
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/rc17-library-archive"
+          mkdir -p "$D/root"
+          fetch() {
+            local name="$1" path="$2"
+            curl -fL --retry 3 --max-time 120 -o "$D/$name.deb" "https://archive.debian.org/debian/pool/main/$path"
+            sha256sum "$D/$name.deb" | tee -a "$D/archive-sha256.log"
+            dpkg-deb -f "$D/$name.deb" Package Version Architecture | tee -a "$D/package-control.log"
+            dpkg-deb -x "$D/$name.deb" "$D/root"
+          }
+          fetch libc6 'g/glibc/libc6_2.24-11+deb9u4_mipsel.deb'
+          fetch libip4tc0 'i/iptables/libip4tc0_1.6.0+snapshot20161117-6_mipsel.deb'
+          fetch libip6tc0 'i/iptables/libip6tc0_1.6.0+snapshot20161117-6_mipsel.deb'
+          fetch libxtables12 'i/iptables/libxtables12_1.6.0+snapshot20161117-6_mipsel.deb'
+          python3 - "$D/root" "$D/observed-library-metadata.json" <<'PY'
+          import json,pathlib,subprocess,sys
+          root=pathlib.Path(sys.argv[1])
+          names=("ld.so.1","libc.so.6","libdl.so.2","libm.so.6","libip4tc.so.0","libip6tc.so.0","libxtables.so.12")
+          result={"scope":"OFFLINE_DEBIAN_ARCHIVE_MIPS_LIBRARY_DISCOVERY_ONLY","executed_foreign_binaries":False,
+                  "source_signature_proven":False,"required":{},"release":"HARD_NO_GO_PRODUCTION"}
+          for name in names:
+              matches=sorted(root.rglob(name))
+              records=[]
+              for p in matches:
+                  # Do not inspect symlinks through host / and accept a host substitute.
+                  if p.is_symlink():
+                      records.append({"path":str(p.relative_to(root)),"symlink":p.readlink().as_posix(),"elf_verified":False})
+                      continue
+                  try:
+                      h=subprocess.run(["readelf","-h",str(p)],capture_output=True,text=True,check=True).stdout
+                      good=all(s in h for s in ("ELF32","little endian","MIPS"))
+                  except subprocess.CalledProcessError:
+                      good=False
+                  records.append({"path":str(p.relative_to(root)),"elf32le_mips":good})
+              result["required"][name]=records
+              print("RC17_LIBRARY",name,json.dumps(records,sort_keys=True))
+          if not all(result["required"].values()):
+              raise SystemExit("RC17_MISSING_REQUIRED_ARCHIVE_MIPS_LIBS")
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(result,sort_keys=True,indent=2)+"\n")
+          print("RC17: ARCHIVED_MIPSEL_LIBRARIES_FOUND_BUT_SHA_PINS_AND_GUEST_EXEC_UNVERIFIED")
+          print("RC17: HARD_NO_GO_MIPS_PACKET_PATH_LEGACY_FENCING_PHYSICAL_RESCUE")
+          PY
+      - name: Publish only SHA and ELF metadata for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc17-mips-archived-library-sha-discovery-NO-EXEC
+          path: |
+            ${{ runner.temp }}/rc17-library-archive/archive-sha256.log
+            ${{ runner.temp }}/rc17-library-archive/package-control.log
+            ${{ runner.temp }}/rc17-library-archive/observed-library-metadata.json
+          if-no-files-found: warn
+          retention-days: 14
