@@ -34,7 +34,11 @@ def audit(root=ROOT):
     if '"$SERVICE" stop' in contents.get("cron-update","") and '"$SERVICE" start' in contents.get("cron-update",""):
         reasons.append("CRON_SUBSCRIPTION_UPDATER_CAN_RESTART_LEGACY")
     for actor,body in contents.items():
-        if "flock" not in body:
+        # Merely mentioning "flock" in a comment is NOT a live shared CAS
+        # protocol. Require concrete exclusive acquisition AND generation
+        # and PID/start-ticks identity evidence before considering a fence.
+        if not (("flock -x" in body or "flock -n" in body)
+                and "generation" in body and "start_ticks" in body):
             reasons.append("NO_SHARED_GENERATION_LOCK:"+actor)
     return {
         "decision":"HARD_NO_GO",
