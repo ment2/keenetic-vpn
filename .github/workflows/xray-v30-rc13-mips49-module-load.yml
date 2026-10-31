@@ -1,0 +1,49 @@
+name: Xray v30 RC13 MIPS32LE 4.9 real QEMU kernel module load ONLY
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - 'xray/lab/rc13_mips49_*'
+      - '.github/workflows/xray-v30-rc13-mips49-module-load.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-mips-guest-xtables-module-registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install disposable MIPS QEMU and cross-compiler only
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross \
+            binutils-mipsel-linux-gnu cpio gzip curl kmod
+      - name: Verify archive and load module dependencies inside real Linux4.9 MIPS guest only
+        shell: bash
+        timeout-minutes: 6
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc13_mips49_module_load_runner.sh |
+            tee "$RUNNER_TEMP/rc13-mips-module-result.log"
+          grep -q 'RC13: PASS_REAL_MIPS49_KERNEL_MODULE_LOAD_DISPOSABLE_GUEST_ONLY' "$RUNNER_TEMP/rc13-mips-module-result.log"
+          grep -q 'RC13: HARD_NO_GO_REAL_MIPS_TCP_UDP_PACKET_PATH_AND_PHYSICAL_HARDWARE' "$RUNNER_TEMP/rc13-mips-module-result.log"
+      - name: Publish guest console only, no live artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc13-real-mips49-kernel-module-load-NO-PACKET-CLAIM
+          path: |
+            ${{ runner.temp }}/rc13-mips49-moduleload/serial.log
+            ${{ runner.temp }}/rc13-mips49-moduleload/qemu-errors.log
+            ${{ runner.temp }}/rc13-mips49-moduleload/module-dependency-order.log
+            ${{ runner.temp }}/rc13-mips-module-result.log
+          if-no-files-found: warn
+          retention-days: 14
