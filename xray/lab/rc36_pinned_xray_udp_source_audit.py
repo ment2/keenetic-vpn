@@ -81,7 +81,7 @@ def read_verified_sources(root, expected=BLOBS):
         if not path.is_file():
             raise SourceDrift("PINNED_SOURCE_ABSENT:"+rel)
         raw=path.read_bytes()
-        git_blob=hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+b"\\0"+raw).hexdigest()
+        git_blob=hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+bytes([0])+raw).hexdigest()
         if git_blob!=sha:
             raise SourceDrift("GIT_BLOB_SHA_MISMATCH:"+rel)
         sources[rel]=raw.decode("utf-8")

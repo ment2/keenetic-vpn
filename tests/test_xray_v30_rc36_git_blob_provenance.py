@@ -10,7 +10,7 @@ from xray.lab.rc36_pinned_xray_udp_source_audit import (
  BLOBS,SourceDrift,PINNED_COMMIT,read_verified_sources,
 )
 def blob(raw):
- return hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+b"\\0"+raw).hexdigest()
+ return hashlib.sha1(b"blob "+str(len(raw)).encode("ascii")+bytes([0])+raw).hexdigest()
 
 class SourcePin(unittest.TestCase):
  def test_commit_and_git_blob_format(self):
