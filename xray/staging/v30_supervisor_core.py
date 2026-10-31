@@ -152,6 +152,34 @@ def atomic_journal(path, data):
             os.unlink(tmp)
 
 
+def atomic_pidfile(path, pid):
+    """Compatibility PID file, private and fsynced (never trust it alone)."""
+    if not isinstance(pid, int) or pid <= 1:
+        raise FenceError("invalid PID file contents")
+    path = Path(path)
+    if path.is_symlink():
+        raise FenceError("pidfile symlink")
+    fd, tmp = tempfile.mkstemp(prefix=".v30-pid-", dir=str(path.parent))
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="ascii") as stream:
+            fd = -1
+            stream.write(str(pid) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, path)
+        folder = os.open(str(path.parent), os.O_RDONLY)
+        try:
+            os.fsync(folder)
+        finally:
+            os.close(folder)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
 def gated_spawn(executable, argv, journal, *, proc_root="/proc"):
     """Child remains inert until parent fsyncs PID+start_ticks journal.
 
