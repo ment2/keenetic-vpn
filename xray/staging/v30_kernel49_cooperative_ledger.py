@@ -163,7 +163,7 @@ class Ledger:
         """Recovery may mark stale requests UNCERTAIN, but never kill/replay."""
         with supervisor_lock(self.lock):
             d=self._read()
-            if d["owner"] is None and d["inflight"] is None:
+            if d["blocked"] or (d["owner"] is None and d["inflight"] is None):
                 return False
             d["blocked"]=True
             if d["inflight"] is not None:
