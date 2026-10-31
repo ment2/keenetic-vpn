@@ -17,8 +17,11 @@ class RC25FirstMigrationContracts(unittest.TestCase):
   self.assertNotIn('killall',S.replace("NO_KILLALL",""))
  def test_new_connections_only_forwarding(self):
   self.assertIn('"nat", "-A", "OUTPUT"',S)
-  self.assertIn('"REDIRECT", "--to-ports"',S)
-  self.assertIn('nat_rule[:3]+["-D"]+nat_rule[4:]',S)
+  self.assertIn('"-j", "RETURN"',S)
+  self.assertIn('"nat", "-I", "OUTPUT", "1"',S)
+  self.assertIn('"--ctstate", "NEW"',S)
+  self.assertIn('exec_(*rollback_rule)',S)
+  self.assertIn('OLD_10808_TCP_CONNTRACK_ESTABLISHED_BEFORE_REDIRECT',S)
   self.assertIn('old-still-working',S)
  def test_real_candidate_death_and_rollback(self):
   self.assertIn('b.close()',S)
