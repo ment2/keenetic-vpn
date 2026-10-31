@@ -78,6 +78,7 @@ for n in $(/bin/busybox seq 1 180);do
 done
 if [ "$seen" != 1 ];then
  echo RC30_GUEST_HARD_NO_GO_BOTH_TPROXY_OWNERS_NOT_WITNESSED
+ echo RC30_GUEST_TPROXY_SPLIT_COUNTERS_DIAGNOSTIC
  /bin/busybox cat /lab/newcounts
  exit 4
 fi
