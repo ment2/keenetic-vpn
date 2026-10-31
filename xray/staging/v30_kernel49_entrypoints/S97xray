@@ -1,0 +1,11 @@
+#!/bin/sh
+# LAB-ONLY S97: request; owning parent alone touches Xray.
+set -eu
+: "${XRAY_V30_DISPOSABLE_ROOT:?No lab root; production invocation denied}"
+case "${1:-}" in
+  start) op=START ;;
+  stop) op=STOP ;;
+  restart) op=RESTART ;;
+  *) echo "supported: start stop restart (LAB ONLY)" >&2; exit 2 ;;
+esac
+exec python3 -m xray.lab.v30_kernel49_cooperative_lab --client "$XRAY_V30_DISPOSABLE_ROOT" S97 "$op"
