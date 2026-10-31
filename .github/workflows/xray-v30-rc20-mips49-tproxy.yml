@@ -1,0 +1,39 @@
+name: Xray v30 RC20 QEMU real MIPS Linux4.9 isolated real TCP UDP xt_TPROXY guest transparent-socket ingress
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc20-mips49-nic.yml'
+      - 'xray/lab/rc20_mips49_*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-mips-nic-exchange-no-tproxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install disposable MIPS Linux4.9 full-system QEMU and cross-compiler
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod
+      - name: Verify real TCP/UDP packet payloads over QEMU loopback-only port-forward
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc20_mips49_tproxy_runner.sh | tee "$RUNNER_TEMP/rc20-result.log"
+          grep -Fq 'RC20: PASS_REAL_MIPS49_TCP_UDP_XT_TPROXY_TRANSPARENT_SOCKET_INGRESS_ONLY' "$RUNNER_TEMP/rc20-result.log"
+      - name: Retain guest serial only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc20-real-mips-xt-tproxy-tcp-udp-no-xray-no-deploy
+          path: |
+            ${{ runner.temp }}/rc18-mips49/serial.log
+            ${{ runner.temp }}/rc18-mips49/qemu-errors.log
+            ${{ runner.temp }}/rc20-result.log
+          if-no-files-found: warn
+          retention-days: 14
