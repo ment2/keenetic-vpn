@@ -4,10 +4,13 @@ on:
   push:
     branches:
       - snapshot/keenetic-production-2026-10-30
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
     paths:
       - '.github/workflows/xray-v30-mips32le-lab.yml'
       - 'xray/lab/xray_v30_api_continuity.py'
       - 'xray/lab/xray_v30_dual_process.py'
+      - 'xray/lab/stable_socks_ingress_v30.py'
+      - 'xray/lab/xray_v30_stable_ingress_demo.py'
   workflow_dispatch:
 
 permissions:
@@ -56,4 +59,11 @@ jobs:
         run: |
           export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
           python3 -m xray.lab.xray_v30_dual_process \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
+
+      - name: Execute real stable-ingress TCP cutover and rollback under MIPSLE QEMU
+        shell: bash
+        run: |
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.xray_v30_stable_ingress_demo \
             --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
