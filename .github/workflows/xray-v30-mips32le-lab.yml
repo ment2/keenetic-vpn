@@ -14,6 +14,8 @@ on:
       - 'xray/lab/xray_v30_pool_handover_api.py'
       - 'xray/lab/xray_v30_dokodemo_lab.py'
       - 'xray/lab/v30_mips_guardian_failover.py'
+      - 'xray/lab/v30_parent_owned_kernel49.py'
+      - 'xray/lab/v30_parent_owned_mips_recovery.py'
       - 'xray/staging/v30_supervisor_core.py'
   workflow_dispatch:
 
@@ -139,3 +141,19 @@ jobs:
             tee "$RUNNER_TEMP/v30-mips-boot-replay.log"
           grep -q 'MIPS_BOOT_REPLAY: PASS killed both original guardians; fresh process recovered persisted MIPS Xray transaction' "$RUNNER_TEMP/v30-mips-boot-replay.log"
           grep -q 'MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP' "$RUNNER_TEMP/v30-mips-boot-replay.log"
+
+      - name: Real MIPSLE Xray Linux49 parent-owned process death, child death, crash mid rollback and fsynced preexec
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          for scenario in parent_crash child_exit rollback prepared; do
+            python3 -m xray.lab.v30_parent_owned_mips_recovery \
+              --demo "$RUNNER_TEMP/v30-parent49-$scenario" \
+              --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" \
+              --case "$scenario" | tee "$RUNNER_TEMP/v30-parent49-$scenario.log"
+            grep -q "PARENT49: PASS real MIPS32LE QEMU Xray SOCKS5 TCP+UDP recovered" "$RUNNER_TEMP/v30-parent49-$scenario.log"
+            grep -q "PARENT49: PASS never signaled a stale PID" "$RUNNER_TEMP/v30-parent49-$scenario.log"
+            grep -q "PARENT49: PASS failure injection $scenario" "$RUNNER_TEMP/v30-parent49-$scenario.log"
+          done
