@@ -1,0 +1,66 @@
+name: Xray v30 RC15 archived MIPS32LE iptables iproute2 userland SHA discovery ONLY
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc15-mips-userland-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover-only-no-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify genuine Debian archive package bytes exist and list foreign ELF dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/rc15-mipsel"
+          mkdir -p "$D/root"
+          fetch() {
+            local name="$1" url="$2"
+            curl -fL --retry 3 --max-time 120 -o "$D/$name.deb" "$url"
+            dpkg-deb -x "$D/$name.deb" "$D/root"
+            dpkg-deb -f "$D/$name.deb" Package Version Architecture >> "$D/packages-control.txt"
+          }
+          fetch iptables 'https://archive.debian.org/debian/pool/main/i/iptables/iptables_1.6.0+snapshot20161117-6_mipsel.deb'
+          fetch iproute2 'https://archive.debian.org/debian/pool/main/i/iproute2/iproute2_4.9.0-1+deb9u1_mipsel.deb'
+          fetch busybox 'https://archive.debian.org/debian/pool/main/b/busybox/busybox-static_1.22.0-19+b3_mipsel.deb'
+          sha256sum "$D/"*.deb | tee "$D/sha256.txt"
+          find "$D/root" -type f \( -name iptables -o -name ip -o -name busybox -o -name 'libxt_*.so' \) -print |
+            sort > "$D/candidate-files.txt"
+          : > "$D/elf-dependencies.txt"
+          while IFS= read -r file; do
+            if readelf -h "$file" >/dev/null 2>&1; then
+              echo "=== ${file#"$D/root/"} ===" >> "$D/elf-dependencies.txt"
+              readelf -h "$file" | grep -E 'Class:|Data:|Machine:' >> "$D/elf-dependencies.txt"
+              readelf -l "$file" | grep 'interpreter:' >> "$D/elf-dependencies.txt" || true
+              readelf -d "$file" | grep NEEDED >> "$D/elf-dependencies.txt" || true
+            fi
+          done < "$D/candidate-files.txt"
+          cat "$D/elf-dependencies.txt"
+          grep -q '/ip$' "$D/candidate-files.txt" || { echo 'RC15: NO_IP_BINARY_HARD_NO_GO'; exit 1; }
+          grep -q '/iptables$' "$D/candidate-files.txt" || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
+          grep -q '/busybox$' "$D/candidate-files.txt" || { echo 'RC15: NO_BUSYBOX_BINARY_HARD_NO_GO'; exit 1; }
+          grep -q 'Machine:.*MIPS' "$D/elf-dependencies.txt"
+          grep -q 'Data:.*little endian' "$D/elf-dependencies.txt"
+          echo 'RC15: MIPS32LE_ARCHIVE_BYTES_FOUND_HASHES_DISCOVERED_NO_EXECUTION'
+          echo 'RC15: HARD_NO_GO_DYNAMIC_LIB_CLOSURE_AND_GUEST_PACKET_PATH_UNVERIFIED'
+      - name: Upload metadata only, no foreign binaries or live artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc15-mips49-userland-SHA-and-ELF-discovery-NO-EXEC
+          path: |
+            ${{ runner.temp }}/rc15-mipsel/sha256.txt
+            ${{ runner.temp }}/rc15-mipsel/packages-control.txt
+            ${{ runner.temp }}/rc15-mipsel/candidate-files.txt
+            ${{ runner.temp }}/rc15-mipsel/elf-dependencies.txt
+          retention-days: 14
+          if-no-files-found: warn
