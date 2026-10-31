@@ -24,7 +24,7 @@ jobs:
         timeout-minutes: 7
         run: |
           set -euo pipefail
-          bash xray/lab/rc21_mips49_tproxy_runner.sh | tee "$RUNNER_TEMP/rc21-result.log"
+          bash xray/lab/rc21_mips49_xray_tproxy_runner.sh | tee "$RUNNER_TEMP/rc21-result.log"
           grep -Fq 'RC21: PASS_REAL_MIPS49_XRAY_TCP_UDP_TPROXY_INGRESS_BACKEND_ONLY' "$RUNNER_TEMP/rc21-result.log"
       - name: Retain guest serial only
         if: always()
