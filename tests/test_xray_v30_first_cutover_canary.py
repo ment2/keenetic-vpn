@@ -134,6 +134,42 @@ class ProposedCanaryContracts(unittest.TestCase):
                 c.guardian()
             write.assert_not_called()
 
+    def test_blocked_state_never_retried_automatically(self):
+        state = {"phase":"blocked"}
+        with patch.object(c,"transaction_lock",return_value=nullcontext()), patch.object(c,"read_state",return_value=state), patch.object(c,"verify_backup") as check:
+            self.assertEqual(c.restore("deadline"), "blocked")
+            check.assert_not_called()
+
+    def test_local_manual_blocked_retry_is_identity_guarded(self):
+        state = {"phase":"blocked","candidate":[8000,70],
+                 "old":[13546,100216734],
+                 "wifi":[24097,60711544],
+                 "watchdog":[32713,61575997]}
+        with patch.object(c,"transaction_lock",return_value=nullcontext()), patch.object(c,"read_state",return_value=state), patch.object(c,"verify_backup"), patch.object(c,"identity_live",return_value=True), patch.object(c,"guarded_signal",side_effect=c.GateError("identity mismatch")) as guard, patch.object(c,"state_update") as update, patch.object(c.os,"kill") as kill:
+            self.assertEqual(c.restore("local_operator",allow_retry_blocked=True),"blocked")
+            guard.assert_called_once()
+            kill.assert_not_called()
+            self.assertEqual(update.call_args.kwargs["phase"],"blocked")
+
+    def test_successful_mock_restore_unfreezes_only_after_old_health(self):
+        state = {"phase":"candidate_running","candidate":None,
+                 "old":[13546,100216734], "wifi":[24097,60711544],
+                 "watchdog":[32713,61575997]}
+        with patch.object(c,"transaction_lock",return_value=nullcontext()), patch.object(c,"read_state",return_value=state), patch.object(c,"verify_backup"), patch.object(c,"identity_live",return_value=True), patch.object(c,"owned_xray_pids",return_value=[13546]), patch.object(c,"listeners_owned",return_value=True), patch.object(c,"socks_openai_check",return_value=True), patch.object(c,"safe_kernel") as kernel, patch.object(c,"guarded_signal") as sig, patch.object(c,"state_update"), patch.object(c,"ticks",return_value=100216734):
+            self.assertEqual(c.restore("mock_success"),"restored")
+            kernel.assert_called_once()
+            self.assertEqual(sig.call_count,2)
+            self.assertEqual(sig.call_args_list[0].args[1],c.signal.SIGCONT)
+            self.assertEqual(sig.call_args_list[1].args[1],c.signal.SIGCONT)
+
+    def test_state_fenced_only_after_two_stopped_confirmations(self):
+        import inspect
+        source = inspect.getsource(c.trial)
+        self.assertLess(source.index('state_update(phase="fencing")'),
+                        source.index("if watcher_paused(watchdog) and watcher_paused(wifi)"))
+        self.assertLess(source.index("if watcher_paused(watchdog) and watcher_paused(wifi)"),
+                        source.index('state_update(phase="fenced")'))
+
     def test_source_is_not_currently_deployed(self):
         path=Path(c.__file__).resolve()
         self.assertIn("staging",str(path))
