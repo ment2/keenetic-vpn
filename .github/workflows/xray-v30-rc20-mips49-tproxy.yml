@@ -4,13 +4,13 @@ on:
     branches:
       - feature/xray-v30-stable-tcp-ingress-lab-20261031
     paths:
-      - '.github/workflows/xray-v30-rc20-mips49-nic.yml'
+      - '.github/workflows/xray-v30-rc20-mips49-tproxy.yml'
       - 'xray/lab/rc20_mips49_*'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  real-mips-nic-exchange-no-tproxy:
+  real-mips-xt-tproxy-guest-ingress-only:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -32,8 +32,8 @@ jobs:
         with:
           name: rc20-real-mips-xt-tproxy-tcp-udp-no-xray-no-deploy
           path: |
-            ${{ runner.temp }}/rc18-mips49/serial.log
-            ${{ runner.temp }}/rc18-mips49/qemu-errors.log
+            ${{ runner.temp }}/rc20-mips49/serial.log
+            ${{ runner.temp }}/rc20-mips49/qemu-errors.log
             ${{ runner.temp }}/rc20-result.log
           if-no-files-found: warn
           retention-days: 14
