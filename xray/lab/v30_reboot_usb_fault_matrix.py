@@ -75,6 +75,17 @@ def run(root):
     print("USB_FAULT: PASS missing backup blocks before any additional active script writes", flush=True)
     # Simulate operator reconnecting the same *byte-identical* private backup.
     unplugged.rename(backup)
+    # A returned but corrupted USB backup is not sufficient recovery material.
+    corrupt = backup / "S97xray"
+    original = corrupt.read_bytes()
+    corrupt.write_bytes(original + b"CORRUPTED_TEST_COPY\\n")
+    before_corrupt = snapshot(root)
+    if fresh_replay(root).returncode == 0 or snapshot(root) != before_corrupt:
+        raise FenceError("tampered USB backup was trusted or modified live files")
+    if (root / "success").exists():
+        raise FenceError("tampered backup produced false success")
+    corrupt.write_bytes(original)
+    print("USB_FAULT: PASS corrupted backup SHA blocks writes despite returned USB", flush=True)
     restarted = fresh_replay(root)
     if restarted.returncode != 0:
         raise FenceError("fresh process after simulated reboot could not recover: " +
