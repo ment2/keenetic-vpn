@@ -15,12 +15,13 @@ backend=$!
 xraypid=$!
 ready=0
 for n in $(/bin/busybox seq 1 90); do
- if /bin/busybox grep -q ':3039 ' /proc/net/tcp; then ready=1; break; fi
+ if /bin/busybox grep -q ':3039 ' /proc/net/tcp* 2>/dev/null; then ready=1; break; fi
  if ! /bin/busybox kill -0 "$xraypid" 2>/dev/null; then break; fi
  /bin/busybox sleep 0.1
 done
 if [ "$ready" != 1 ]; then
  echo 'RC21_GUEST: HARD_NO_GO_REAL_XRAY_LISTENER_NOT_READY'
+ /bin/busybox cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
  /bin/busybox cat /lab/xray.log
  exit 2
 fi
