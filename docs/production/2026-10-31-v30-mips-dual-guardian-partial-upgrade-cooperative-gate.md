@@ -53,3 +53,11 @@ Ran 320 tests ... OK
 Continue feature-only integration: versioned full release manifest pinning actual candidate hashes; isolated live Xray 26.2.6 kernel TPROXY experiments where runner kernel supports them; prove startup and rollback of coordinated S97/S98/watchdog with a full parent/child process tree and mid-update reboot simulation. Only use owner-approved read-only diagnostics for Keenetic capability; if unavailable, document blocker rather than bypass. For any production installation require exact new bytes/path/mode and explicit separate approval. No merge/deploy or silent cutover.
 
 **Decision: offline MIPS + dual-guardian + five-file rollback VERIFIED; production v30 migration NOT YET SAFE/AUTHORIZED.**
+
+## Follow-up: real shared-lock contention and detached-marker race regression
+
+- `xray/staging/v30_cooperative_canary.py` now resolves the lock at invocation, and `tests/test_xray_v30_cooperative_canary_release.py` opens the **same disposable flock inode** for canary and broker. While canary owns it, broker cannot enter; after release broker can acquire. This is an actual Linux lock test, not just string-equality of lock paths.
+- A sporadic GitHub Actions failure in the older `v30_autonomous_guard_rehearsal.py` was a legitimate test-observation race: a fsynced state `restored` became readable before the separately written `guard-result` marker. Its read-side now waits for **both** artifacts instead of treating a transient missing or partially written marker as rollback failure. No production script changed.
+- **[GitHub Actions 41207874952](https://github.com/ment2/keenetic-vpn/actions/runs/41207874952) — SUCCESS, 321/321 tests**. The actual archived five-file partial-upgrade rollback, NO_PRODUCTION_TRIAL staging release gate and both detached guardian model phases passed after the fixes. Final relevant CI head commit: `cbaf7063d7bc005a0203cc9eadafc66c8dc00803`.
+
+**Production remains NO-GO pending actual Keenetic pidfd compatibility, legacy scripts migration plan, real-kernel TPROXY, reboot/power-loss and USB recovery.** No router jobs issued.
