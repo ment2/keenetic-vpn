@@ -298,11 +298,13 @@ def socks_openai_check():
     return call(command, timeout=12).strip() == "401"
 
 
-def restore(reason):
+def restore(reason, *, allow_retry_blocked=False):
     with transaction_lock():
         s = read_state()
-        if s["phase"] in ("restored", "blocked"):
+        if s["phase"] == "restored":
             return s["phase"]
+        if s["phase"] == "blocked" and not allow_retry_blocked:
+            return "blocked"
         # Never change firewall, table100 or kill-switch.
         # Validate backup and binary even if candidate is broken.
         try:
@@ -486,11 +488,14 @@ def main():
     parser.add_argument("--expected-old-ticks", type=int)
     parser.add_argument("--expected-config-sha")
     parser.add_argument("--accept-network-interruption", action="store_true")
+    parser.add_argument("--retry-blocked", action="store_true",
+                        help="local emergency operator-only retry of a blocked rollback")
     args = parser.parse_args()
     if args.guardian:
         guardian()
     elif args.rollback:
-        print("ROLLBACK=" + restore("manual_emergency"), flush=True)
+        print("ROLLBACK=" + restore("manual_emergency",
+             allow_retry_blocked=args.retry_blocked), flush=True)
     else:
         if args.expected_old_pid is None or args.expected_old_ticks is None:
             parser.error("exact old PID and start_ticks required")
