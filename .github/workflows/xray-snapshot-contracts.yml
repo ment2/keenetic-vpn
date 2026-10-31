@@ -12,6 +12,7 @@ on:
       - 'xray/lab/v30_autonomous_guard_rehearsal.py'
       - 'xray/lab/v30_partial_upgrade_recovery.py'
       - 'xray/lab/v30_release_manifest_contract.py'
+      - 'xray/lab/v30_reboot_usb_fault_matrix.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -163,6 +164,16 @@ jobs:
           assert len(data["template_sha256"]) == 5
           print("PASS: cooperative canary and S97/S98/S99 staging share lock; live trial remains forbidden")
           PY
+
+      - name: Fail-closed lost-USB-backup and simulated boot restart replay of 5 archived services
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_reboot_usb_fault_matrix --demo "$RUNNER_TEMP/v30-reboot-usb-matrix" |
+            tee "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
+          grep -q 'USB_FAULT: PASS missing backup blocks before any additional active script writes' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
+          grep -q 'REBOOT_REPLAY: PASS restored 5/5 archived S97/S98/S99/watchdog/rules SHA256' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
