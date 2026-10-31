@@ -17,6 +17,7 @@ on:
       - 'xray/lab/v30_two_phase_migration_contract.py'
       - 'xray/lab/v30_nonusb_rescue_lab.py'
       - 'xray/lab/v30_outofusb_mount_gate.py'
+      - 'xray/lab/v30_archived_kernel_pidfd_gate.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -60,6 +61,24 @@ jobs:
           assert "MISSING_PIDFD_KERNEL_SUPPORTED" in obj["reason_codes"]
           assert "MISSING_LEGACY_CHILD_TREE_DRAINED" in obj["reason_codes"]
           print("PASS: legacy descendants and unknown pidfd strictly BLOCK production")
+          PY
+
+      - name: Confirm historical Keenetic 4.9 cannot run pidfd supervisor (no new router jobs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_archived_kernel_pidfd_gate --archived-only > "$RUNNER_TEMP/v30-pidfd-archived.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          r=json.loads((Path(os.environ["RUNNER_TEMP"])/"v30-pidfd-archived.json").read_text())
+          assert r["kernel"]=="4.9-ndm-5"
+          assert r["archived_job_id"]=="ea140581-a4db-42f5-ac4d-46c8c6c462ba"
+          assert r["release_gate"]=="OFFLINE_KERNEL_INCOMPATIBLE"
+          assert r["pidfd_open_kernel_capable"] is False
+          assert r["pidfd_send_signal_kernel_capable"] is False
+          assert r["production_commands"]==[]
+          print("PASS: historical Keenetic Linux 4.9 lacks pidfd syscalls; no live signal authorization")
           PY
 
       - name: Deny unverified rescue mount and boot path (offline evidence only)
