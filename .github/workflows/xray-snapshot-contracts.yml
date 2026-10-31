@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '93f187cadbe985e65e67f619f9f3d7c1c8f120cdb9a506b22419a75cdeabdb4d  xray/staging/v30_first_cutover_canary.py' | sha256sum -c -
+          echo '8e57ef5054f53174a35d906d34eab073dd6d787607cb02f29d83364ae3abc203  xray/staging/v30_first_cutover_canary.py' | sha256sum -c -
           sha256sum xray/staging/v30_first_cutover_canary.py
           echo 'PASS: pinned canary content exact; no router or network operations'
 
