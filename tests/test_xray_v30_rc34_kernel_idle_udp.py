@@ -15,7 +15,7 @@ class RC34Conntrack(unittest.TestCase):
   self.assertIn("unshare --net",RUN)
   self.assertIn("restrict=on",H)
  def test_silent_was_actually_active_before_observer(self):
-  self.assertLess(H.index("OLD_IDLE_PRIMED"),H.index("RC34_GUEST_OLD_AND_API_ENABLED"))
+  self.assertLess(H.index("udpecho(idle_udp,\"OLD_IDLE_PRIMED\")"),H.index("marker(\"RC34_GUEST_OLD_AND_API_ENABLED_CANDIDATE_XRAY_TCP_UDP_READY\")"))
   self.assertIn("OLD_IDLE_RESUMED_DURING",H)
   self.assertIn("SILENT_PREEXISTING_UDP_SOURCE_PORT",H)
   self.assertLess(G.index("RC34_GUEST_IDLE_UDP_PRIME_READY"),G.index("/lab/rc34-observer 2 eth1"))
