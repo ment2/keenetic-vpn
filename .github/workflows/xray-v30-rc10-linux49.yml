@@ -44,7 +44,7 @@ jobs:
             "https://archive.debian.org/debian/$TARGET"
           PACKAGE_SHA="$(sha256sum kernel49.deb | awk '{print $1}')"
           printf 'RC10_KERNEL49_PACKAGE_SHA_DISCOVERED=%s\n' "$PACKAGE_SHA"
-          PINNED_SHA="AWAITING_EXACT_ARCHIVE_SHA256"
+          PINNED_SHA="d410dd577fac677bb50978d5fe91b622d1520b783cb4ef23a1bcd7851606e326"
           if [ "$PINNED_SHA" != "$PACKAGE_SHA" ]; then
             echo "RC10: source kernel SHA is not yet pinned; HARD_NO_GO before extracting/booting"
             exit 78
