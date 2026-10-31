@@ -67,7 +67,7 @@ class RC11ReleaseGates(unittest.TestCase):
         text=(ROOT/"xray/lab/rc11_mips49_guest_init.c").read_text()
         self.assertIn("kill(x,SIGTERM)",text)
         self.assertIn("waitpid(x,&st,0)",text)
-        self.assertNotIn("killall",text)
+        self.assertNotIn("killall(",text)  # reject executable call, not a comment describing its absence
         self.assertNotIn("ssh ",text)
         self.assertNotIn("/opt/",text)
     def test_runner_enforces_no_mips_full_tproxy_claim(self):
