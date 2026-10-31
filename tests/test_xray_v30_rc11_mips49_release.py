@@ -8,8 +8,8 @@ DOC=ROOT/"xray/staging/v30-rc11-mips49-fullsystem-legacy-fencing-review.json"
 class RC11ReleaseGates(unittest.TestCase):
     def setUp(self):
         self.d=json.loads(DOC.read_text(encoding="utf8"))
-    def test_all_six_git_blob_sha_pins(self):
-        self.assertEqual(len(self.d["source_blobs"]),6)
+    def test_all_eight_git_blob_sha_pins(self):
+        self.assertEqual(len(self.d["source_blobs"]),8)
         for name,want in self.d["source_blobs"].items():
             with self.subTest(path=name):
                 raw=(ROOT/name).read_bytes()
