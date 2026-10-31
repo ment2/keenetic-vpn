@@ -46,3 +46,33 @@ Frozen production source review:
 5. **Fresh router preflight and interruption approval**. Existing permission to access router is not authorization for an unknown disruptive command. No new router jobs were submitted in this work.
 
 **Decision today: BLOCKED for first production cutover. All work is confined to this feature branch and the ChatGPT Keenetic/Xray project.**
+
+
+## Addendum: real IPv4 kernel TPROXY Linux control and live router read-only check
+
+### Disposable namespace harness
+
+- Added `xray/lab/xray_v30_kernel_tproxy_netns.sh`, `xray/lab/xray_v30_kernel_tproxy_echo.py` and `tests/test_xray_kernel_tproxy_harness_v30.py`. The shell script requires `GITHUB_ACTIONS=true`, disposable runner temp, explicit `--run`/ `--native-run`, and refuses paths indicating a production Entware system.
+- Test network has isolated `xv30c` client, `xv30g` gateway, `xv30s` echo-server namespaces; no default Internet route. Gateway runs mangle/TPROXY for **TCP+UDP** to 12345, mark `0x40000000/0x40000000`, ip rule priority 20000, table 100 `local default dev lo`; `FORWARD DROP` prevents direct transit to the synthetic destination.
+- Added separate GitHub Actions `.github/workflows/xray-v30-native-kernel-tproxy.yml`: official pinned Xray 26.2.6 **linux/amd64** as an independent control (not MIPS parity).
+- **Native CI [41192977443](https://github.com/ment2/keenetic-vpn/actions/runs/41192977443) SUCCESS**. Log markers: `native IP_TRANSPARENT setsockopt supported`; `PASS IPv4 TCP+UDP through netns mangle/fwmark/table100`; `PASS isolated TCP+UDP blocked with dead Xray`. Here `followRedirect=true` and `sockopt.tproxy=tproxy` are exercised against a *real Linux kernel*; packets and their original destination were accepted by Xray.
+- The same netns test with real **MIPS32LE Xray under QEMU user-mode** failed to establish TCP, with a diagnostic `failed to set IP_TRANSPARENT > protocol not available` in Xray logs. PREROUTING and TPROXY packet counters increased, table100/fwmark and listener existed, while TCP timed out. Recorded failure runs include [41192637559](https://github.com/ment2/keenetic-vpn/actions/runs/41192637559), [41192734192](https://github.com/ment2/keenetic-vpn/actions/runs/41192734192) and [41192977345](https://github.com/ment2/keenetic-vpn/actions/runs/41192977345). **Do not describe MIPS kernel TPROXY as passed**; this is a QEMU-user syscall/sockopt compatibility gap that needs actual MIPSLE/KeeneticOS verification. The successful QEMU loopback dokodemo and SOCKS tests remain valid, but different.
+- **Static CI [41192692034](https://github.com/ment2/keenetic-vpn/actions/runs/41192692034) SUCCESS, 187/187 tests** including eight static namespace harness tests and previous watchdog/release gates. This does not override the failed QEMU kernel TPROXY integration.
+- The native lab's initial failed run [41192875574](https://github.com/ment2/keenetic-vpn/actions/runs/41192875574) already demonstrated successful kernel TCP+UDP; it then failed due to a test-harness PID-capture typo. Fixed in commit `0bff2381664e1b339267fda9b4943420b1765bfa`. Final native CI succeeds including fail-closed.
+
+### New read-only Keenetic evidence (no service changes)
+
+Single job `ea140581-a4db-42f5-ac4d-46c8c6c462ba`: **done, exit_code=0**. Result:
+
+- Kernel `4.9-ndm-5`, `xt_TPROXY` module loaded.
+- Active `XRAY_WIFI` chain has TPROXY rules for **tcp** and **udp** to port 12345, `mark 0x40000000/0x40000000`. Snapshot counters for both TPROXY lines were **zero**, so this does not prove current forwarding of end-user traffic through these rules.
+- UDP listener on `:::12345` present. Mark rule priority 20000 to table 100 and `local default dev lo` were present.
+- `XRAY_KS_HOME` showed 1 reference, two LAN RETURN rules and **three** Home DROP rules (duplicate entries). One DROP counter was **956 packets / 383K bytes** at snapshot time. This supports existence/use of a drop chain, but is NOT a comprehensive live leak/IPv6 audit or proof of outage-safe protection.
+- No secret config/credentials read, no iptables writes, process kills, service restart, production Xray/cron/watchdog/routes/firewall changes.
+- Do **not** fix duplicate rules as part of the first migration without separate review; a concurrent `S98xray-wifi` and watchdog change can destroy the fail-closed invariant.
+
+### Updated approval gates
+
+Native Linux TPROXY TCP/UDP works in the **isolated amd64 kernel control**, and the Keenetic currently has the required module/rules/listener. **These are different observations, not an end-to-end Keenetic TPROXY integration test**. The real first handover, UDP session continuity, watchdog cooperation, route-repair races, original destination preservation under the exact MIPS router kernel, real DNS/IPv6 leaks and recoverability are **still not proven**.
+
+The proposed 02:00–02:30 **Moscow-time** maintenance window (plus 15 minutes verification) remains a *proposal* until the owner chooses a date and separately approves the exact, reviewed first-cutover/rollback commands. Until then: **NO PRODUCTION CUTOVER**.
