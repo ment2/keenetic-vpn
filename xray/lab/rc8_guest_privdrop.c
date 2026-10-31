@@ -85,6 +85,9 @@ int main(int argc,char **argv){
    return 0;
  }
  if(geteuid()!=0)die("root-only parent test");
+ /* Permit read-only membership observation after UID drop; preserve root-only writes. */
+ if(chmod("/run/cgroup-pids",0755)!=0)die("cgroup read traversal");
+ if(chmod("/run/cgroup-pids/v30",0755)!=0)die("child scope read traversal");
  mkdir("/run/rc8-lab",0777);
  if(chmod("/run/rc8-lab",0777)!=0)die("private test rendezvous");
  int fd=open(CGROUP,O_WRONLY);
