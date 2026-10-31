@@ -38,6 +38,60 @@ static int sockpair(int *tcpfd,int *udpfd){
  if(listen(t,3)||bind(u,(void*)&a,sizeof(a)))return -1;
  *tcpfd=t;*udpfd=u;return ntohs(a.sin_port);
 }
+static void guardian_races(void){
+  for(int round=0;round<2;round++){
+    int fd=open("/run/rc7-guardian.lock",O_CREAT|O_RDWR,0600);
+    if(fd<0)stop("guardian lock open");
+    pid_t ids[8];int holders[8]={0},won=0;
+    for(int j=0;j<8;j++){
+      int pipefd[2];if(pipe(pipefd))stop("guardian pipe");
+      ids[j]=fork();
+      if(ids[j]<0)stop("guardian fork");
+      if(ids[j]==0){
+        close(pipefd[0]);
+        int rc=flock(fd,LOCK_EX|LOCK_NB);
+        char c=rc==0?'W':'L';
+        write(pipefd[1],&c,1);
+        close(pipefd[1]);
+        if(c=='W')sleep(3);
+        _exit(0);
+      }
+      close(pipefd[1]);char c='?';
+      if(read(pipefd[0],&c,1)!=1)stop("guardian decision");
+      close(pipefd[0]);
+      if(c=='W'){holders[j]=1;won++;}
+    }
+    if(won!=1)stop("guardian generation did not have exactly one winner");
+    for(int j=0;j<8;j++){
+      if(holders[j])kill(ids[j],SIGKILL); /* parent of unreaped test child only */
+      waitpid(ids[j],NULL,0);
+    }
+    close(fd);
+    dprintf(1,"RC7_GUEST: REAL_EIGHT_GUARDIAN_FLOCK_RACE_ROUND_%d_ONE_WINNER\n",round+1);
+  }
+}
+static int fd_in_net(int pid,const char *proto){
+ char path[128],line[512],fdpath[128],target[128];
+ snprintf(fdpath,sizeof(fdpath),"/proc/%d/fd",pid);
+ int matched=0;
+ for(int n=0;n<64;n++){
+   snprintf(path,sizeof(path),"%s/%d",fdpath,n);
+   ssize_t len=readlink(path,target,sizeof(target)-1);
+   if(len<=0)continue;target[len]=0;
+   if(strncmp(target,"socket:[",8))continue;
+   char *end=strchr(target+8,']');if(!end)continue;
+   *end=0;char *inode=target+8;
+   snprintf(path,sizeof(path),"/proc/net/%s",proto);
+   FILE *fp=fopen(path,"r");if(!fp)continue;
+   while(fgets(line,sizeof(line),fp)){
+      /* kernel /proc/net inode is a token; require whole word */
+      char *tok=strtok(line," \t\n");
+      while(tok){if(!strcmp(tok,inode))matched=1;tok=strtok(NULL," \t\n");}
+   }
+   fclose(fp);
+ }
+ return matched;
+}
 int main(int argc,char **argv){
  if(argc>1 && !strcmp(argv[1],"child")){
    int t,u;int port=sockpair(&t,&u);if(port<0)stop("TCP_UDP_SOCKET");
@@ -76,12 +130,15 @@ int main(int argc,char **argv){
    usleep(10000);
  }
  if(!found)stop("child not inherited");
+ if(!fd_in_net(pid,"tcp")||!fd_in_net(pid,"udp"))stop("TCP/UDP FD socket inode crosscheck");
+ dprintf(1,"RC7_GUEST: REAL_TCP_UDP_FD_INODE_OWNER_PASS\n");
  dprintf(1,"RC7_GUEST: REAL_CGROUP_V1_FORK_INHERIT_PASS pid=%d\n",pid);
  int status=0;
  waitpid(pid,&status,0);
  if(!WIFEXITED(status)||WEXITSTATUS(status)!=0)stop("child exit");
  if(present("/sys/fs/cgroup/pids/v30/cgroup.procs",pid))stop("child still in scope");
  dprintf(1,"RC7_GUEST: REAL_CGROUP_V1_FORK_EXEC_DRAIN_PASS\n");
+ guardian_races();
  dprintf(1,"RC7_GUEST: KERNEL49_PHYSICAL_CONTAINMENT_UNPROVEN\n");
  return 0;
 }
