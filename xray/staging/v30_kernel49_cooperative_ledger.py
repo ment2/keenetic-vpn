@@ -154,8 +154,8 @@ class Ledger:
             raise FenceError("never release owner with unknown child")
         with supervisor_lock(self.lock):
             d=self._read()
-            if d["owner"]!=owner or d["inflight"] is not None:
-                raise FenceError("owner drift or inflight")
+            if d["blocked"] or d["owner"]!=owner or d["inflight"] is not None:
+                raise FenceError("owner drift, quarantined or inflight")
             d["owner"]=None
             self._write(d)
 
