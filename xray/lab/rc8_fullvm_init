@@ -1,0 +1,75 @@
+#!/bin/busybox sh
+# Runs inside a disposable QEMU full-system guest only. All files are virtual.
+# This is NOT an installed Keenetic boot hook.
+export PATH=/bin
+/bin/busybox --install -s /bin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+# Load only reviewed guest modules embedded from the matching Ubuntu kernel.
+for module in /mods/*.ko; do
+  [ -f "$module" ] || continue
+  insmod "$module" || echo "RC8_VM: guest module load skipped $(basename "$module")"
+done
+mkdir -p /run /mnt/rescue /mnt/active
+echo "RC8_VM: GUEST_KERNEL_BOOTED"
+echo "RC8_VM: kernel $(uname -r) actual full-system guest, not user-mode QEMU"
+/bin/rc7cgroup
+CGROUP_EXIT=$?
+if [ "$CGROUP_EXIT" -eq 77 ]; then
+  echo "RC8_VM: CGROUP_V1_UNAVAILABLE_HARD_NO_GO"
+elif [ "$CGROUP_EXIT" -ne 0 ]; then
+  echo "RC8_VM: FAIL cgroup-v1 guest experiment returned $CGROUP_EXIT"
+  poweroff -f
+fi
+if [ "$CGROUP_EXIT" -eq 0 ]; then
+  /bin/rc8privdrop || { echo "RC8_VM: FAIL privileged descendant containment experiment"; poweroff -f; }
+fi
+mount -t ext4 /dev/vda /mnt/rescue || { echo "RC8_VM: FAIL independent rescue image missing"; poweroff -f; }
+mount -t ext4 /dev/vdb /mnt/active || { echo "RC8_VM: FAIL active image missing"; poweroff -f; }
+cd /mnt/rescue || exit 1
+sha256sum -c SHA256SUMS || { echo "RC8_VM: FAIL_CLOSED_CORRUPT_RESCUE_NO_RESTORATION"; sync; poweroff -f; }
+echo "RC8_VM: EXACT_FIVE_RESCUE_ORIGINALS_VERIFIED"
+STAGE=second
+grep -q rc7_stage=first /proc/cmdline && STAGE=first
+if [ "$STAGE" = second ]; then
+  if [ -e /dev/vdc ]; then
+    echo "RC8_VM: FAIL USB image still attached second boot"
+    poweroff -f
+  fi
+  if ! grep -qx 'stage=2' /mnt/active/journal; then
+    echo "RC8_VM: FAIL_CLOSED_CORRUPT_JOURNAL_NO_RESTORATION"
+    poweroff -f
+  fi
+  echo "RC8_VM: PREVIOUS_TWO_FILES_AND_JOURNAL_SURVIVED_QEMU_SIGKILL"
+fi
+# No shell source outside the simulated independent rescue image.
+for name in S97 S98 S99 watchdog wifi_rules; do
+  cp "/mnt/rescue/originals/$name.sh" "/mnt/active/.$name.sh.tmp" || exit 1
+  cmp "/mnt/rescue/originals/$name.sh" "/mnt/active/.$name.sh.tmp" || exit 1
+  /bin/rc7fsync "/mnt/active/.$name.sh.tmp" /mnt/active || { echo "RC8_VM: FAIL before-rename fdatasync"; poweroff -f; }
+  sync
+  mv "/mnt/active/.$name.sh.tmp" "/mnt/active/$name.sh" || exit 1
+  /bin/rc7fsync "/mnt/active/$name.sh" /mnt/active || { echo "RC8_VM: FAIL after-rename fdatasync"; poweroff -f; }
+  sync
+  case "$name" in
+    S97) echo 'stage=1' > /mnt/active/journal ;;
+    S98) echo 'stage=2' > /mnt/active/journal ;;
+    S99) echo 'stage=3' > /mnt/active/journal ;;
+    watchdog) echo 'stage=4' > /mnt/active/journal ;;
+    wifi_rules) echo 'stage=5' > /mnt/active/journal ;;
+  esac
+  /bin/rc7fsync /mnt/active/journal /mnt/active || { echo "RC8_VM: FAIL journal fdatasync"; poweroff -f; }
+  sync
+  if [ "$STAGE" = first ] && [ "$name" = S98 ]; then
+    echo "RC8_VM: POWER_CUT_POINT_AFTER_FSYNC_TWO_FILES"
+    while :; do sleep 1; done
+  fi
+done
+for name in S97 S98 S99 watchdog wifi_rules; do
+  cmp "/mnt/rescue/originals/$name.sh" "/mnt/active/$name.sh" || { echo "RC8_VM: FAIL original mismatch $name"; poweroff -f; }
+done
+echo "RC8_VM: REBOOT_FULL_RESTORE_5_OF_5_PASS"
+echo "RC8_VM: LIMITATION two virtual ext4 disks not physical Keenetic nonUSB media"
+sync
+poweroff -f
