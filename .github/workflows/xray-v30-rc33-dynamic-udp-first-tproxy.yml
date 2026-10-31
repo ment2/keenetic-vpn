@@ -1,0 +1,49 @@
+name: Xray v30 RC33 MIPS49 live AF_PACKET discovered UDP old flows dual Xray cutover
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc33-dynamic-udp-first-tproxy.yml'
+      - 'xray/lab/rc33_*'
+      - 'tests/test_xray_v30_rc33_dynamic_udp_cutover.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mips49-live-old-udp-identity-first-cutover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check full dynamic UDP evidence contracts and shell syntax
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc33_dynamic_udp_cutover.py -v
+          bash -n xray/lab/rc33_dynamic_udp_first_tproxy_runner.sh
+          bash -n xray/lab/rc33_dynamic_udp_first_tproxy_netns.sh
+          sh -n xray/lab/rc33_dynamic_udp_first_tproxy_guest.sh
+      - name: Install disposable MIPS49 tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Require actual old UDP AF_PACKET discovery and real TCP UDP return before during after first cutover
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc33_dynamic_udp_first_tproxy_runner.sh | tee "$RUNNER_TEMP/rc33-result.log"
+          grep -Fq RC33_PASS_DYNAMIC_DISCOVERED_UDP_TWO_FLOWS_TPROXY_CUTOVER_ONLY "$RUNNER_TEMP/rc33-result.log"
+          grep -Fq RC33_HOST:\ PASS_TWO_RUNTIME_DISCOVERED_UDP_FLOWS_AND_TCP_CUTOVER_ROLLBACK "$RUNNER_TEMP/rc33-result.log"
+      - name: Preserve logs and real MIPS full-system packet artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc33-mips49-live-discovered-udp-cutover-no-deploy
+          path: |
+            ${{ runner.temp }}/rc33-dynamic-udp-tproxy-handover/serial.log
+            ${{ runner.temp }}/rc33-dynamic-udp-tproxy-handover/qemu-errors.log
+            ${{ runner.temp }}/rc33-dynamic-udp-tproxy-handover/backend.log
+            ${{ runner.temp }}/rc33-result.log
+          if-no-files-found: warn
+          retention-days: 14
