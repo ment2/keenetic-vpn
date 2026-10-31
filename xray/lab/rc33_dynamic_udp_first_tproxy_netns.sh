@@ -70,13 +70,13 @@ def tcp_conn(port):
  s.connect(dst)
  return s
 def tcpecho(s,label):
- data=("RC33-TCP-"+label).encode()
+ data=("RC30-TCP-"+label).encode()
  s.sendall(data)
  reply=s.recv(256)
  assert reply==data,("RC33_HARD_NO_GO_TCP",label,reply)
  print("RC33_HOST: TCP_EXACT",label,len(reply),flush=True)
 def udpecho(s,label):
- data=("RC33-UDP-"+label).encode()
+ data=("RC30-UDP-"+label).encode()
  for trial in range(3):
   s.sendto(data,dst)
   try:
