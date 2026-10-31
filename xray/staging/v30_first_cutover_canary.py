@@ -118,14 +118,18 @@ def call(args, timeout=15):
 
 def safe_kernel():
     rules = call(["/opt/sbin/iptables", "-t", "mangle", "-S", "XRAY_WIFI"])
-    if not all(s in rules for s in ("TPROXY", "--on-port 12345",
-                                   "0x40000000/0x40000000")):
-        raise GateError("TPROXY TCP/UDP policy absent")
-    if "-p tcp" not in rules or "-p udp" not in rules:
-        raise GateError("both TPROXY protocols required")
+    policy = [line for line in rules.splitlines() if "-j TPROXY" in line]
+    for proto in ("tcp", "udp"):
+        if not any(("-p " + proto) in row and "--on-port 12345" in row
+                   and "--tproxy-mark 0x40000000/0x40000000" in row
+                   for row in policy):
+            raise GateError("TPROXY protocol/port/mark mismatch: " + proto)
     ks = call(["/opt/sbin/iptables", "-S", "XRAY_KS_HOME"])
     if "-j DROP" not in ks or "-i br0" not in ks:
         raise GateError("Home fail-closed rule not found")
+    forward = call(["/opt/sbin/iptables", "-S", "FORWARD"]).splitlines()
+    if len(forward) < 2 or forward[1] != "-A FORWARD -j XRAY_KS_HOME":
+        raise GateError("Home kill-switch not first FORWARD rule")
     iprule = call(["ip", "rule", "show"])
     if "0x40000000/0x40000000" not in iprule or "lookup 100" not in iprule:
         raise GateError("policy routing missing")
@@ -353,7 +357,10 @@ def guardian():
     if s.get("phase") != "armed" or s.get("expires") is None:
         raise GateError("guardian journal not armed")
     atomic_write(READY, {"pid": os.getpid(), "start_ticks": ticks(os.getpid())})
-    while time.time() < s["expires"]:
+    # Bound the deadline by BOTH wall clock and monotonic time, so an NTP
+    # clock change cannot extend the outage indefinitely.
+    monotonic_deadline = time.monotonic() + 90
+    while time.time() < s["expires"] and time.monotonic() < monotonic_deadline:
         time.sleep(0.25)
         s = read_state()
         if s["phase"] in ("restored", "blocked"):
@@ -467,6 +474,7 @@ def trial(args):
 
 
 def main():
+    os.umask(0o077)  # private logs, journal, API config and guardian handshakes
     parser = argparse.ArgumentParser()
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--plan", action="store_true")
