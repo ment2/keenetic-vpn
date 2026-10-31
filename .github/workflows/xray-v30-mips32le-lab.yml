@@ -111,3 +111,17 @@ jobs:
             tee "$RUNNER_TEMP/v30-mips-guard-prepared.log"
           grep -q 'MIPS_GUARD: PASS controller crash at prepared' "$RUNNER_TEMP/v30-mips-guard-prepared.log"
           grep -q 'MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP' "$RUNNER_TEMP/v30-mips-guard-prepared.log"
+
+      - name: Real QEMU MIPSLE recovery after primary guardian dies mid-rollback
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.v30_mips_guardian_failover \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" \
+            --demo "$RUNNER_TEMP/v30-mips-guard-mid-rollback" --crash-at running \
+            --guardian-crash-at after_candidate_stop |
+            tee "$RUNNER_TEMP/v30-mips-guard-mid-rollback.log"
+          grep -q 'MIPS_GUARD: PASS primary guardian fault at after_candidate_stop' "$RUNNER_TEMP/v30-mips-guard-mid-rollback.log"
+          grep -q 'MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP' "$RUNNER_TEMP/v30-mips-guard-mid-rollback.log"
