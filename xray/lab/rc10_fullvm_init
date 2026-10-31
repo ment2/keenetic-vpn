@@ -28,6 +28,8 @@ fi
 # RC9 QEMU guest-only. This is the genuine downloaded pinned Xray binary,
 # not a synthetic substitute, but no physical MIPS/Linux4.9 kernel claim.
 case "$(uname -r)" in 4.9.*) echo "RC10_VM: ACTUAL_LINUX49_GUEST_VERSION_CONFIRMED $(uname -r)" ;; *) echo "RC10_VM: FAIL not kernel 4.9"; poweroff -f ;; esac
+/bin/rc10cas || { echo "RC10_VM: FAIL guardian generation CAS on 4.9"; poweroff -f; }
+echo "RC10_VM: GUEST_GUARDIAN_8X3_CAS_DURABLE_RECONCILIATION_PASS"
 echo "RC10_VM: REAL_GUEST_IP_TRANSPARENT_CAPABILITY_MATRIX_BEGIN"
 /bin/rc9capwrap none socket || {
   echo "RC10_VM: FAIL no-cap TCP UDP IP_TRANSPARENT denial"; poweroff -f;
