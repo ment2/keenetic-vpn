@@ -16,6 +16,8 @@ on:
       - 'xray/lab/v30_mips_guardian_failover.py'
       - 'xray/lab/v30_parent_owned_kernel49.py'
       - 'xray/lab/v30_parent_owned_mips_recovery.py'
+      - 'xray/staging/v30_kernel49_cooperative_ledger.py'
+      - 'xray/lab/v30_kernel49_cooperative_lab.py'
       - 'xray/staging/v30_supervisor_core.py'
   workflow_dispatch:
 
@@ -157,3 +159,18 @@ jobs:
             grep -q "PARENT49: PASS never signaled a stale PID" "$RUNNER_TEMP/v30-parent49-$scenario.log"
             grep -q "PARENT49: PASS failure injection $scenario" "$RUNNER_TEMP/v30-parent49-$scenario.log"
           done
+
+      - name: Real MIPSLE Xray coordinated S97 S98 S99 watchdog cron restarts and two guardian failures
+        shell: bash
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.v30_kernel49_cooperative_lab \
+            --demo "$RUNNER_TEMP/v30-kernel49-cooperative" \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" |
+            tee "$RUNNER_TEMP/v30-kernel49-cooperative.log"
+          grep -q 'COOP49: PASS real MIPSLE TCP/UDP across 3 serialized competing S97 restarts' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
+          grep -q 'COOP49: PASS S98 no-rules-mutation, watchdog/cron/S99 shared-flock requests' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
+          grep -q 'COOP49: PASS parent and guardian killed; independent owner restored real MIPS TCP/UDP' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
+          grep -q 'COOP49: PASS crash mid-RESTART receipt remains UNCERTAIN, not replayed' "$RUNNER_TEMP/v30-kernel49-cooperative.log"
