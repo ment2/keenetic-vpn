@@ -12,6 +12,7 @@ on:
       - 'xray/lab/stable_socks_ingress_v30.py'
       - 'xray/lab/xray_v30_stable_ingress_demo.py'
       - 'xray/lab/xray_v30_pool_handover_api.py'
+      - 'xray/lab/xray_v30_dokodemo_lab.py'
   workflow_dispatch:
 
 permissions:
@@ -74,4 +75,11 @@ jobs:
         run: |
           export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
           python3 -m xray.lab.xray_v30_pool_handover_api \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
+
+      - name: Exercise real MIPSLE dokodemo-door TCP and UDP loopback only
+        shell: bash
+        run: |
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.xray_v30_dokodemo_lab \
             --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
