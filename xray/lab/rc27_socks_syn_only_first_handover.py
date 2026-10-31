@@ -134,13 +134,18 @@ def first_migration(xray):
                 # Require exact rule with SYN-only match, never broad new-flow
                 # matching that could reinterpret already-open legacy flows.
                 exec_(*nat_rule)
-                checked = exec_(*(["iptables","-t","nat","-C","OUTPUT"] + redirect_match),check=False)
-                if checked.returncode != 0:
-                    actual = exec_("iptables","-t","nat","-S","OUTPUT",check=False)
-                    print("RC27_DIAG: EXACT_SYN_ONLY_RULE_CHECK_RETURN",checked.returncode,flush=True)
-                    print("RC27_DIAG: RULE_CHECK_STDERR",repr(checked.stderr[:450]),flush=True)
-                    print("RC27_DIAG: OUTPUT_NAT_RULES",repr(actual.stdout[:1200]),flush=True)
-                    raise Reject("HARD_NO_GO_SYN_ONLY_RULE_NOT_VERIFIED")
+                # iptables-nft may canonicalize the rule and reject -C with
+                # noncanonical match args, even when -S confirms installation.
+                # Require the exact canonical netns-local rule and nothing else.
+                expected_nat = ("-A OUTPUT -d 127.0.0.1/32 -p tcp -m tcp"
+                                " --dport 10808 --tcp-flags SYN,RST,ACK SYN"
+                                " -j REDIRECT --to-ports 20808")
+                actual = exec_("iptables","-t","nat","-S","OUTPUT")
+                rules = actual.stdout.splitlines()
+                if rules != ["-P OUTPUT ACCEPT", expected_nat]:
+                    print("RC27_DIAG: OUTPUT_NAT_RULES",repr(rules),flush=True)
+                    raise Reject("HARD_NO_GO_SYN_ONLY_RULE_CANONICAL_READBACK_MISMATCH")
+                print("RC27: EXACT_SYN_ONLY_NAT_RULE_CANONICAL_READBACK_CONFIRMED",flush=True)
                 generation=2
                 try:
                     with socks_connect(orig_port) as new_flow:
