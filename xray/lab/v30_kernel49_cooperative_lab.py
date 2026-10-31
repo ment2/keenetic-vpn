@@ -289,12 +289,12 @@ def demo(root,xray):
         owner.kill()
         owner.wait(timeout=4)
         guardian=start_process(root,"guardian",("--crash-lock",))
-        wait(root,"guardian-held-lock",guardian=guardian)
+        wait(root,"guardian-held-lock",owner=guardian)
         guardian.kill()
         guardian.wait(timeout=4)
         # Normal fresh guardian never sends a signal to previous Xray PID.
         watchdog=start_process(root,"guardian")
-        wait(root,"reconciled",watchdog,timeout=25)
+        wait(root,"reconciled",owner=watchdog,timeout=25)
         if not any(x["sequence"]==req["sequence"] and x["status"]=="UNCERTAIN"
                    for x in ledger.read()["receipts"]):
             raise FenceError("inflight crash did not remain UNCERTAIN")
