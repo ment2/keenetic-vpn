@@ -33,7 +33,7 @@
   },
   "lab_evidence": {
     "mips_existing": "41211906271",
-    "mips_cooperative": "PENDING_INDEPENDENT_CI_COMPLETION",
+    "mips_cooperative": "41213319142",
     "offline_descendant": "41213319195",
     "tests_proven": [
       "single_direct_child_parent",
@@ -44,7 +44,9 @@
       "UNCERTAIN_never_automatically_replayed",
       "orphan_grandchild_TCP_UDP_blocks_recovery"
     ],
-    "physical_router_proven": false
+    "physical_router_proven": false,
+    "offline_latest": "41213592037",
+    "all_validation": "PASS_OFFLINE_411_AND_REAL_MIPS_TCP_UDP_LAB"
   },
   "boot_rescue_gates": {
     "physical_separate_mount_verified": false,
