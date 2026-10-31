@@ -70,7 +70,7 @@ test "$primed" = 1 || { echo RC34_GUEST_HARD_NO_GO_INITIAL_IDLE_UDP_NOT_OBSERVED
 observer=$!
 watcher=0
 for n in $(/bin/busybox seq 1 70); do
- if /bin/busybox grep -Fq RC34_OBSERVER_PACKET_SOCKET_READY_ETH1 /lab/observer.log 2>/dev/null;then watcher=1;break;fi
+ if /bin/busybox grep -Fq RC33_OBSERVER_PACKET_SOCKET_READY_ETH1 /lab/observer.log 2>/dev/null;then watcher=1;break;fi
  /bin/busybox kill -0 "$observer" 2>/dev/null || break
  /bin/busybox sleep 0.1
 done
