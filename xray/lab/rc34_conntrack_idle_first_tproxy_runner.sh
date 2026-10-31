@@ -70,8 +70,8 @@ JSON
 chmod 644 "$W/initramfs/etc/xray.json" "$W/initramfs/etc/xray-candidate.json"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/init" xray/lab/rc29_original_init.c
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -DPORT=19292 -o "$W/initramfs/lab/echo" xray/lab/rc19_mips49_tcpudp_echo.c
-mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/lab/rc33-observer" xray/lab/rc33_udp_flow_observer.c
-chmod 755 "$W/initramfs/lab/rc33-observer"
+mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/lab/rc34-observer" xray/lab/rc33_udp_flow_observer.c
+chmod 755 "$W/initramfs/lab/rc34-observer"
 cp xray/lab/rc34_conntrack_idle_first_tproxy_guest.sh "$W/initramfs/lab/xray-packet.sh"
 chmod 755 "$W/initramfs/lab/echo" "$W/initramfs/lab/xray-packet.sh"
 mkdir -p "$W/initramfs/lab"
