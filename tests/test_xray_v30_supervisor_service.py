@@ -99,7 +99,7 @@ class XrayV30BrokerTests(unittest.TestCase):
                         self.b.control("watchdog-once")
 
     def test_addressed_stop_calls_only_scoped_signal(self):
-        state={"schema":1, "phase":"active", "identity":self.identity}
+        state={"schema":1, "phase":"active", "identity":{"pid":self.identity.pid, "start_ticks":self.identity.start_ticks, "exe":self.identity.exe, "argv":list(self.identity.argv)}}
         with patch.object(self.b, "_verified_active", return_value=(state, self.identity)):
             with patch.object(svc, "scoped_signal") as addressed:
                 with patch.object(svc, "proc_identity", side_effect=FenceError("gone")):
