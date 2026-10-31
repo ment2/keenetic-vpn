@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "release": "v30-linux49-rc9-xray-real-guest-capability-no-go",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "REAL_FULLSYSTEM_GUEST_PASS_PHYSICAL_HARD_NO_GO",
+  "prior_release": "xray/staging/v30-rc8-privdrop-failclosed-review.json",
+  "source_blobs": {
+    "xray/lab/rc9_guest_capwrap.c": "584b3ca4e61a5f67657f6f79d788d9d8a41397b4",
+    "xray/lab/rc9_guest_socket_cap_probe.c": "a08d28dd99793789dc92f3734488337c870c9436",
+    "xray/lab/rc9_guest_parent_crash.c": "8d6d7b1a13eeff3b5f9eedb197d10af73189aef7",
+    "xray/lab/rc9_fullvm_init": "2a589e3286c207170a36b4f9548140ccb9a57a20",
+    "xray/lab/rc9_fullvm_runner.sh": "a674019da9e365cc6574179acd37dc070446820e",
+    ".github/workflows/xray-v30-rc9-fullsystem.yml": "1d2d6f0cf2972a59ccec8b5669e28d7b6d7ec2c0"
+  },
+  "official_xray_binary": {
+    "version": "26.2.6",
+    "architecture": "linux/amd64",
+    "tag": "v26.2.6",
+    "archive": "Xray-linux-64.zip",
+    "archive_sha256": "29ce535b56e207a406ffa1c2d4842dcc410be003eff8ec508bb732abc9f8e385",
+    "executable_sha256": "3f650abf1fc4a4fbf5abe7fc9990a2658020907cd984214e9c075b4b00989fea",
+    "hash_verified_by_ci": true,
+    "real_mips_kernel49_binary_tested": false
+  },
+  "full_system_ci": {
+    "run_id": 41222202057,
+    "conclusion": "success",
+    "guest_kernel": "Linux 6.8.0-147-generic",
+    "platform": "QEMU x86_64 full-system TCG",
+    "boots": 4,
+    "scenarios": [
+      "baseline",
+      "rescue-missing"
+    ],
+    "artifact_id": 13050721397,
+    "artifact_name": "v30-rc9-qemu-xray-capabilities-and-missing-rescue-NO-DEPLOY",
+    "artifact_expires": "2026-11-14T16:59:21Z"
+  },
+  "confirmed_guest": {
+    "uid": 65534,
+    "gid": 65534,
+    "no_new_privs_before_exec": true,
+    "zero_caps_rejected_ip_transparent_tcp": true,
+    "zero_caps_rejected_ip_transparent_udp": true,
+    "only_cap_net_raw_success_tcp": true,
+    "only_cap_net_raw_success_udp": true,
+    "only_cap_net_raw_effective_hex": "0000000000002000",
+    "true_xray透明_inbound_listener": true,
+    "child_pid_start_ticks_pinned": true,
+    "crashed_parent_dies_by_sigkill": true,
+    "pdeathsig_real_xray_child_listener_closed": true,
+    "guardian_sends_signal_to_unknown_pid": false,
+    "mips_xray_user_mode_prior_success_run": 41215515431,
+    "real_mips_linux49_kernel_not_proven": true,
+    "native_kernel_tproxy_packet_redirection_not_tested_in_rc9": true,
+    "full_xray_traffic_ipv6_dns_failclosed_not_proven": true,
+    "legacy_privileged_processes_not_fenced": true,
+    "child_ambient_caps_outside_approved_mask": false
+  },
+  "rescue": {
+    "qemu_sigkill_after_fsynced_two_of_five": true,
+    "virtual_usb_missing_second_boot": true,
+    "rescue_image_blank_second_boot": true,
+    "missing_rescue_sha_rejected": true,
+    "second_boot_active_files_unchanged_count": 5,
+    "baseline_restored_originals": 5,
+    "physical_off_usb_boot_guardian_verified": false,
+    "real_hardware_powerloss_proven": false,
+    "physical_router_coldboot_tested": false
+  },
+  "linux49_compatibility": {
+    "historical_kernel": "4.9-ndm-5",
+    "pidfd_open_supported": false,
+    "pidfd_send_signal_supported": false,
+    "pr_cap_ambient_introduced_in_linux": "4.3",
+    "physical_cap_net_raw_tproxy_proven": false,
+    "physical_cgroup_v1_pids_unprivileged_scope_proven": false,
+    "cap_sys_admin_or_cap_dac_override_forbidden_for_untrusted_descendants": true,
+    "actual_live_s97_s98_s99_watchdog_cron_inventory_complete": false,
+    "mips_cgroup_and_guest_tproxy_replay_proven": false
+  },
+  "read_only_preflight_remaining": [
+    "already authorized read-only check actual Linux 4.9 kernel and CONFIG_SECURITY_FILE_CAPABILITIES/ambient caps",
+    "verify actual compiled Xray 26.2.6 MIPS capabilities, exact binary hash, startup privileges and socket access without executing a live trial",
+    "verify actual cgroup v1 mounts, child membership, UID/GID permissions and all orphaned legacy processes/socket inodes",
+    "verify TPROXY TCP/UDP/IPv6/DNS and kill-switch safety with no privilege escalation or rule changes",
+    "verify independent physical persistent nonUSB boot guardian, early boot order, power-loss fsync and USB removal",
+    "approve individual exact new byte hashes, original SHA256 and two-phase rollback before any service cutover"
+  ],
+  "release_decision": "HARD_NO_GO_PRODUCTION",
+  "authorization": {
+    "router_jobs": 0,
+    "production_write": false,
+    "cloudflare_write": false,
+    "firewall_write": false,
+    "routes_write": false,
+    "cron_write": false,
+    "main_write": false,
+    "snapshot_write": false,
+    "merge": false,
+    "deploy": false,
+    "trial": false,
+    "rollback_run": false
+  }
+}
