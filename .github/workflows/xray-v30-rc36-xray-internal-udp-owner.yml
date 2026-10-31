@@ -1,0 +1,76 @@
+name: Xray v30 RC36 pinned private UDP owner audit and real MIPS49 log witness after conntrack expiry
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc36-xray-internal-udp-owner.yml'
+      - 'xray/lab/rc36_*'
+      - 'tests/test_xray_v30_rc36_xray_internal_udp_session.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-xray-26-2-6-udp-session-private-api-and-mips49:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source and real-process logging contracts
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc36_xray_internal_udp_session.py -v
+          python3 -m py_compile xray/lab/rc36_pinned_xray_udp_source_audit.py
+          sh -n xray/lab/rc36_xray_internal_udp_expiry_guest.sh
+          bash -n xray/lab/rc36_xray_internal_udp_expiry_runner.sh
+          bash -n xray/lab/rc36_xray_internal_udp_expiry_netns.sh
+      - name: Pin actual Xray v26.2.6 source and verify Git blob identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/rc36-upstream"
+          mkdir -p "$root"
+          commit=12ee51e4bb1d02ece4ef4b7114efa2bcdc130995
+          while read -r path blob; do
+            [ -n "$path" ] || continue
+            mkdir -p "$root/$(dirname "$path")"
+            curl -fL --retry 3 --max-time 45 \
+              -o "$root/$path" "https://raw.githubusercontent.com/XTLS/Xray-core/$commit/$path"
+            got="$(git hash-object "$root/$path")"
+            if [ "$got" != "$blob" ]; then echo "HARD_NO_GO_SOURCE_BLOB_DRIFT:$path"; exit 17; fi
+            printf 'RC36_UPSTREAM_PINNED %s %s\n' "$path" "$blob"
+          done <<'FILES'
+          app/proxyman/inbound/worker.go ef454d21195e2df878cd129f907dfaa65f7cdff0
+          app/proxyman/command/command.proto 71f8f0dcf0e9ae83204550aa9e02eba8384cb6b0
+          app/stats/command/command.proto 9c3f9131d087a6cd5c831a5ff708d93351b865f2
+          app/router/command/command.proto 22ae95b9844039f7460d1a5db5bfc54aa251487e
+          proxy/dokodemo/dokodemo.go e56363db0a8dd0b059b0bf705067d6c65ed0b6aa
+          FILES
+          python3 -m xray.lab.rc36_pinned_xray_udp_source_audit --root "$root" | tee "$RUNNER_TEMP/rc36-source.log"
+          grep -Fq RC36_SOURCE_GRPC_NO_COMPLETE_UDP_SESSION_OWNER_SNAPSHOT_IN_THREE_SERVICES "$RUNNER_TEMP/rc36-source.log"
+      - name: Install disposable MIPS Linux 4.9 cross toolchain only
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Prove same Xray udpWorker internal Process once through real guest conntrack expiry
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc36_xray_internal_udp_expiry_runner.sh | tee "$RUNNER_TEMP/rc36-result.log"
+          grep -Fq RC36_PASS_REAL_MIPS49_XRAY_UDP_WORKER_REUSED_ACROSS_CONNTRACK_EXPIRY_NO_CUTOVER "$RUNNER_TEMP/rc36-result.log"
+          grep -Fq RC36_GUEST_XRAY_INTERNAL_PROCESS_ONCE_BEFORE_AFTER_CONNTRACK_EXPIRY "$RUNNER_TEMP/rc36-result.log"
+          grep -Fq RC36_HARD_NO_GO_NO_COMPLETE_XRAY_UDP_OWNER_OR_ATOMIC_FREEZE "$RUNNER_TEMP/rc36-result.log"
+      - name: Preserve source and packet witnesses for negative review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc36-real-mips49-xray-udp-worker-owner-and-source-no-deploy
+          path: |
+            ${{ runner.temp }}/rc36-source.log
+            ${{ runner.temp }}/rc36-result.log
+            ${{ runner.temp }}/rc36-xray-internal-udp-expiry/serial.log
+            ${{ runner.temp }}/rc36-xray-internal-udp-expiry/qemu-errors.log
+            ${{ runner.temp }}/rc36-xray-internal-udp-expiry/backend.log
+          if-no-files-found: warn
+          retention-days: 14
