@@ -68,6 +68,35 @@ echo "RC9_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS"
 kill "$XRAY_PID"
 wait "$XRAY_PID" || true
 echo "RC9_VM: CHILD_XRAY_REAPED_PARENT_OWNED"
+# A NEW parent owns another real Xray and crashes. A separate guardian-like
+# observer checks pinned PID/start ticks and TCP listener absence. It sends
+# NO signal to the orphan or any PID derived from journal data.
+/bin/rc9owner || true
+if [ ! -f /run/rc9-owned-identity ]; then
+  echo "RC9_VM: FAIL owner crash identity receipt absent"; poweroff -f
+fi
+read -r CHILD_ID CHILD_TICKS OWNER_ID < /run/rc9-owned-identity
+if [ -z "$CHILD_ID" ] || [ -z "$CHILD_TICKS" ]; then
+  echo "RC9_VM: FAIL incomplete child identity"; poweroff -f
+fi
+OWNED_DRAINED=0
+for n in $(seq 1 90); do
+  if grep -q ':3039 ' /proc/net/tcp; then sleep 0.05; continue; fi
+  if [ -e "/proc/$CHILD_ID/stat" ]; then
+    CURRENT_TICKS="$(awk '{print $22}' "/proc/$CHILD_ID/stat" 2>/dev/null)"
+    CHILD_STATE="$(awk '/^State:/ {print $2}' "/proc/$CHILD_ID/status" 2>/dev/null)"
+    if [ "$CURRENT_TICKS" != "$CHILD_TICKS" ]; then
+      echo "RC9_VM: FAIL orphan PID reuse or identity drift"; poweroff -f
+    fi
+    if [ "$CHILD_STATE" != Z ] && [ "$CHILD_STATE" != X ]; then sleep 0.05; continue; fi
+  fi
+  OWNED_DRAINED=1;break
+done
+if [ "$OWNED_DRAINED" -ne 1 ]; then
+  echo "RC9_VM: FAIL owned real Xray survived parent death"; poweroff -f
+fi
+echo "RC9_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN_PASS"
+echo "RC9_VM: LIMITATION no guardian CAS nor full legacy descendant proof in guest"
 mount -t ext4 /dev/vda /mnt/rescue || { echo "RC9_VM: FAIL independent rescue image missing"; poweroff -f; }
 mount -t ext4 /dev/vdb /mnt/active || { echo "RC9_VM: FAIL active image missing"; poweroff -f; }
 cd /mnt/rescue || exit 1
