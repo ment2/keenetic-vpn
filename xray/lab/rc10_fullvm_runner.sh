@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(pwd)"
 : "$RUNNER_TEMP"
 SCENARIO="${RC10_SCENARIO:-baseline}"
-case "$SCENARIO" in baseline|rescue-missing) ;; *) echo "RC10: bad scenario" >&2; exit 2;; esac
+case "$SCENARIO" in baseline|rescue-missing|rescue-absent) ;; *) echo "RC10: bad scenario" >&2; exit 2;; esac
 WORK="$RUNNER_TEMP/xray-v30-rc10-fullvm-$SCENARIO"
 test ! -e "$WORK"
 mkdir -p "$WORK"/initramfs/bin "$WORK"/initramfs/proc "$WORK"/initramfs/sys "$WORK"/initramfs/dev "$WORK"/initramfs/run "$WORK"/initramfs/mnt "$WORK"/rescue "$WORK"/active
@@ -154,16 +154,18 @@ case "$SCENARIO" in
     mkfs.ext4 -q -F "$WORK/blank-rescue.img"
     echo "RC10: INJECTED_MISSING_RESCUE_CONTENT_VIRTUAL_DEVICE"
     ;;
+  rescue-absent) echo "RC10: DETACHING_VIRTUAL_RESCUE_DEVICE_ON_SECOND_BOOT" ;;
   baseline) ;;
 
 esac
 SECOND_RESCUE=rescue
 if [ "$SCENARIO" = rescue-missing ]; then SECOND_RESCUE=blank-rescue; fi
+SECOND_DRIVES=( -drive "file=$WORK/$SECOND_RESCUE.img,format=raw,if=virtio,cache=writeback" -drive "file=$WORK/active.img,format=raw,if=virtio,cache=writeback" )
+if [ "$SCENARIO" = rescue-absent ]; then SECOND_DRIVES=( -drive "file=$WORK/active.img,format=raw,if=virtio,cache=writeback" ); fi
 set +e
 timeout --signal=KILL 170s qemu-system-x86_64 -nodefaults -nographic -no-reboot -machine pc,accel=tcg -m 512 -smp 1 \
   -kernel "$KERNEL" -initrd "$WORK/initramfs.img.gz" -monitor none -display none \
-  -drive "file=$WORK/$SECOND_RESCUE.img,format=raw,if=virtio,cache=writeback" \
-  -drive "file=$WORK/active.img,format=raw,if=virtio,cache=writeback" \
+  "${SECOND_DRIVES[@]}" \
   -append "console=ttyS0 rdinit=/init rc7_stage=second panic=-1" \
   -serial "file:$SECOND_LOG" >"$WORK/second-qemu-errors.log" 2>&1
 BOOT_EXIT=$?
@@ -175,6 +177,10 @@ case "$SCENARIO" in
   ;;
  rescue-missing)
   grep -q 'RC10_VM: FAIL_CLOSED_CORRUPT_RESCUE_NO_RESTORATION' "$SECOND_LOG"
+  if grep -q 'RC10_VM: REBOOT_FULL_RESTORE_5_OF_5_PASS' "$SECOND_LOG"; then exit 1; fi
+  ;;
+ rescue-absent)
+  grep -q 'RC10_VM: FAIL active image missing' "$SECOND_LOG"
   if grep -q 'RC10_VM: REBOOT_FULL_RESTORE_5_OF_5_PASS' "$SECOND_LOG"; then exit 1; fi
   ;;
 
@@ -192,6 +198,8 @@ grep -q 'RC10_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN
 grep -q 'RC10_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN_PASS' "$SECOND_LOG"
 grep -q 'RC10_VM: ACTUAL_LINUX49_GUEST_VERSION_CONFIRMED' "$FIRST_LOG"
 grep -q 'RC10_VM: ACTUAL_LINUX49_GUEST_VERSION_CONFIRMED' "$SECOND_LOG"
+grep -q 'RC10_SOCKET: VERIFIED_NO_NEW_PRIVS_SURVIVED_EXEC_ON_KERNEL49' "$FIRST_LOG"
+grep -q 'RC10_SOCKET: VERIFIED_NO_NEW_PRIVS_SURVIVED_EXEC_ON_KERNEL49' "$SECOND_LOG"
 grep -q 'RC10_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS' "$FIRST_LOG"
 grep -q 'RC10_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS' "$SECOND_LOG"
 grep -q 'RC9_SOCKET: REAL_IP_TRANSPARENT_TCP_UDP_DENIED_WITHOUT_CAPS_PASS' "$FIRST_LOG"
@@ -239,7 +247,7 @@ printf '%s\n' "$CGROUP" >"$WORK/cgroup-disposition.txt"
 if [ "$SCENARIO" = baseline ]; then
   echo "RC10: PASS_REAL_LINUX49_XRAY_CAP_RAW_AND_5_OF_5_RESTORE"
 else
-  echo "RC10: PASS_LINUX49_MISSING_RESCUE_ZERO_WRITES"
+  echo "RC10: PASS_LINUX49_MISSING_RESCUE_ZERO_WRITES $SCENARIO"
 fi
 echo "RC10: $CGROUP"
 echo "RC10: HARD_NO_GO_PHYSICAL_KEENETIC_RUNTIME_CGROUP_BOOT_USB_TPROXY"
