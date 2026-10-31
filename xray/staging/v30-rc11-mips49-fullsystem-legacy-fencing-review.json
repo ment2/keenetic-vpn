@@ -10,7 +10,9 @@
     ".github/workflows/xray-v30-rc11-mips49-fullsystem.yml": "d6bfb328d79f86169ecc121c219483891be69fda",
     ".github/workflows/xray-v30-rc11-mips49-discovery.yml": "2de39c694844d68e84ca902f428353665bc1843f",
     "xray/lab/rc11_privileged_legacy_fencing_contract.py": "56be3cc3c92e07e1b5f8aa8ade4a008e43654814",
-    "tests/test_xray_v30_rc11_legacy_fencing.py": "bc9c84a9b20b7d160b97adaabd00a4be2cdb7d66"
+    "tests/test_xray_v30_rc11_legacy_fencing.py": "bc9c84a9b20b7d160b97adaabd00a4be2cdb7d66",
+    "xray/lab/rc11_hardware_boot_rescue_gate.py": "70c0af235fd2171938badea7711e198b979c9a59",
+    "tests/test_xray_v30_rc11_hardware_boot_rescue.py": "a30c6dc82cf8ce5ff326991f5fcb2940e130d2c8"
   },
   "archive_pins": {
     "kernel_arch": "linux/mipsel",
@@ -80,6 +82,16 @@
       "virtual_rescue_missing_writes": 0,
       "virtual_rescue_detached_writes": 0,
       "previous_review": "xray/staging/v30-rc10-linux49-capability-tproxy-cas-rescue-review.json"
+    },
+    "hardware_rescue_gate": {
+      "separate_device_and_power_domain_proof_required": true,
+      "physical_usb_absent_boot_required": true,
+      "sha256_originals_and_fsync_required": true,
+      "corrupted_journal_fail_closed_required": true,
+      "orphan_fencing_required": true,
+      "root_owned_0700_required": true,
+      "physical_keenetic_verified": false,
+      "offline_review_only": true
     }
   },
   "physical_acceptance": {
