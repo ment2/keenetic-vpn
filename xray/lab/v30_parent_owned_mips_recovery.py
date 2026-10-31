@@ -196,7 +196,7 @@ def main():
     m.add_argument("--demo",type=Path)
     m.add_argument("--worker",type=Path)
     pa.add_argument("--xray")
-    pa.add_argument("--case",choices=("parent_crash","child_exit","rollback","prepared"),
+    pa.add_argument("--case",choices=("normal","parent_crash","child_exit","rollback","prepared"),
                     default="parent_crash")
     pa.add_argument("--generation",choices=("candidate","restored"))
     a=pa.parse_args()
