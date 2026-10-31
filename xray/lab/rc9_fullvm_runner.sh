@@ -41,6 +41,7 @@ gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_guest_fdatasync.c" -o "$WORK/i
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc8_guest_privdrop.c" -o "$WORK/initramfs/bin/rc8privdrop"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_capwrap.c" -o "$WORK/initramfs/bin/rc9capwrap"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_socket_cap_probe.c" -o "$WORK/initramfs/bin/rc9socket"
+gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_parent_crash.c" -o "$WORK/initramfs/bin/rc9owner"
 if [ -z "$XRAY_NATIVE_BINARY" ] || [ ! -f "$XRAY_NATIVE_BINARY" ]; then echo "RC9: official binary unavailable"; exit 77; fi
 cp "$XRAY_NATIVE_BINARY" "$WORK/initramfs/bin/xray"
 mkdir -p "$WORK/initramfs/etc"
@@ -60,7 +61,7 @@ chmod 644 "$WORK/initramfs/etc/xray.json"
 cp "$ROOT/xray/lab/rc9_fullvm_init" "$WORK/initramfs/init"
 chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/rc7fsync" "$WORK/initramfs/bin/busybox"
 chmod 755 "$WORK/initramfs/bin/rc8privdrop"
-chmod 755 "$WORK/initramfs/bin/rc9capwrap" "$WORK/initramfs/bin/rc9socket" "$WORK/initramfs/bin/xray"  # must be executable AFTER dropping UID before exec
+chmod 755 "$WORK/initramfs/bin/rc9capwrap" "$WORK/initramfs/bin/rc9socket" "$WORK/initramfs/bin/xray" "$WORK/initramfs/bin/rc9owner"  # must be executable AFTER dropping UID before exec
 (
   cd "$WORK/initramfs"
   find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$WORK/initramfs.img.gz"
@@ -183,6 +184,8 @@ if [ "$SCENARIO" != baseline ]; then
   done
   echo "RC9: PASS_FAIL_CLOSED_CORRUPT_IMAGE_ZERO_ACTIVE_WRITES $SCENARIO"
 fi
+grep -q 'RC9_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN_PASS' "$FIRST_LOG"
+grep -q 'RC9_VM: REAL_XRAY_PARENT_SIGKILL_PDEATHSIG_IDENTITY_AND_LISTENER_DRAIN_PASS' "$SECOND_LOG"
 grep -q 'RC9_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS' "$FIRST_LOG"
 grep -q 'RC9_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS' "$SECOND_LOG"
 grep -q 'RC9_SOCKET: REAL_IP_TRANSPARENT_TCP_UDP_DENIED_WITHOUT_CAPS_PASS' "$FIRST_LOG"
