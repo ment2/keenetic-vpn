@@ -43,7 +43,7 @@ class RC30FirstCutover(unittest.TestCase):
   self.assertIn('unshare --net',RUN)
   self.assertIn('NO_DEFAULT',HOST)
   self.assertIn('netns',HOST)
-  self.assertIn('xt_TPROXY',RUN)
+  self.assertIn('rc20_mips49_tproxy_module_pack',RUN)
   self.assertIn('tproxy-mark 0x40000000',GUEST)
   self.assertIn('HARD_NO_GO_BOTH_TPROXY_OWNERS_NOT_WITNESSED',GUEST)
  def test_rollback_fails_closed_on_unexpected_rule_count(self):
