@@ -54,9 +54,14 @@ def demo(root):
         (active/(name+".sh")).write_bytes(b"RC6_CANDIDATE_NOT_AN_ORIGINAL_"+name.encode())
         (usb/(name+".sh")).write_bytes(raw)
     (src/"SHA256SUMS").write_text("\n".join(sha_lines)+"\n")
-    guardian=Path(__file__).with_name("v30_rc6_rescue_guardian.sh").resolve()
-    if not guardian.is_file():
+    # The recovery program is copied to the isolated simulated rescue
+    # source. New shell invocations never read Python or checkout files.
+    reviewed=Path(__file__).with_name("v30_rc6_rescue_guardian.sh").resolve()
+    if not reviewed.is_file():
         raise FenceError("missing reviewed standalone shell guardian")
+    guardian=src/"guardian.sh"
+    guardian.write_bytes(reviewed.read_bytes())
+    guardian.chmod(0o600)
     valid=run_guard(guardian,src,active,"after-2")
     if valid.returncode!=75:
         raise FenceError("fault injection failed: "+valid.stderr[-500:])
