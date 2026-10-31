@@ -1,0 +1,50 @@
+name: Xray v30 RC35 MIPS49 actual nf_conntrack UDP entry expiration must BLOCK first cutover
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc35-conntrack-expiry-negative.yml'
+      - 'xray/lab/rc35_*'
+      - 'tests/test_xray_v30_rc35_conntrack_expiry.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc35-mips49-kernel-conntrack-idle-udp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify kernel inventory contracts and shell syntax
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc35_conntrack_expiry.py -v
+          python3 -m py_compile xray/lab/rc35_conntrack_module_pack.py
+          bash -n xray/lab/rc35_conntrack_expiry_runner.sh
+          bash -n xray/lab/rc35_conntrack_expiry_netns.sh
+          sh -n xray/lab/rc35_conntrack_expiry_guest.sh
+      - name: Install disposable QEMU MIPS49 and cross-toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Prove native MIPS kernel expiry while client UDP socket remains open and block unsafe cutover
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc35_conntrack_expiry_runner.sh | tee "$RUNNER_TEMP/rc35-result.log"
+          grep -Fq RC35_PASS_REAL_MIPS49_NF_CONNTRACK_EXPIRY_DETECTED_AND_CUTOVER_REFUSED "$RUNNER_TEMP/rc35-result.log"
+          grep -Fq RC35_HOST:\ PASS_SAFE_REFUSAL_AFTER_KERNEL_CONNTRACK_EXPIRY "$RUNNER_TEMP/rc35-result.log"
+      - name: Preserve exact failure or completion witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc35-mips49-nf-conntrack-expiry-negative-no-deploy
+          path: |
+            ${{ runner.temp }}/rc35-conntrack-expiry-negative/serial.log
+            ${{ runner.temp }}/rc35-conntrack-idle-tproxy-handover/qemu-errors.log
+            ${{ runner.temp }}/rc35-conntrack-idle-tproxy-handover/backend.log
+            ${{ runner.temp }}/rc35-result.log
+          if-no-files-found: warn
+          retention-days: 14
