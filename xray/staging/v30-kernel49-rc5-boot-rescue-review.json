@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "release": "v30-kernel49-rc5-boot-rescue-review",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "LAB_VERIFIED_NO_PHYSICAL_INSTALL",
+  "source_contract_blobs": {
+    "xray/lab/v30_kernel49_cgroup_v1_contract.py": "1b57b1cbfaef9d3ee95d2e945e053099ac07070c",
+    "xray/lab/v30_kernel49_nonusb_boot_rescue_contract.py": "24e07ebc4692f5dcfcda506ce648ec6a600a0dc9",
+    "xray/lab/v30_mips_guardian_cas_recovery.py": "0a20b7cf610db8a41cc7d0e3a2b56ba4a915a9d9"
+  },
+  "prior_release_manifest": "xray/staging/v30-kernel49-rc4-rescue-review.json",
+  "prior_originals_manifest": "xray/staging/v30-rescue-contract-v1.json",
+  "offline_ci": {
+    "id": 41215608169,
+    "conclusion": "success",
+    "tests": 464
+  },
+  "mips_ci": {
+    "id": 41215515431,
+    "conclusion": "success",
+    "xray": "26.2.6 linux/mipsle",
+    "guardian_claimants_first": 8,
+    "guardian_claimants_second": 8,
+    "transports": [
+      "SOCKS5_TCP",
+      "SOCKS5_UDP_ASSOCIATE"
+    ],
+    "kernel_tproxy_proven": false
+  },
+  "physical_candidate_layout": {
+    "nonusb_device": "EXACT_PHYSICAL_DEVICE_NOT_SELECTED",
+    "root": "/mnt/verified-independent-rescue",
+    "manifest": "rescue-v30/manifest.json",
+    "archived_scripts": "rescue-v30/originals/{S97,S98,S99,watchdog,wifi_rules}.sh",
+    "guard_binary": "rescue-v30/bin/guardian",
+    "boot_hook": "rescue-v30/boot/boot-hook",
+    "guard_config": "rescue-v30/etc/guardian.json",
+    "audit_log": "rescue-v30/var/recovery.log",
+    "required_guardian_runtime": "independent executable (not Entware/Python on USB)",
+    "required_boot_order": "before any router Xray or route change",
+    "required_mount_property": "different physical persistent device, mount ID, kernel major:minor",
+    "boot_hook_writes_authorized": false
+  },
+  "verification_before_deployment": [
+    "identical_5_legacy_script_SHA256_against_RC1",
+    "independent_guardian_binary_SHA256_signature_and_executable_mode",
+    "guardian_runtime_not_from_entware_usb",
+    "nonUSB_mount_verified_different_actual_physical_device",
+    "fsync_file_directory_and_atomic_journal_readback",
+    "cold_boot_without_entware_usb_rehearsed",
+    "no_unknown_stale_xray_descendant_or_socket",
+    "cgroup_v1_pids_controller_present_and_sealed_before_spawn_OR_equivalent_proof",
+    "vpn_tproxy_tcp_udp_ipv4_ipv6_dns_killswitch_verified",
+    "owner_approves_exact_paths_bytes_modes_and_rollback"
+  ],
+  "faults_tested_in_offline_model": [
+    "usb_missing",
+    "backup_missing",
+    "rescue_corrupted",
+    "same_device_alias",
+    "guardian_not_executable",
+    "boot_hook_missing",
+    "journal_fsync_interrupted",
+    "script_restore_interrupted",
+    "untracked_orphan_listener"
+  ],
+  "hardware_gates": {
+    "real_kernel49_cgroup_v1_enabled": false,
+    "real_kernel49_mountinfo_verified": false,
+    "real_kernel49_process_containment": false,
+    "physical_separate_nonusb_device": false,
+    "guardian_binary_outside_entware_usb": false,
+    "guardian_boot_hook_before_services": false,
+    "cold_boot_without_usb": false,
+    "full_tproxy_dns_ipv6_killswitch": false,
+    "owner_exact_release_approval": false
+  },
+  "authorization": {
+    "router_jobs": 0,
+    "prod_deploy": false,
+    "main_merge": false,
+    "firewall_routes_cron_write": false,
+    "cloudflare_write": false,
+    "automatic_restore": false
+  },
+  "release_decision": "HARD_NO_GO_PRODUCTION"
+}
