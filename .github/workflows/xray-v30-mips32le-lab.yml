@@ -13,6 +13,8 @@ on:
       - 'xray/lab/xray_v30_stable_ingress_demo.py'
       - 'xray/lab/xray_v30_pool_handover_api.py'
       - 'xray/lab/xray_v30_dokodemo_lab.py'
+      - 'xray/lab/v30_mips_guardian_failover.py'
+      - 'xray/staging/v30_supervisor_core.py'
   workflow_dispatch:
 
 permissions:
@@ -83,3 +85,29 @@ jobs:
           export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
           python3 -m xray.lab.xray_v30_dokodemo_lab \
             --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
+
+      - name: Real QEMU MIPSLE dual guardian crash recovery at committed candidate
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.v30_mips_guardian_failover \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" \
+            --demo "$RUNNER_TEMP/v30-mips-guard-committed" --crash-at running |
+            tee "$RUNNER_TEMP/v30-mips-guard-committed.log"
+          grep -q 'MIPS_GUARD: PASS primary guardian killed holding common flock' "$RUNNER_TEMP/v30-mips-guard-committed.log"
+          grep -q 'MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP' "$RUNNER_TEMP/v30-mips-guard-committed.log"
+
+      - name: Real QEMU MIPSLE guardian crash recovery at candidate prepared pre-commit
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.v30_mips_guardian_failover \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" \
+            --demo "$RUNNER_TEMP/v30-mips-guard-prepared" --crash-at prepared |
+            tee "$RUNNER_TEMP/v30-mips-guard-prepared.log"
+          grep -q 'MIPS_GUARD: PASS controller crash at prepared' "$RUNNER_TEMP/v30-mips-guard-prepared.log"
+          grep -q 'MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP' "$RUNNER_TEMP/v30-mips-guard-prepared.log"
