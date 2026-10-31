@@ -21,6 +21,8 @@ mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$WORK/initramfs/init" "$ROOT/
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$WORK/initramfs/bin/rc9capwrap" "$ROOT/xray/lab/rc9_guest_capwrap.c"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$WORK/initramfs/bin/rc9socket" "$ROOT/xray/lab/rc10_guest_socket_cap_probe.c"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$WORK/initramfs/bin/rc10cas" "$ROOT/xray/lab/rc10_guest_guardian_generation_cas.c"
+mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$WORK/initramfs/bin/rc7cgroup" "$ROOT/xray/lab/rc7_fullvm_cgroup_probe.c"
+mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$WORK/initramfs/bin/rc8privdrop" "$ROOT/xray/lab/rc8_guest_privdrop.c"
 cat > "$WORK/initramfs/etc/xray.json" <<'JSON'
 {
  "log":{"loglevel":"warning"},
@@ -58,6 +60,12 @@ for phrase in \
  'RC10_SOCKET: VERIFIED_NO_NEW_PRIVS_SURVIVED_EXEC_ON_KERNEL49' \
  'RC11_MIPS49: IN_GUEST_UNPRIVILEGED_TRANSPARENT_SOCKETS_DENIED' \
  'RC11_MIPS49: IN_GUEST_ONLY_CAP_NET_RAW_TCP_UDP_IP_TRANSPARENT_PASS' \
+ 'RC7_GUEST: PRIVILEGED_CGROUP_ESCAPE_SUCCEEDED_HARD_NO_GO' \
+ 'RC8_GUEST: EIGHT_REAL_UNPRIV_FORK_SETSID_EXEC_ESCAPE_DENIALS_PASS' \
+ 'RC8_GUEST: GUARDIAN_DENIES_RESTART_UNKNOWN_REPARENTED_DESCENDANT' \
+ 'RC8_GUEST: UNPRIVILEGED_ORPHAN_DRAINED_NO_RESTART_BEFORE_ABSENCE' \
+ 'RC11_MIPS49: PRIVILEGED_ESCAPE_NATIVELY_OBSERVED_IN_MIPS_CGROUP_V1_HARD_NO_GO' \
+ 'RC11_MIPS49: EIGHT_UNPRIVILEGED_DESCENDANTS_AND_UNKNOWN_ORPHAN_NO_RESTART_PASS' \
  'RC10_CAS: REAL_LINUX49_8X3_GENERATION_FLOCK_PREPARED_CRASH_RECOVERY_PASS' \
  'RC11_MIPS49: REAL_MIPS_XRAY_26_2_6_UID65534_CAP_NET_RAW_ONLY_INBOUND_PASS' \
  'RC11_MIPS49: PARENT_OWNED_MIPS_XRAY_NO_STALE_PID_SIGNAL_LISTENER_DRAIN_PASS' \
