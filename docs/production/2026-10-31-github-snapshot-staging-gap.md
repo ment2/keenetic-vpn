@@ -13,16 +13,16 @@ Assessment: 2026-10-31. Repository: `ment2/keenetic-vpn`, branch `snapshot/keene
 | Historical Library archive | Archived | 60/60 Library source documents matched GitHub default branch on 2026-10-30; not synonymous with production |
 | Production Xray source/archive | **2026-10-30 snapshot complete for the enumerated set** | 63/63 files and historical backups under `xray/production/opt/`; original independent live-hash comparison in `xray/production/README.md` |
 | Frozen-tree integrity after GitHub changes | **CI PASS** | `tools/verify_production_snapshot.py` recalculates SHA256 on the 63 checkout files, checks for missing/extra/unmanifested files and Git modes; mutation tests deliberately corrupt/miss/add files |
-| Python/shell syntax and source contracts | **CI PASS** | 17 Python files parsed; selected active shell/init files `sh -n`; 125 offline unit/contract tests including 8 new snapshot integrity tests |
+| Python/shell syntax and source contracts | **CI PASS** | 17 Python files parsed; selected active shell/init files `sh -n`; 131 offline unit/contract tests including 8 snapshot integrity and 6 credential guard tests |
 | Xray binary/API on target instruction set | **Compatibility lab PASS** | GitHub runner QEMU MIPS32LE, Xray 26.2.6. Two independent real Xray processes; SOCKS5 TCP and UDP ASSOCIATE, candidate termination and TCP/UDP via the old process; API `bo/ado/rmo` continuity |
 | First cutover with one stable production ingress | **NOT implemented** | Existing tests choose separate SOCKS ports or use a synthetic controller; no real shared-port handoff |
 | Router TPROXY, Wi-Fi routes, iptables, IPv6, DNS, kill-switch | **NOT reproduced** | Requires KeeneticOS/kernel/network fidelity; user-space QEMU is not a router kernel |
 | Production watchdog/init coordination | **NOT proven** | Captured `S97xray` uses `killall xray`; unsafe with dual-process cutover; no real supervisor fencing test |
 | Production rollback / zero-interruption guarantee | **NOT proven** | No approved production migration, no bounded outage measurement on router |
 | Deploy/recovery from GitHub | **NOT available** | No authoritative build/package/permissions inventory plus verified sanitized runtime configuration and secret restoration process |
-| Git history secret audit | **NOT proven** | Avoid asserting historic commits are free of secrets; frozen-tree name checks are not a credential or history scan |
+| Git history secret audit | **NOT proven** | Current 63 files pass a high-confidence credential scanner; full commit history and obfuscated values have not been scanned |
 
-**GitHub Action:** `Xray snapshot offline source contracts` (run 41189273992: SUCCESS, 125/125 tests), and `Xray v30 isolated MIPS32LE compatibility` (run 41136161172: SUCCESS). Neither touches production.
+**GitHub Action:** `Xray snapshot offline source contracts` (run 41189579857: SUCCESS, 131/131 tests), and `Xray v30 isolated MIPS32LE compatibility` (run 41136161172: SUCCESS). Neither touches production.
 
 ## Current snapshot boundaries and missing inventory
 
@@ -37,7 +37,7 @@ Assessment: 2026-10-31. Repository: `ment2/keenetic-vpn`, branch `snapshot/keene
 
 ## Safe progression toward a usable staging and recovery kit
 
-1. **Done: frozen source integrity gate.** Run `python tools/verify_production_snapshot.py` in CI; fail on any modified, missing or unmanifested frozen file, or incorrect Git executable bit. This is GitHub state integrity, not live-router attestation.
+1. **Done: frozen source integrity and limited secret gate.** Run `python tools/verify_production_snapshot.py` in CI; fail on any modified, missing or unmanifested frozen file, or incorrect Git executable bit. This is GitHub state integrity, not live-router attestation.
 2. **Next, repo-only:** build a separate `staging/` synthetic runtime specification (sanitized JSON for SOCKS/TPROXY, mock upstreams, service dependencies and firewall/route assertions). Integrate staged config regeneration, binary SHA pinning and deterministic fail-closed tests without any provider credential.
 3. **Next, disposable runner:** test one stable test ingress with two real local Xray processes, old TCP session drain, failure and rollback, then add a separate UDP story and watchdog fencing. Never equate synthetic switcher with production TPROXY.
 4. **After separate read-only access approval:** compare a new generation of production hashes, active listeners, port owners, supervisor scripts and sanitized cron/iptables/route metadata to the frozen baseline. Record deltas, not secrets; never replay old queued jobs or mutate Xray during inventory.
@@ -59,3 +59,7 @@ The remaining work splits into two independent threads:
 
 - **Repository-only staging** can continue immediately on the existing snapshot branch, without touching the router.
 - **Current production parity** cannot be certified without separately authorized, strictly read-only checks on the current router and dependent services. After checks, compare SHA256 to a *new* dated manifest; retain this 2026-10-30 historical snapshot unchanged.
+
+## CI addition: conservative current-source disclosure gate
+
+`tools/check_snapshot_secrets.py` scans only the 63 frozen source files for high-confidence indicators such as an embedded private key, fully formed VLESS credential URI, GitHub/OpenAI-like token, or URL with inline password. It reports **only file path and detector type** on failure, never the matching value. Six isolated synthetic tests validate positive/negative cases. **CI 41189579857 SUCCESS: 131/131 tests; 63/63 frozen SHA256/mode checks; 63 files passed current-source secret heuristics.** This is not a full secret or Git-history audit. Before any publication/merge, separately scan all Git commit objects and review false negatives under an approved security procedure.
