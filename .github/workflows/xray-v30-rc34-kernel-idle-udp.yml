@@ -1,0 +1,50 @@
+name: Xray v30 RC34 real MIPS49 kernel conntrack authority for previously idle UDP first cutover
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc34-kernel-idle-udp.yml'
+      - 'xray/lab/rc34_*'
+      - 'tests/test_xray_v30_rc34_kernel_idle_udp.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc34-mips49-kernel-conntrack-idle-udp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify kernel inventory contracts and shell syntax
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc34_kernel_idle_udp.py -v
+          python3 -m py_compile xray/lab/rc34_conntrack_module_pack.py
+          bash -n xray/lab/rc34_conntrack_idle_first_tproxy_runner.sh
+          bash -n xray/lab/rc34_conntrack_idle_first_tproxy_netns.sh
+          sh -n xray/lab/rc34_conntrack_idle_first_tproxy_guest.sh
+      - name: Install disposable QEMU MIPS49 and cross-toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Require full-system kernel conntrack inventory of previously idle old UDP and real packet rollback
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc34_conntrack_idle_first_tproxy_runner.sh | tee "$RUNNER_TEMP/rc34-result.log"
+          grep -Fq RC34_PASS_KERNEL_TRACKED_IDLE_UDP_ASSOCIATION_CUTOVER_ONLY "$RUNNER_TEMP/rc34-result.log"
+          grep -Fq RC34_HOST:\ PASS_THREE_OLD_UDP_INCLUDING_PREVIOUSLY_IDLE_AND_TCP_CUTOVER_ROLLBACK "$RUNNER_TEMP/rc34-result.log"
+      - name: Preserve exact failure or completion witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc34-mips49-kernel-conntrack-idle-udp-no-deploy
+          path: |
+            ${{ runner.temp }}/rc34-conntrack-idle-tproxy-handover/serial.log
+            ${{ runner.temp }}/rc34-conntrack-idle-tproxy-handover/qemu-errors.log
+            ${{ runner.temp }}/rc34-conntrack-idle-tproxy-handover/backend.log
+            ${{ runner.temp }}/rc34-result.log
+          if-no-files-found: warn
+          retention-days: 14
