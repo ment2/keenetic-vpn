@@ -35,8 +35,9 @@ for modname in virtio_pci virtio_blk ext4; do
 done
 echo "RC7: initramfs load-order kernel modules=$n"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_fullvm_cgroup_probe.c" -o "$WORK/initramfs/bin/rc7cgroup"
+gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_guest_fdatasync.c" -o "$WORK/initramfs/bin/rc7fsync"
 cp "$ROOT/xray/lab/rc7_fullvm_init" "$WORK/initramfs/init"
-chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/busybox"
+chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/rc7fsync" "$WORK/initramfs/bin/busybox"
 (
   cd "$WORK/initramfs"
   find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$WORK/initramfs.img.gz"
@@ -112,6 +113,8 @@ if [ "$BOOT_EXIT" -ne 0 ]; then echo "RC7: SECOND_BOOT_EXIT=$BOOT_EXIT" >&2; fi
 grep -q 'RC7_VM: PREVIOUS_TWO_FILES_AND_JOURNAL_SURVIVED_QEMU_SIGKILL' "$SECOND_LOG"
 grep -q 'RC7_VM: EXACT_FIVE_RESCUE_ORIGINALS_VERIFIED' "$SECOND_LOG"
 grep -q 'RC7_VM: REBOOT_FULL_RESTORE_5_OF_5_PASS' "$SECOND_LOG"
+grep -q 'RC7_FSYNC: FILE_FDATASYNC_AND_DIRECTORY_FSYNC_PASS' "$FIRST_LOG"
+grep -q 'RC7_FSYNC: FILE_FDATASYNC_AND_DIRECTORY_FSYNC_PASS' "$SECOND_LOG"
 if grep -q 'RC7_GUEST: FAIL' "$FIRST_LOG" || grep -q 'RC7_GUEST: FAIL' "$SECOND_LOG"; then
   echo "RC7: GUEST_CGROUP_TEST_FAILED_NOT_A_CAPABILITY_LIMIT" >&2;exit 1
 fi
