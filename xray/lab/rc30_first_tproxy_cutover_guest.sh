@@ -9,7 +9,11 @@ set -eu
 /bin/ip addr add 10.77.0.2/24 dev eth1
 /bin/ip rule add fwmark 0x40000000/0x40000000 table 100 priority 20000
 /bin/ip route add local 0.0.0.0/0 dev lo table 100
-/sbin/iptables -P FORWARD DROP
+# Minimal MIPS49 initramfs intentionally has no iptable_filter. Forbid
+# kernel forwarding instead of requiring a module absent from this fixture.
+test "$(/bin/busybox cat /proc/sys/net/ipv4/ip_forward)" = 0 || {
+ echo RC30_GUEST_HARD_NO_GO_IP_FORWARDING_ENABLED;exit 2;
+}
 /sbin/iptables -t mangle -A PREROUTING -i eth1 -p tcp --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 /sbin/iptables -t mangle -A PREROUTING -i eth1 -p udp --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 /bin/rc9capwrap raw xray >/lab/legacy.log 2>&1 &
