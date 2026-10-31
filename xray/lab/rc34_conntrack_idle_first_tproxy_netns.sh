@@ -42,7 +42,7 @@ qemu=$!
 trap 'kill "$qemu" "$backend" "$backend_ns" 2>/dev/null || true' EXIT
 ready=0
 for n in $(seq 1 200); do
- if grep -Fq RC34_GUEST_OLD_AND_API_ENABLED_CANDIDATE_XRAY_TCP_UDP_READY "$W/serial.log" 2>/dev/null;then ready=1;break;fi
+ if grep -Fq RC34_GUEST_IDLE_UDP_PRIME_READY "$W/serial.log" 2>/dev/null;then ready=1;break;fi
  if ! kill -0 "$qemu" 2>/dev/null;then break;fi
  sleep 0.2
 done
