@@ -79,7 +79,7 @@ class ProposedCanaryContracts(unittest.TestCase):
             if "mangle" in args: return "-A XRAY_WIFI -p tcp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000\n-A XRAY_WIFI -p udp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000"
             if "XRAY_KS_HOME" in args: return "-A XRAY_KS_HOME -i br0 -j DROP"
             if args == ["/opt/sbin/iptables", "-S", "FORWARD"]:
-                return "-P FORWARD DROP\\n-A FORWARD -j XRAY_KS_HOME"
+                return "-P FORWARD DROP\n-A FORWARD -j XRAY_KS_HOME"
             if args[:2] == ["ip","rule"]: return "20000: from all fwmark 0x40000000/0x40000000 lookup 100"
             if "route" in args: return "local default dev lo"
             if "ip6tables" in args[0]: return "-P FORWARD DROP"
@@ -95,12 +95,12 @@ class ProposedCanaryContracts(unittest.TestCase):
     def test_first_forward_rule_is_kill_switch(self):
         def fake_call(args, timeout=15):
             if "mangle" in args:
-                return ("-A XRAY_WIFI -p tcp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000\\n"
+                return ("-A XRAY_WIFI -p tcp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000\n"
                         "-A XRAY_WIFI -p udp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000")
             if "XRAY_KS_HOME" in args:
                 return "-A XRAY_KS_HOME -i br0 -j DROP"
             if args == ["/opt/sbin/iptables", "-S", "FORWARD"]:
-                return "-P FORWARD DROP\\n-A FORWARD -j ACCEPT\\n-A FORWARD -j XRAY_KS_HOME"
+                return "-P FORWARD DROP\n-A FORWARD -j ACCEPT\n-A FORWARD -j XRAY_KS_HOME"
             if args[:2] == ["ip", "rule"]:
                 return "20000: from all fwmark 0x40000000/0x40000000 lookup 100"
             if "route" in args:
