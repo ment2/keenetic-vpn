@@ -36,7 +36,7 @@ test -f "$W/initramfs/lib/mipsel-linux-gnu/libc-2.24.so"
 test -f "$W/initramfs/sbin/iptables"; test -f "$W/initramfs/bin/ip"
 (cd "$W/initramfs"; find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 >"$W/guest.cpio.gz")
 set +e
-timeout --signal=KILL 130s qemu-system-mipsel -M malta -cpu 4KEc -m 512 -smp 1 -nographic -no-reboot -nodefaults -netdev user,id=isolated,restrict=on,hostfwd=tcp:127.0.0.1:19191-:19191,hostfwd=udp:127.0.0.1:19191-:19191 -device pcnet,netdev=isolated -monitor none -kernel "$K" -initrd "$W/guest.cpio.gz" -append "console=ttyS0 rdinit=/init panic=1" -serial "file:$W/serial.log" >"$W/qemu-errors.log" 2>&1 &
+timeout --signal=KILL 130s qemu-system-mipsel -M malta -cpu 4KEc -m 512 -smp 1 -nographic -no-reboot -nodefaults -netdev user,id=isolated,restrict=on,hostfwd=tcp:127.0.0.1:19191-:19191,hostfwd=udp:127.0.0.1:19191-:19191 -device pcnet,netdev=isolated,romfile= -monitor none -kernel "$K" -initrd "$W/guest.cpio.gz" -append "console=ttyS0 rdinit=/init panic=1" -serial "file:$W/serial.log" >"$W/qemu-errors.log" 2>&1 &
 qemu_pid=$!
 set -e
 ready=0
