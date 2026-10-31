@@ -52,13 +52,28 @@ def checksum(path):
     return h.hexdigest()
 
 
-def ticks(pid):
+def proc_state_and_ticks(pid):
     if not isinstance(pid, int) or pid <= 1:
-        return None
+        return None, None
     try:
-        return int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[19])
+        fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+        return fields[0], int(fields[19])
     except (OSError, ValueError, IndexError):
-        return None
+        return None, None
+
+
+def ticks(pid):
+    state, started = proc_state_and_ticks(pid)
+    # Linux zombies retain their start_ticks until reaped. A detached guardian
+    # is NOT the parent of the candidate and must treat a zombie as exited.
+    return None if state in (None, "Z", "X") else started
+
+
+def watcher_paused(identity):
+    if not isinstance(identity, list) or len(identity) != 2:
+        return False
+    state, started = proc_state_and_ticks(identity[0])
+    return started == identity[1] and state in ("T", "t")
 
 
 def identity_live(pid, start_ticks):
@@ -333,6 +348,11 @@ def guardian():
         s = read_state()
         if s["phase"] in ("restored", "blocked"):
             return
+        if s["phase"] in ("fenced", "legacy_stopping", "legacy_stopped",
+                          "candidate_running", "canary_verified"):
+            if not watcher_paused(s["watchdog"]) or not watcher_paused(s["wifi"]):
+                restore("guardian_detected_unfenced_watchdog_or_S98")
+                return
     restore("autonomous_guard_deadline")
 
 
@@ -376,6 +396,15 @@ def trial(args):
             guarded_signal(watchdog, signal.SIGSTOP, "/opt/bin/xray-watchdog.sh")
             guarded_signal(wifi, signal.SIGSTOP, "/opt/etc/init.d/S98xray-wifi")
             state_update(phase="fenced")
+            # Must prove the watchdog and S98 *actually stopped* before
+            # terminating the only production listener. SIGSTOP delivery alone
+            # is not proof of fencing.
+            for _ in range(15):
+                if watcher_paused(watchdog) and watcher_paused(wifi):
+                    break
+                time.sleep(0.1)
+            else:
+                raise GateError("watchdog or S98 did not enter stopped state")
             safe_kernel()
             if owned_xray_pids() != [args.expected_old_pid]:
                 raise GateError("competing Xray after watcher fence")
@@ -411,7 +440,14 @@ def trial(args):
         with transaction_lock():
             state_update(phase="canary_verified")
         # CANARY only, always restore old. Never write init/production config.
-        time.sleep(15)
+        for _ in range(15):
+            current = read_state()
+            if current["phase"] != "canary_verified":
+                raise GateError("guard already initiated rollback")
+            if not (watcher_paused(watchdog) and watcher_paused(wifi)):
+                raise GateError("legacy watchdog/S98 fence lost during canary")
+            safe_kernel()
+            time.sleep(1)
     except Exception as exc:
         print("TRIAL_GATE_FAILED:", type(exc).__name__, str(exc), flush=True)
     outcome = restore("trial_completed_or_failed")
