@@ -26,7 +26,7 @@ jobs:
           fetch() {
             local name="$1" url="$2" sha="$3"
             curl -fL --retry 3 --max-time 120 -o "$D/$name.deb" "$url"
-            printf '%s  %s\n' "$sha" "$D/$name.deb" | sha256sum -c -
+            printf '%s  %s\\n' "$sha" "$D/$name.deb" | sha256sum -c -
             dpkg-deb -x "$D/$name.deb" "$D/root"
             dpkg-deb -f "$D/$name.deb" Package Version Architecture >> "$D/packages-control.txt"
           }
@@ -47,25 +47,7 @@ jobs:
           done < "$D/candidate-files.txt"
           cat "$D/elf-dependencies.txt"
           grep -q '/ip$' "$D/candidate-files.txt" || { echo 'RC15: NO_IP_BINARY_HARD_NO_GO'; exit 1; }
-          grep -Eq '/(iptables|xtables-multi) || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
-          grep -q '/busybox$' "$D/candidate-files.txt" || { echo 'RC15: NO_BUSYBOX_BINARY_HARD_NO_GO'; exit 1; }
-          grep -q 'Machine:.*MIPS' "$D/elf-dependencies.txt"
-          grep -q 'Data:.*little endian' "$D/elf-dependencies.txt"
-          echo 'RC15: MIPS32LE_ARCHIVE_BYTES_FOUND_HASHES_DISCOVERED_NO_EXECUTION'
-          echo 'RC15: HARD_NO_GO_DYNAMIC_LIB_CLOSURE_AND_GUEST_PACKET_PATH_UNVERIFIED'
-      - name: Upload metadata only, no foreign binaries or live artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v30-rc15-mips49-userland-SHA-and-ELF-discovery-NO-EXEC
-          path: |
-            ${{ runner.temp }}/rc15-mipsel/sha256.txt
-            ${{ runner.temp }}/rc15-mipsel/packages-control.txt
-            ${{ runner.temp }}/rc15-mipsel/candidate-files.txt
-            ${{ runner.temp }}/rc15-mipsel/elf-dependencies.txt
-          retention-days: 14
-          if-no-files-found: warn
- "$D/candidate-files.txt" || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
+          grep -Eq '/(iptables|xtables-multi)$' "$D/candidate-files.txt" || { echo 'RC15: NO_IPTABLES_BINARY_HARD_NO_GO'; exit 1; }
           grep -q '/busybox$' "$D/candidate-files.txt" || { echo 'RC15: NO_BUSYBOX_BINARY_HARD_NO_GO'; exit 1; }
           grep -q 'Machine:.*MIPS' "$D/elf-dependencies.txt"
           grep -q 'Data:.*little endian' "$D/elf-dependencies.txt"
