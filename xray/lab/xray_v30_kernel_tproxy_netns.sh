@@ -101,7 +101,7 @@ JSON
 # Xray's original destination; no Internet path exists.
 sudo ip netns exec xv30g "${xray_cmd[@]}" run -test -config "$tmp/config.json"
 sudo ip netns exec xv30s bash -c 'echo "$$" > "$1"; exec python3 -u -m xray.lab.xray_v30_kernel_tproxy_echo server' _ "$tmp/server.pid" >"$tmp/server.log" 2>&1 &
-sudo ip netns exec xv30g bash -c 'echo "$" > "$1"; shift; exec "$@"' _ "$tmp/xray.pid" "${xray_cmd[@]}" run -config "$tmp/config.json" >"$tmp/xray.log" 2>&1 &
+sudo ip netns exec xv30g bash -c 'echo "$$" > "$1"; shift; exec "$@"' _ "$tmp/xray.pid" "${xray_cmd[@]}" run -config "$tmp/config.json" >"$tmp/xray.log" 2>&1 &
 for _ in $(seq 1 30); do
   if [[ -s "$tmp/server.pid" && -s "$tmp/xray.pid" ]] &&
      sudo ip netns exec xv30g ss -lnt | grep -q ':12345'; then
