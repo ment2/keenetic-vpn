@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "release": "v30-cooperative-supervisor-rc1",
+  "source_branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "source_commit": "cbaf7063d7bc005a0203cc9eadafc66c8dc00803",
+  "status": "STAGING_ONLY_NOT_FOR_DEPLOY",
+  "default_action": "deny",
+  "deployment_authorized": false,
+  "production_trial_authorized": false,
+  "shared_lock": "/opt/var/run/xray-v30-supervisor.lock",
+  "required_actors": [
+    "S97",
+    "S98",
+    "watchdog",
+    "cutover",
+    "guardian"
+  ],
+  "required_release_gates": [
+    "pidfd_kernel_compatibility",
+    "legacy_descendant_drain",
+    "all_entrypoints_cooperative",
+    "canary_live_integration",
+    "kernel_tproxy_tcp_udp",
+    "fail_closed_dns_ipv6",
+    "reboot_usb_loss_recovery",
+    "owner_exact_file_approval"
+  ],
+  "entries": [
+    {
+      "role": "S97",
+      "staging_path": "xray/staging/v30_supervisor_templates/S97xray",
+      "staging_git_blob": "0dd53513a00896129ff12de7663415350fd9f430",
+      "staging_sha256": "de4b130dc31be1129eee52acea95a90120b08454a19b83fbec680a34d782e228",
+      "staging_size": 347,
+      "legacy_snapshot_path": "xray/production/opt/etc/init.d/S97xray",
+      "legacy_git_blob": "cd3e94f330e21fd3cae2e8cb68ead0ac91910960",
+      "legacy_snapshot_sha256": "87ea1dc13a9be95d57c0595d7a7f13b03fe97bd56ab1f144a3c94d57cc588d5d",
+      "legacy_snapshot_size": 698
+    },
+    {
+      "role": "S98",
+      "staging_path": "xray/staging/v30_supervisor_templates/S98xray-wifi",
+      "staging_git_blob": "3ebcce673929a7aa85dde8e6bda254f6bbcd6859",
+      "staging_sha256": "7caad6f2a56fd56ec9aa3d4082b2fca10cd866173d082a505fc74c0d114b604a",
+      "staging_size": 494,
+      "legacy_snapshot_path": "xray/production/opt/etc/init.d/S98xray-wifi",
+      "legacy_git_blob": "e5406d5897a72b6e9a85b22068aafd4e0a74c1a5",
+      "legacy_snapshot_sha256": "6742e5e7f2a2bd41b85e9975371e7c46e66f0cfc6f5f843bf2c5dc1434c53601",
+      "legacy_snapshot_size": 935
+    },
+    {
+      "role": "S99",
+      "staging_path": "xray/staging/v30_supervisor_templates/S99xray-watchdog",
+      "staging_git_blob": "ca373d39b3579472c0df793bfea69f6ff1455883",
+      "staging_sha256": "bb80fd8858057e88a58a200f4a4e60c56df28c34cff7331c809a2a17d363ccaa",
+      "staging_size": 426,
+      "legacy_snapshot_path": "xray/production/opt/etc/init.d/S99xray-watchdog",
+      "legacy_git_blob": "1a5fe49619070b8415afc6e9d7be20a34371a9c9",
+      "legacy_snapshot_sha256": "e8423e15ed2cf4d3662e5725d27d6e58bd08bbdd807b47fcabe30391ac4c738b",
+      "legacy_snapshot_size": 531
+    },
+    {
+      "role": "watchdog",
+      "staging_path": "xray/staging/v30_supervisor_templates/xray-watchdog.sh",
+      "staging_git_blob": "bc6a7ff140fe806b1cde0af74067629b7cda5998",
+      "staging_sha256": "8b0dd73ba30d81657d8851eff5bc2447627cd3357589fc3ab5022c1a4dea03d3",
+      "staging_size": 167,
+      "legacy_snapshot_path": "xray/production/opt/bin/xray-watchdog.sh",
+      "legacy_git_blob": "831e66cf5e3762fe87dbf4376c1eac1bbc51b18d",
+      "legacy_snapshot_sha256": "dddfcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08",
+      "legacy_snapshot_size": 649
+    },
+    {
+      "role": "wifi_rules",
+      "staging_path": "xray/staging/v30_supervisor_templates/xray-wifi-rules.sh",
+      "staging_git_blob": "9d4122a648ff466c613e6387c9c2437411944dc1",
+      "staging_sha256": "b7d31628129490e5b521de5a519b2e51b823879f35956022dd1e310d09b136cb",
+      "staging_size": 165,
+      "legacy_snapshot_path": "xray/production/opt/bin/xray-wifi-rules.sh",
+      "legacy_git_blob": "ca4d5a123da5b72040a6aa799c6ace302bde988f",
+      "legacy_snapshot_sha256": "ead5de5555aaab1170a140ca3d41ea546330a99ba873b1961bee536bc12780ef",
+      "legacy_snapshot_size": 1128
+    },
+    {
+      "role": "core",
+      "staging_path": "xray/staging/v30_supervisor_core.py",
+      "staging_git_blob": "d4c11b4159604170af210ca9e05e9c7f1268b112",
+      "staging_sha256": "2af080991a194af1372b3fa90b70bd40a2af979109866ac373df220c46d44379",
+      "staging_size": 8793
+    },
+    {
+      "role": "broker",
+      "staging_path": "xray/staging/v30_supervisor_service.py",
+      "staging_git_blob": "ba3cb7805a755b770b983b9ec0de40ac966cae45",
+      "staging_sha256": "0a4232d166f63bf648c7e3d72bb393db2f356584e6e851e855e2caaf1c65acfc",
+      "staging_size": 19236
+    },
+    {
+      "role": "canary",
+      "staging_path": "xray/staging/v30_cooperative_canary.py",
+      "staging_git_blob": "15cd7b6c8039a354182399adc6ddcd0bfe9e6deb",
+      "staging_sha256": "472a7222d1006fc9de290b7d9e6705a24ddb3f8a4de357f1805f7536cee9f1c1",
+      "staging_size": 4295
+    },
+    {
+      "role": "legacy_canary",
+      "staging_path": "xray/staging/v30_first_cutover_canary.py",
+      "staging_git_blob": "495cd51581f472a9cb0a257ff7cd9f0d611dcab7",
+      "staging_sha256": "8e57ef5054f53174a35d906d34eab073dd6d787607cb02f29d83364ae3abc203",
+      "staging_size": 22208
+    }
+  ]
+}
