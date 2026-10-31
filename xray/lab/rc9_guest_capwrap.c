@@ -24,6 +24,8 @@ int main(int argc,char **argv){
  if(argc!=3 || strcmp(argv[1],"raw")&&strcmp(argv[1],"none"))error("usage: raw/none socket/xray");
  if(strcmp(argv[2],"socket")&&strcmp(argv[2],"xray"))error("bad target");
  if(geteuid()!=0)error("privileged disposable test setup required");
+ pid_t original_parent=getppid();
+ if(original_parent<=0)error("invalid parent identity");
  int raw=!strcmp(argv[1],"raw");
  if(prctl(PR_SET_KEEPCAPS,1,0,0,0))error("keep caps");
  if(setgroups(0,NULL))error("drop groups");
@@ -41,7 +43,7 @@ int main(int argc,char **argv){
  if(prctl(PR_SET_NO_NEW_PRIVS,1,0,0,0))error("no new privileges");
  /* Changing UID/GID clears previous PDEATHSIG on some kernels; reset now. */
  if(prctl(PR_SET_PDEATHSIG,SIGKILL,0,0,0))error("parent death sig");
- if(getppid()==1)error("parent already dead");
+ if(getppid()!=original_parent)error("original parent identity changed before exec");
  dprintf(1,"RC9_CAP: BEFORE_EXEC target=%s raw=%d uid=%d gid=%d no_new_privs=1\n",
          argv[2],raw,geteuid(),getegid());
  fflush(stdout);
