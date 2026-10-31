@@ -9,7 +9,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#ifndef PORT
 #define PORT 19191
+#endif
 static const char tcp[]="RC19-TCP-PAYLOAD-20261031";
 static const char udp[]="RC19-UDP-PAYLOAD-20261031";
 static void fail(const char *what){fprintf(stderr,"RC19_GUEST_SERVER_FAIL: %s errno=%d\n",what,errno);exit(2);}
