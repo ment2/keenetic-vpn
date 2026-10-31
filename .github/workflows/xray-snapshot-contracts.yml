@@ -20,6 +20,8 @@ on:
       - 'xray/lab/v30_archived_kernel_pidfd_gate.py'
       - 'xray/lab/v30_parent_owned_kernel49.py'
       - 'xray/lab/v30_parent_owned_mips_recovery.py'
+      - 'xray/staging/v30_kernel49_cooperative_ledger.py'
+      - 'xray/lab/v30_kernel49_cooperative_lab.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
