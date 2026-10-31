@@ -17,7 +17,7 @@ This checkpoint does **not** run another QEMU packet experiment; it separates ou
 
 `xray/lab/rc26_udp_legacy_cutover_gate.py` and `tests/test_xray_v30_rc26_udp_legacy_cutover_gate.py` require separately: host-received exact UDP, original destination without `freedom.redirect`, distinct backend network stack, established old-connection conntrack evidence prior to any NAT cutover, old TCP continuity and rollback, post-death TCP/UDP no-direct-fallback, DNS/IPv6, real root privileged fencing, vendor kernel and independently persistent USB-free physical rescue. Each of all seven legacy entrypoints must have independent SHA matching and boot/cron/watchdog/kernel/spawner acknowledgment. Per-process PID, parent, boot UUID, start-ticks, committed generation, socket inodes and orphan drain must agree. Mutations and a fully synthetic all-true fixture can NEVER set `production_authorized`.
 
-**New RC26 CI is not yet established until the push workflow actually completes.** Its sole purpose is an **offline release-gate regression**; it does not resolve the experimental packet or physical blockers.
+**Verified RC26 feature-branch CI:** [41237267639](https://github.com/ment2/keenetic-vpn/actions/runs/41237267639) **SUCCESS**, 8/8 focused mutation tests and `RC26: VERIFIED_OFFLINE_REVIEW_HARD_NO_GO_NO_ROUTER_IO`. [41237267658](https://github.com/ment2/keenetic-vpn/actions/runs/41237267658) **SUCCESS**, 632/632 offline source/contract tests. Both ran at source commit `1a332aec1874278de73e70b02642421007a4e399`; they do not run new network packets, do not prove host UDP return, and do not resolve any physical blocker.
 
 ## Exact disposition
 
