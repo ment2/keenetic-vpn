@@ -1,0 +1,84 @@
+name: Xray v30 RC16 MIPS32LE 4.9 dynamic dependency closure HARD NO-GO probe
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc16-mips-dependency-closure.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mips-userland-dependency-closure-no-exec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact three archived SHA256 packages and inspect dependency resolution without executing foreign ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/rc16-mips-closure"
+          mkdir -p "$D/root"
+          fetch() {
+            name="$1"; url="$2"; sha="$3"
+            curl -fL --retry 3 --max-time 120 -o "$D/$name.deb" "$url"
+            printf '%s  %s\n' "$sha" "$D/$name.deb" | sha256sum -c -
+            dpkg-deb -x "$D/$name.deb" "$D/root"
+          }
+          fetch iptables 'https://archive.debian.org/debian/pool/main/i/iptables/iptables_1.6.0+snapshot20161117-6_mipsel.deb' 'b0bd6d7e4bc7da38672b223cb428315309979a19e008aedafb17253315178b67'
+          fetch iproute2 'https://archive.debian.org/debian/pool/main/i/iproute2/iproute2_4.9.0-1+deb9u1_mipsel.deb' 'c0b0886583db81db0a517e0945be52d23dcc3ee5fe8ea068bfdaa80cb639213d'
+          fetch busybox 'https://archive.debian.org/debian/pool/main/b/busybox/busybox-static_1.22.0-19+b3_mipsel.deb' '0c7e287104914e654a2555e9900302180ff54d1ef17e9faf585529e6eadac8e0'
+          python3 - "$D/root" "$D/closure.json" <<'PY'
+          import json, pathlib, subprocess, sys, re
+          root=pathlib.Path(sys.argv[1])
+          targets={"ip":root/"bin/ip","iptables":root/"sbin/iptables","busybox":root/"bin/busybox"}
+          evidence={}
+          for name,path in targets.items():
+              if not path.exists():
+                  raise SystemExit("RC16_REQUIRED_ELF_MISSING:"+name)
+              output=subprocess.run(["readelf","-d",str(path)],text=True,capture_output=True,check=True).stdout
+              need=re.findall(r"Shared library: \[(.*?)\]",output)
+              interp=subprocess.run(["readelf","-l",str(path)],text=True,capture_output=True,check=True).stdout
+              interpreter=re.search(r"interpreter: ([^\]]+)",interp)
+              names=need+([pathlib.Path(interpreter.group(1)).name] if interpreter else [])
+              missing=[]
+              for dependency in names:
+                  if not list(root.rglob(dependency)):
+                      missing.append(dependency)
+              evidence[name]={"needed":names,"missing_in_pinned_three_package_root":sorted(set(missing)),
+                              "runtime_executed":False}
+          block=any(e["missing_in_pinned_three_package_root"] for e in evidence.values())
+          report={"mode":"OFFLINE_PINNED_DEBIAN_MIPSEL_DEPENDENCY_CLOSURE",
+                  "required_foreign_elf_executed":False,
+                  "dynamic_loader_closure_proven":not block,
+                  "missing_dependencies_confirmed":block,
+                  "entries":evidence,
+                  "actual_mips49_tcp_udp_packet_path_proven":False,
+                  "guest_nic_iptables_fwmark_policy_routing_proven":False,
+                  "vendor_keenetic_ndm5_proven":False,
+                  "privileged_legacy_cgroup_escape_fenced":False,
+                  "physical_usb_independent_rescue_proven":False,
+                  "production_authorized":False,
+                  "release_decision":"HARD_NO_GO_PRODUCTION",
+                  "router_commands":[]}
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
+          for name,item in evidence.items():
+              print("RC16_CLOSURE:",name,"missing="+",".join(item["missing_in_pinned_three_package_root"]))
+          if not block:
+              print("RC16: USERLAND_CLOSURE_3_PACKAGES_COMPLETE_BUT_PACKET_PATH_NOT_TESTED")
+          else:
+              print("RC16: VERIFIED_MISSING_MIPS_SHARED_LIBRARIES_NO_PACKET_EXECUTION")
+          print("RC16: HARD_NO_GO_GUEST_PACKET_PATH_LEGACY_FENCING_PHYSICAL_BOOT")
+          PY
+      - name: Publish only human-readable JSON, no binaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc16-mipsel-userland-dynamic-closure-NO-EXEC-NO-DEPLOY
+          path: ${{ runner.temp }}/rc16-mips-closure/closure.json
+          if-no-files-found: warn
+          retention-days: 14
