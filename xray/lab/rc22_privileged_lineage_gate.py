@@ -82,7 +82,7 @@ def evaluate(e: Evidence):
             if key in stage_identities:
                 failures.append(stage+"_DUPLICATE_PID_STARTTICKS")
             stage_identities.add(key)
-            if p.pid<=1 or p.ppid<=0 or p.start_ticks<=0 or not SHA256.fullmatch(p.exe_sha256):
+            if p.pid<=1 or p.ppid<=1 or p.start_ticks<=0 or not SHA256.fullmatch(p.exe_sha256):
                 failures.append(stage+"_PROCESS_IDENTITY_MISSING")
             if p.actor not in ACTORS:
                 failures.append(stage+"_UNKNOWN_LEGACY_DESCENDANT")
