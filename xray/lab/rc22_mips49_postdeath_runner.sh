@@ -75,7 +75,7 @@ qemu_pid=$!
 set -e
 ready=0
 for n in $(seq 1 260); do
- if grep -Fq 'RC21_GUEST: REAL_XRAY_UID65534_CAP_NET_RAW_NNP_AND_TPROXY_LISTENER_READY' "$W/serial.log" 2>/dev/null; then ready=1; break; fi
+ if grep -Fq 'RC22_GUEST: XRAY_READY_SEND_BASELINE' "$W/serial.log" 2>/dev/null; then ready=1; break; fi
  if ! kill -0 "$qemu_pid" 2>/dev/null; then break; fi
  sleep 0.25
 done
