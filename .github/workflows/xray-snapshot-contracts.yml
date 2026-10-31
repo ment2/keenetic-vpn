@@ -13,6 +13,7 @@ on:
       - 'xray/lab/v30_partial_upgrade_recovery.py'
       - 'xray/lab/v30_release_manifest_contract.py'
       - 'xray/lab/v30_reboot_usb_fault_matrix.py'
+      - 'xray/lab/v30_legacy_descendant_migration_gate.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -41,6 +42,23 @@ jobs:
               ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
           print('PASS: parsed', len(files), 'Python source files')
           PY
+      - name: Fail closed on old watchdog S97 S98 descendants and unverified migration status
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_legacy_descendant_migration_gate > "$RUNNER_TEMP/v30-legacy-migration-gate.json"
+          python - <<'PY'
+          import os,json
+          from pathlib import Path
+          obj=json.loads((Path(os.environ["RUNNER_TEMP"])/"v30-legacy-migration-gate.json").read_text())
+          assert obj["decision"] == "NO_PRODUCTION_CUTOVER"
+          assert obj["production_cutover_authorized"] is False
+          assert obj["router_commands"] == []
+          assert "MISSING_PIDFD_KERNEL_SUPPORTED" in obj["reason_codes"]
+          assert "MISSING_LEGACY_CHILD_TREE_DRAINED" in obj["reason_codes"]
+          print("PASS: legacy descendants and unknown pidfd strictly BLOCK production")
+          PY
+
       - name: Verify versioned nine-file SHA256 Git blob and frozen mode release manifest
         shell: bash
         run: |
