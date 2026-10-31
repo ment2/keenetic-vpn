@@ -1,0 +1,54 @@
+name: Xray v30 RC7 disposable full-system QEMU cgroup and crash boot
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc7-fullsystem.yml'
+      - 'xray/lab/rc7_fullvm_*'
+      - 'xray/lab/v30_review_rescue_bundle.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc7-disposable-full-system:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install full-system QEMU and kernel, plus standalone initramfs/virtio tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            qemu-system-x86 linux-image-virtual busybox-static \
+            gcc libc6-dev e2fsprogs cpio gzip zstd kmod
+          echo "RC7: actual guest kernel candidate"
+          find /boot -maxdepth 1 -name 'vmlinuz-*' -type f -print
+      - name: Boot real QEMU kernel twice with cgroup1 guest and simulated ext4 power cut after 2/5
+        shell: bash
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc7_fullvm_runner.sh |
+            tee "$RUNNER_TEMP/rc7-fullvm-conclusion.log"
+          grep -q 'RC7: PASS_DISPOSABLE_QEMU_TWO_BOOT_POWERLOSS_RESCUE_5_OF_5' "$RUNNER_TEMP/rc7-fullvm-conclusion.log"
+          grep -q 'RC7: HARD_NO_GO_PHYSICAL_KEENETIC_RUNTIME_CGROUP_BOOT_USB_TPROXY' "$RUNNER_TEMP/rc7-fullvm-conclusion.log"
+      - name: Save exact guest serial evidence with no physical router claims
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc7-qemu-fullsystem-guest-and-crash-logs-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/xray-v30-rc7-fullvm/first-boot.log
+            ${{ runner.temp }}/xray-v30-rc7-fullvm/second-boot.log
+            ${{ runner.temp }}/xray-v30-rc7-fullvm/cgroup-disposition.txt
+            ${{ runner.temp }}/xray-v30-rc7-fullvm/first-qemu-errors.log
+            ${{ runner.temp }}/xray-v30-rc7-fullvm/second-qemu-errors.log
+            ${{ runner.temp }}/rc7-fullvm-conclusion.log
+          if-no-files-found: warn
+          retention-days: 14
