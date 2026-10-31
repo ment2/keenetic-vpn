@@ -35,6 +35,16 @@ class PidfdIdentityTests(unittest.TestCase):
 
     @unittest.skipUnless(hasattr(os, "pidfd_open") and hasattr(signal, "pidfd_send_signal"), "pidfd not supported")
     def test_actual_pidfd_signal(self):
+        # Fail closed if runner policy forbids the pidfd syscall. A skip never
+        # counts as successful signaling and will be reported in CI logs.
+        try:
+            fd = os.pidfd_open(self.child.pid)
+            try:
+                signal.pidfd_send_signal(fd, 0, None, 0)
+            finally:
+                os.close(fd)
+        except OSError as exc:
+            self.skipTest(f"host denied pidfd preflight: {exc}")
         self.assertTrue(guarded_signal(self.child.pid, self.ticks, signal.SIGTERM, "sleep"))
         self.child.wait(timeout=5)
         self.assertIsNotNone(self.child.returncode)

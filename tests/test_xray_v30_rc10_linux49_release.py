@@ -14,7 +14,11 @@ class RC10Gates(unittest.TestCase):
         for name,expected in self.m["source_blobs"].items():
             with self.subTest(file=name):
                 # Historical RC10 manifest attests archived bytes, not the later PIDFD revision.
-                pinned_path = "xray/lab/archive/rc10_native_tproxy_minimal_caps_historical.sh" if name == "xray/lab/rc10_native_tproxy_minimal_caps.sh" else name
+                historical_aliases = {
+                    "xray/lab/rc10_native_tproxy_minimal_caps.sh": "xray/lab/archive/rc10_native_tproxy_minimal_caps_historical.sh",
+                    ".github/workflows/xray-v30-rc10-native-cap-tproxy.yml": ".github/archive/xray-v30-rc10-native-cap-tproxy-historical.yml",
+                }
+                pinned_path = historical_aliases.get(name, name)
                 raw=(ROOT/pinned_path).read_bytes()
                 digest=hashlib.sha1(b"blob "+str(len(raw)).encode()+b"\0"+raw).hexdigest()
                 self.assertEqual(digest,expected)

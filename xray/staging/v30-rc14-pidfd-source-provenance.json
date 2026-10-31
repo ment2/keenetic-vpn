@@ -10,13 +10,16 @@
     "archive_copy_path": "xray/lab/archive/rc10_native_tproxy_minimal_caps_historical.sh",
     "original_git_blob_sha": "9b5b0f6c14b59d37eaa0fd17c27890e6a8895660",
     "historical_commit": "d4363ec6462024aa5e8b5b0b82f3c93ec7a23cbd",
-    "manifest_edited": false
+    "manifest_edited": false,
+    "original_workflow_path": ".github/workflows/xray-v30-rc10-native-cap-tproxy.yml",
+    "archive_workflow_path": ".github/archive/xray-v30-rc10-native-cap-tproxy-historical.yml",
+    "original_workflow_blob_sha": "daa65dd41345b8e485a5054772ace2e1aa27648b"
   },
   "current_pidfd_revision": {
     "script_path": "xray/lab/rc10_native_tproxy_minimal_caps.sh",
     "script_git_blob_sha": "9164b2cf57010c53a7cf90b2421940ac1b00aa60",
     "pidfd_guard_path": "xray/lab/rc11_pidfd_guard.py",
-    "pidfd_guard_git_blob_sha": "98435adf5e3ec91fe6f0e0fac8f89d3457ac5e1c",
+    "pidfd_guard_git_blob_sha": "2d52e7fcabf105c50bfc4bb8b83286dbf11b934b",
     "native_workflow_path": ".github/workflows/xray-v30-rc10-native-cap-tproxy.yml",
     "native_workflow_git_blob_sha": "e6d455652303755b87e314c4b2c95133ccf9fd78",
     "proven_successful_native_ci_id": 41229534586

@@ -15,6 +15,10 @@ class RC14Provenance(unittest.TestCase):
         m=json.loads((ROOT/h["manifest_path"]).read_text())
         self.assertEqual(m["source_blobs"][h["old_file_path"]],h["original_git_blob_sha"])
         self.assertEqual(git_blob(h["archive_copy_path"]),h["original_git_blob_sha"])
+        self.assertEqual(
+            json.loads((ROOT/h["manifest_path"]).read_text())["source_blobs"][h["original_workflow_path"]],
+            h["original_workflow_blob_sha"])
+        self.assertEqual(git_blob(h["archive_workflow_path"]),h["original_workflow_blob_sha"])
         self.assertFalse(h["manifest_edited"])
     def test_new_pidfd_revision_pinned_without_relabeling_old_evidence(self):
         c=self.p["current_pidfd_revision"]
