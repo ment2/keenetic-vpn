@@ -115,3 +115,18 @@ jobs:
           python xray/lab/cutover_controller_v30.py | tee /tmp/xray-v30-cutover-simulation.log
           grep -q 'SWITCHED_SIMULATION_ONLY' /tmp/xray-v30-cutover-simulation.log
           grep -q 'handoff_proven=True is SYNTHETIC' /tmp/xray-v30-cutover-simulation.log
+
+      - name: Detached rollback guard survives separate CLI invocations (synthetic only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOOD="$(mktemp -d)"
+          BAD="$(mktemp -d)"
+          trap 'rm -rf "$GOOD" "$BAD"' EXIT
+          python3 -m xray.lab.v30_autonomous_guard_rehearsal --stage "$GOOD" --restore 1
+          python3 -m xray.lab.v30_autonomous_guard_rehearsal --stage "$BAD" --restore 0
+          python3 -m xray.lab.v30_autonomous_guard_rehearsal --verify "$GOOD" --restore 1
+          python3 -m xray.lab.v30_autonomous_guard_rehearsal --verify "$BAD" --restore 0
+          python3 -m xray.lab.v30_first_migration_transaction |
+            tee "$RUNNER_TEMP/v30-first-cutover-synthetic.log"
+          grep -q 'NO APPROVAL OR PRODUCTION CUTOVER' "$RUNNER_TEMP/v30-first-cutover-synthetic.log"
