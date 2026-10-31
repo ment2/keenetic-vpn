@@ -197,7 +197,7 @@ def stop_known(pid, ticks):
         scoped_signal(ident, signal.SIGTERM)
 
 
-def demo(xray, root, at, guardian_crash_at):
+def demo(xray, root, at, guardian_crash_at, *, boot_replay=False):
     root = strict_lab(root)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     qemu = str(Path(xray).resolve())
@@ -284,6 +284,20 @@ def demo(xray, root, at, guardian_crash_at):
                 raise FenceError("did not stop candidate before primary failure")
         guards[0].kill()  # Inject crash while primary guardian holds flock
         guards[0].wait(timeout=3)
+        if boot_replay:
+            # Simulate a restart where both original recovery interpreters
+            # died, but the original transaction journal and candidate Xray
+            # are still on persistent disk. No real kernel reboot occurs.
+            guards[1].kill()
+            guards[1].wait(timeout=3)
+            replacement = subprocess.Popen([
+                sys.executable, "-m", "xray.lab.v30_mips_guardian_failover",
+                "--guardian", str(root), "--role", "secondary",
+            ], stdin=subprocess.DEVNULL,
+               stdout=(root / "guardian-secondary-after-boot.log").open("w"),
+               stderr=subprocess.STDOUT, start_new_session=True)
+            guards.append(replacement)
+            tracked.append((replacement.pid, proc_stat(replacement.pid)[2]))
         end = time.monotonic() + 35
         while not (root / "success").exists():
             if (root / "guardian-secondary-blocked.json").exists():
@@ -301,6 +315,8 @@ def demo(xray, root, at, guardian_crash_at):
         print("MIPS_GUARD: PASS controller crash at " + at)
         print("MIPS_GUARD: PASS primary guardian killed holding common flock")
         print("MIPS_GUARD: PASS primary guardian fault at " + guardian_crash_at)
+        if boot_replay:
+            print("MIPS_BOOT_REPLAY: PASS killed both original guardians; fresh process recovered persisted MIPS Xray transaction")
         print("MIPS_GUARD: PASS independent secondary restored real MIPS Xray TCP+UDP")
         print("LIMITATION: 127.0.0.1 SOCKS5 only; no production TPROXY, reboot or real VPN")
     finally:
@@ -338,9 +354,10 @@ def main():
                    choices=("before_repair", "after_candidate_stop"),
                    default="before_repair")
     p.add_argument("--crash-at", choices=("prepared", "running"), default="running")
+    p.add_argument("--boot-replay", action="store_true")
     a = p.parse_args()
     if a.demo:
-        demo(a.xray, a.demo, a.crash_at, a.guardian_crash_at)
+        demo(a.xray, a.demo, a.crash_at, a.guardian_crash_at, boot_replay=a.boot_replay)
     elif a.controller:
         controller(a.controller, a.crash_at)
     else:
