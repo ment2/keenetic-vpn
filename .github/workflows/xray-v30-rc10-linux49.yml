@@ -80,7 +80,7 @@ jobs:
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          for scenario in baseline rescue-missing; do
+          for scenario in baseline rescue-missing rescue-absent; do
             echo "RC10: BEGIN Linux4.9 QEMU $scenario"
             RC10_SCENARIO="$scenario" bash xray/lab/rc10_fullvm_runner.sh |
               tee "$RUNNER_TEMP/rc10-$scenario.log"
@@ -88,7 +88,7 @@ jobs:
             if [ "$scenario" = baseline ]; then
               grep -q 'RC10: PASS_REAL_LINUX49_XRAY_CAP_RAW_AND_5_OF_5_RESTORE' "$RUNNER_TEMP/rc10-$scenario.log"
             else
-              grep -q 'RC10: PASS_LINUX49_MISSING_RESCUE_ZERO_WRITES' "$RUNNER_TEMP/rc10-$scenario.log"
+              grep -q "RC10: PASS_LINUX49_MISSING_RESCUE_ZERO_WRITES $scenario" "$RUNNER_TEMP/rc10-$scenario.log"
             fi
           done
       - name: Save real Linux 4.9 guest serial logs with physical no-go
