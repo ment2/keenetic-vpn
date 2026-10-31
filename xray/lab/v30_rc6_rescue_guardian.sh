@@ -52,7 +52,7 @@ for name in S97 S98 S99 watchdog wifi_rules; do
   }
   mv "$tmp" "$DST/$name.sh"
   n=$((n+1))
-  if [ "\${V30_RC6_FAULT:-}" = "after-2" ] && [ "$n" -eq 2 ]; then
+  if [ "${V30_RC6_FAULT:-}" = "after-2" ] && [ "$n" -eq 2 ]; then
     echo "RC6: injected process death after exactly two replacements"
     exit 75
   fi
