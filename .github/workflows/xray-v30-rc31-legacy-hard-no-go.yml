@@ -1,0 +1,30 @@
+name: Xray v30 RC31 offline seven privileged legacy release blocker tests
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc31-legacy-hard-no-go.yml'
+      - 'xray/lab/rc31_privileged_legacy_evidence_gate.py'
+      - 'tests/test_xray_v30_rc31_privileged_legacy_evidence.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  seven-legacy-evidence-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Adversarial seven-actor physical fencing evidence contract
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc31_privileged_legacy_evidence.py -v
+          python3 - <<'PY'
+          from xray.lab.rc31_privileged_legacy_evidence_gate import evaluate,snapshot_hashes
+          x=evaluate(expected_hashes=snapshot_hashes())
+          assert x["snapshot_count"]==7
+          assert x["decision"]=="HARD_NO_GO_PRODUCTION"
+          assert not x["production_authorized"] and not x["live_fencing_proven"]
+          print("RC31: SEVEN_VERSIONED_LEGACY_SHA256_SNAPSHOTS_ONLY_HARD_NO_GO")
+          PY
