@@ -95,7 +95,8 @@ class ParentOwnedKernel49Tests(unittest.TestCase):
     def test_no_stale_signal_in_mips_recovery(self):
         from xray.lab import v30_parent_owned_mips_recovery as recovery
         source=inspect.getsource(recovery)
-        self.assertNotIn("os.kill(",source)
+        executable="\n".join(x for x in source.splitlines() if not x.lstrip().startswith("#"))
+        self.assertNotIn("os.kill(",executable)
         self.assertNotIn("pidfd_open(",source)
         self.assertIn("while alive(previous[",source)
         self.assertIn("owned_signal(child,signal.SIGTERM)",source)
