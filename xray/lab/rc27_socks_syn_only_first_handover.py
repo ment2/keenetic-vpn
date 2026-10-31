@@ -146,6 +146,18 @@ def first_migration(xray):
                     print("RC27_DIAG: OUTPUT_NAT_RULES",repr(rules),flush=True)
                     raise Reject("HARD_NO_GO_SYN_ONLY_RULE_CANONICAL_READBACK_MISMATCH")
                 print("RC27: EXACT_SYN_ONLY_NAT_RULE_CANONICAL_READBACK_CONFIRMED",flush=True)
+                def guarded_remove():
+                    # The disposable namespace owns exactly one rule. Never
+                    # delete by position unless fresh full-table canonical
+                    # readback matches, and assert empty afterwards.
+                    before = exec_("iptables","-t","nat","-S","OUTPUT").stdout.splitlines()
+                    if before != ["-P OUTPUT ACCEPT", expected_nat]:
+                        raise Reject("HARD_NO_GO_ROLLBACK_NAT_OWNERSHIP_DRIFT")
+                    exec_("iptables","-t","nat","-D","OUTPUT","1")
+                    after = exec_("iptables","-t","nat","-S","OUTPUT").stdout.splitlines()
+                    if after != ["-P OUTPUT ACCEPT"]:
+                        raise Reject("HARD_NO_GO_ROLLBACK_NAT_NOT_REMOVED")
+                    print("RC27: EXACT_SYN_ONLY_NAT_REMOVED_AND_READBACK_VERIFIED",flush=True)
                 generation=2
                 try:
                     with socks_connect(orig_port) as new_flow:
@@ -178,7 +190,7 @@ def first_migration(xray):
                         # Established candidate TCP remains bound to candidate.
                         if generation!=2 or identity(old)!=old_id or identity(candidate)!=candidate_id:
                             raise Reject("rollback PID/startticks/generation CAS failed")
-                        exec_(*rollback_rule)
+                        guarded_remove()
                         generation=3
                         with socks_connect(orig_port) as restored:
                             assert echo(restored,b"rollback")=="A"
@@ -189,7 +201,8 @@ def first_migration(xray):
                         print("RC27: PASS_ROLLBACK_SAME_10808_OLD_PROCESS_PID_STARTTICKS_AND_CAS",flush=True)
                 except BaseException:
                     # Remove only exact disposable NAT rule, never host/production.
-                    exec_(*rollback_rule,check=False)
+                    with contextlib.suppress(Reject, subprocess.CalledProcessError):
+                        guarded_remove()
                     raise
                 assert generation==3
                 print("RC27: HARD_NO_GO_TPROXY_UDP_UNCOOPERATIVE_WATCHDOG_VENDOR_HARDWARE",flush=True)
