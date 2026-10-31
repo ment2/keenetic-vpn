@@ -34,14 +34,24 @@ test "$caps" = 0000000000002000
 # emits this marker ONLY after PR_SET_NO_NEW_PRIVS succeeds, before exec.
 # PR_SET_NO_NEW_PRIVS survives exec. Do not infer from a missing proc field.
 /bin/busybox grep -Fq 'RC9_CAP: BEFORE_EXEC target=xray raw=1 uid=65534 gid=65534 no_new_privs=1' /lab/xray.log
-# Record guest UDP socket ownership constraints; fails closed on absent
-# 12345 transparent socket or 19292 synthetic backend socket.
-if ! /bin/busybox grep -q ':3039 ' /proc/net/udp; then
- echo 'RC21_GUEST: HARD_NO_GO_XRAY_UDP_SOCKET_12345_MISSING'
- exit 2
-fi
-if ! /bin/busybox grep -q ':4B5C ' /proc/net/udp; then
- echo 'RC21_GUEST: HARD_NO_GO_LOCAL_BACKEND_UDP_SOCKET_19292_MISSING'
+# Xray TCP listen can precede UDP listen under QEMU MIPS scheduling.
+# Require BOTH UDP listeners, with a bounded retry, in /proc/net/udp OR
+# /proc/net/udp6 (Go may bind dual-stack). Missing means HARD NO-GO.
+udp_ready=0
+for n in $(/bin/busybox seq 1 120); do
+ udp_table=$(/bin/busybox cat /proc/net/udp /proc/net/udp6 2>/dev/null || true)
+ if printf '%s\n' "$udp_table" | /bin/busybox grep -q ':3039 ' && \
+    printf '%s\n' "$udp_table" | /bin/busybox grep -q ':4B5C '; then
+   udp_ready=1
+   break
+ fi
+ if ! /bin/busybox kill -0 "$xraypid" 2>/dev/null; then break; fi
+ /bin/busybox sleep 0.1
+done
+if [ "$udp_ready" != 1 ]; then
+ echo 'RC21_GUEST: HARD_NO_GO_XRAY_OR_BACKEND_UDP_SOCKET_NOT_READY'
+ /bin/busybox cat /proc/net/udp /proc/net/udp6 2>/dev/null || true
+ /bin/busybox cat /lab/xray.log || true
  exit 2
 fi
 echo 'RC21_GUEST: UDP_XRAY_LISTENER_12345_AND_BACKEND_19292_CONFIRMED'
