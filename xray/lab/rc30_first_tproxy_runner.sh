@@ -52,16 +52,22 @@ JSON
 cat >"$W/initramfs/etc/xray-candidate.json" <<'JSON'
 {
   "log":{"loglevel":"debug"},
-  "inbounds":[{"tag":"candidate-tproxy","listen":"0.0.0.0","port":22345,
-    "protocol":"dokodemo-door","settings":{"network":"tcp,udp","followRedirect":true},
-    "streamSettings":{"sockopt":{"tproxy":"tproxy"}}}],
+  "api":{"tag":"lab-api","services":["HandlerService","RoutingService"]},
+  "inbounds":[
+    {"tag":"lab-api","listen":"127.0.0.1","port":21808,
+     "protocol":"dokodemo-door","settings":{"address":"127.0.0.1"}},
+    {"tag":"candidate-tproxy","listen":"0.0.0.0","port":22345,
+     "protocol":"dokodemo-door","settings":{"network":"tcp,udp","followRedirect":true},
+     "streamSettings":{"sockopt":{"tproxy":"tproxy"}}}
+  ],
   "outbounds":[{"tag":"backend","protocol":"freedom","settings":{}},
                {"tag":"blocked","protocol":"blackhole","settings":{}}],
-  "routing":{"rules":[{"type":"field","inboundTag":["candidate-tproxy"],"outboundTag":"backend"},
+  "routing":{"rules":[{"type":"field","inboundTag":["lab-api"],"outboundTag":"lab-api"},
+                       {"type":"field","inboundTag":["candidate-tproxy"],"outboundTag":"backend"},
                        {"type":"field","port":"0-65535","outboundTag":"blocked"}]}
 }
 JSON
-chmod 644 "$W/initramfs/etc/xray.json"
+chmod 644 "$W/initramfs/etc/xray.json" "$W/initramfs/etc/xray-candidate.json"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/init" xray/lab/rc29_original_init.c
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -DPORT=19292 -o "$W/initramfs/lab/echo" xray/lab/rc19_mips49_tcpudp_echo.c
 cp xray/lab/rc30_first_tproxy_cutover_guest.sh "$W/initramfs/lab/xray-packet.sh"
