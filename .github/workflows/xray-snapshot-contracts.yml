@@ -44,6 +44,7 @@ on:
       - 'xray/lab/rc11_mips49_guest_init.c'
       - 'xray/lab/rc11_mips49_fullsystem_runner.sh'
       - 'xray/lab/rc11_privileged_legacy_fencing_contract.py'
+      - 'xray/lab/rc11_hardware_boot_rescue_gate.py'
       - '.github/workflows/xray-v30-rc11-mips49-fullsystem.yml'
       - '.github/workflows/xray-v30-rc11-mips49-discovery.yml'
       - 'xray/lab/rc10_fullvm_init'
