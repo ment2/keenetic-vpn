@@ -62,8 +62,17 @@ if [ "$(awk '{print $22}' "/proc/$XRAY_PID/stat" 2>/dev/null)" != "$XRAY_TICKS" 
 fi
 grep -q '^CapEff:[[:space:]]*0000000000002000' "/proc/$XRAY_PID/status" ||
   { echo "RC10_VM: FAIL Xray inherited unexpected capabilities"; poweroff -f; }
-grep -q '^NoNewPrivs:[[:space:]]*1' "/proc/$XRAY_PID/status" ||
-  { echo "RC10_VM: FAIL Xray no_new_privs lost"; poweroff -f; }
+if grep -q '^NoNewPrivs:' "/proc/$XRAY_PID/status"; then
+  grep -q '^NoNewPrivs:[[:space:]]*1' "/proc/$XRAY_PID/status" ||
+    { echo "RC10_VM: FAIL Xray no_new_privs lost"; poweroff -f; }
+  echo "RC10_VM: NNP_PROC_STATUS_CONFIRMED"
+else
+  # Linux 4.9 may not expose NoNewPrivs in /proc/status; check
+  # PR_SET_NO_NEW_PRIVS before exec instead, with monotonic exec semantics.
+  grep -q 'RC9_CAP: BEFORE_EXEC target=xray raw=1 uid=65534 gid=65534 no_new_privs=1' /run/rc9-xray.log ||
+    { echo "RC10_VM: FAIL pre-exec no_new_privs unproven"; poweroff -f; }
+  echo "RC10_VM: NNP_PREEXEC_PROVEN_PROC_STATUS_UNAVAILABLE"
+fi
 echo "RC10_VM: ACTUAL_XRAY_TRANSPARENT_LISTENER_CAP_NET_RAW_ONLY_UID65534_PASS"
 # Only parent shell's direct Xray child is signalled and reaped.
 kill "$XRAY_PID"
