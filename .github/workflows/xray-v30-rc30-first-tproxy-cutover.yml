@@ -19,7 +19,7 @@ jobs:
       - name: Source gates for isolated first-tproxy-cutover forwarding
         run: |
           set -euo pipefail
-          python3 -m unittest discover -s tests -p test_xray_v30_rc30_original_destination.py -v
+          python3 -m unittest discover -s tests -p test_xray_v30_rc30_first_tproxy_cutover.py -v
           bash -n xray/lab/rc30_first_tproxy_runner.sh
           bash -n xray/lab/rc30_first_tproxy_netns.sh
           sh -n xray/lab/rc30_first_tproxy_cutover_guest.sh
