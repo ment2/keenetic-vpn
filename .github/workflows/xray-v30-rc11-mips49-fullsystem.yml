@@ -1,0 +1,49 @@
+name: Xray v30 RC11 real MIPS32LE Linux 4.9 full-system smoke (NO TPROXY route proof)
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc11-mips49-fullsystem.yml'
+      - 'xray/lab/rc11_mips49_*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc11-real-mipsel-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install offline MIPS32LE full-system emulator and cross compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross \
+            binutils-mipsel-linux-gnu cpio gzip unzip curl binutils
+      - name: Run exact-sha pinned Linux 4.9 MIPS32LE QEMU Malta with genuine Xray and guardian CAS
+        timeout-minutes: 7
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc11_mips49_fullsystem_runner.sh |
+            tee "$RUNNER_TEMP/rc11-mips49-result.log"
+          grep -q 'RC11: PASS_REAL_MIPS32LE_LINUX49_FULLSYSTEM_XRAY_CAP_NET_RAW_CAS_GUEST_ONLY' "$RUNNER_TEMP/rc11-mips49-result.log"
+          grep -q 'RC11: HARD_NO_GO_MIPS_KERNEL49_TPROXY_FULL_PACKET_PATH_UNTESTED' "$RUNNER_TEMP/rc11-mips49-result.log"
+          grep -q 'RC11: HARD_NO_GO_PHYSICAL_VENDOR_NDM5_MIPS_UNKNOWN' "$RUNNER_TEMP/rc11-mips49-result.log"
+      - name: Save real MIPS32LE guest console only, never distribute production binaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc11-real-mipsel-linux49-full-system-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/rc11-mips49-fullsystem/guest-serial.log
+            ${{ runner.temp }}/rc11-mips49-fullsystem/qemu-errors.log
+            ${{ runner.temp }}/rc11-mips49-result.log
+          if-no-files-found: warn
+          retention-days: 14
