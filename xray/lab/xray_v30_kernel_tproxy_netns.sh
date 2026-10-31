@@ -13,7 +13,18 @@ set -x
 tmp="$(mktemp -d "${RUNNER_TEMP}/v30-tproxy.XXXXXX")"
 xray_pid="" ; server_pid=""
 cleanup() {
+  status=$?
   set +e
+  if [[ "$status" -ne 0 ]]; then
+    echo 'NETNS_DIAG: FAILURE before cleanup (synthetic fixtures only)'
+    sudo ip netns exec xv30g iptables -t mangle -vnL PREROUTING
+    sudo ip netns exec xv30g iptables -t mangle -vnL XRAY_V30_LAB
+    sudo ip netns exec xv30g iptables -vnL FORWARD
+    sudo ip netns exec xv30g ip rule show
+    sudo ip netns exec xv30g ip route show table 100
+    sudo ip netns exec xv30g ss -lntup
+    cat "$tmp/xray.log" "$tmp/server.log" 2>/dev/null
+  fi
   if [[ -n "$xray_pid" ]] && [[ -f "/proc/$xray_pid/cmdline" ]] &&
      tr '\0' ' ' <"/proc/$xray_pid/cmdline" | grep -q 'qemu-mipsel'; then
     sudo kill "$xray_pid" 2>/dev/null
@@ -60,7 +71,7 @@ for proto in tcp udp; do
 done
 cat > "$tmp/config.json" <<'JSON'
 {
-  "log": {"loglevel":"warning"},
+  "log": {"loglevel":"debug"},
   "inbounds": [{
     "tag":"lab-tproxy", "listen":"0.0.0.0", "port":12345,
     "protocol":"dokodemo-door",
