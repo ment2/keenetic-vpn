@@ -27,7 +27,9 @@ STAGING_TEMPLATES = STAGING / "v30_supervisor_templates"
 SHARED_LOCK = RouterPaths.lock
 
 
-def actor_contract(lock=SHARED_LOCK):
+def actor_contract(lock=None):
+    if lock is None:
+        lock = SHARED_LOCK
     """One path/inode contract for all five cooperative actors."""
     rows = [{"role": x, "requires_lock": True, "lock_path": str(lock)}
             for x in ACTORS]
@@ -38,12 +40,14 @@ def actor_contract(lock=SHARED_LOCK):
 
 
 @contextmanager
-def coordinated_trial_lock(*, lock=SHARED_LOCK, no_legacy_writers=False):
+def coordinated_trial_lock(*, lock=None, no_legacy_writers=False):
     """Fail closed until legacy cron/init/watchdog descendants are drained.
 
     A held lock is necessary but not sufficient: unfenced legacy tasks
     do not cooperate, so an explicit externally verified gate is required.
     """
+    if lock is None:
+        lock = SHARED_LOCK
     actor_contract(lock)
     if no_legacy_writers is not True:
         raise FenceError("legacy restart/rule repair still not fenced")
