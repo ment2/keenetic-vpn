@@ -35,9 +35,28 @@ test "$caps" = 0000000000002000
 # PR_SET_NO_NEW_PRIVS survives exec. Do not infer from a missing proc field.
 /bin/busybox grep -Fq 'RC9_CAP: BEFORE_EXEC target=xray raw=1 uid=65534 gid=65534 no_new_privs=1' /lab/xray.log
 echo 'RC21_GUEST: REAL_XRAY_UID65534_CAP_NET_RAW_NNP_AND_TPROXY_LISTENER_READY'
-wait "$backend"
+# Do not let unreceived UDP block the disposable guest until QEMU times out.
+# No PID-only signals; parent only reads its exact child status.
+backend_done=0
+for n in $(/bin/busybox seq 1 180); do
+ state=$(/bin/busybox awk '{print $3}' "/proc/$backend/stat" 2>/dev/null || true)
+ if [ "$state" = Z ] || [ -z "$state" ]; then
+  backend_done=1
+  break
+ fi
+ /bin/busybox sleep 0.1
+done
+echo "RC21_GUEST: BACKEND_EXIT_OBSERVED=$backend_done"
+echo 'RC21_GUEST: MANGLE_TCP_UDP_RULE_COUNTERS_BEGIN'
 /sbin/iptables -t mangle -xvnL PREROUTING >/lab/counters
 /bin/busybox cat /lab/counters
+echo 'RC21_GUEST: XRAY_LOG_BEGIN'
+/bin/busybox tail -n 100 /lab/xray.log
+if [ "$backend_done" != 1 ]; then
+ echo 'RC21_GUEST: HARD_NO_GO_UDP_BACKEND_NOT_RECEIVED_WITHIN_DEADLINE'
+ exit 3
+fi
+wait "$backend"
 /bin/busybox awk '($3=="TPROXY" && $4=="tcp" && $1+0>=1){tcp=1} ($3=="TPROXY" && $4=="udp" && $1+0>=1){udp=1} END{if(tcp&&udp)exit 0;exit 2}' /lab/counters
 echo 'RC21_GUEST: REAL_XRAY_BACKEND_TCP_UDP_AND_TPROXY_COUNTERS'
 /bin/busybox tail -n 45 /lab/xray.log
