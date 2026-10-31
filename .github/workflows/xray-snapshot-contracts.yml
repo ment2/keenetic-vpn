@@ -14,6 +14,8 @@ on:
       - 'xray/lab/v30_release_manifest_contract.py'
       - 'xray/lab/v30_reboot_usb_fault_matrix.py'
       - 'xray/lab/v30_legacy_descendant_migration_gate.py'
+      - 'xray/lab/v30_two_phase_migration_contract.py'
+      - 'xray/lab/v30_nonusb_rescue_lab.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -58,6 +60,36 @@ jobs:
           assert "MISSING_LEGACY_CHILD_TREE_DRAINED" in obj["reason_codes"]
           print("PASS: legacy descendants and unknown pidfd strictly BLOCK production")
           PY
+
+      - name: Validate review-only two-phase legacy watchdog S97 S98 S99 cron migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_two_phase_migration_contract --offline-plan > "$RUNNER_TEMP/v30-two-phase.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=json.loads((Path(os.environ["RUNNER_TEMP"])/"v30-two-phase.json").read_text())
+          assert d["decision"] == "REVIEW_ONLY_NO_PRODUCTION_CHANGE"
+          assert d["deployment_authorized"] is False
+          assert d["trial_authorized"] is False
+          assert d["production_commands"] == []
+          assert len(d["stages"]) == 8
+          assert len(d["legacy_spawner_surfaces"]) == 7
+          assert "NO_FRESH_LIVE_PROCESS_SNAPSHOT" in d["reasons"]
+          print("PASS: two-phase migration explicit cron/root/descendant gates deny live deployment")
+          PY
+
+      - name: Replay actual five-file partial upgrade after lost USB using simulated independent rescue
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_nonusb_rescue_lab --demo "$RUNNER_TEMP/v30-nonusb-rescue" |
+            tee "$RUNNER_TEMP/v30-nonusb-rescue.log"
+          grep -q 'OFFUSB_RESCUE: PASS corrupt independent rescue rejects before active writes' "$RUNNER_TEMP/v30-nonusb-rescue.log"
+          grep -q 'OFFUSB_RESCUE: PASS missing USB backup not used during independent restore' "$RUNNER_TEMP/v30-nonusb-rescue.log"
+          grep -q 'OFFUSB_RESCUE: LIMITATION two paths on disposable runner' "$RUNNER_TEMP/v30-nonusb-rescue.log"
 
       - name: Verify versioned nine-file SHA256 Git blob and frozen mode release manifest
         shell: bash
