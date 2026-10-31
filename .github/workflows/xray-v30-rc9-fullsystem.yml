@@ -1,0 +1,79 @@
+name: Xray v30 RC9 full-system native Xray capability and missing rescue
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc9-fullsystem.yml'
+      - 'xray/lab/rc9_*'
+      - 'xray/lab/rc8_guest_privdrop.c'
+      - 'xray/lab/rc7_fullvm_cgroup_probe.c'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rc9-guest-native-xray:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install disposable guest kernel, virtual machine and archive tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            qemu-system-x86 linux-image-virtual busybox-static gcc libc6-dev \
+            e2fsprogs cpio gzip zstd kmod curl unzip
+      - name: Retrieve official native Xray 26.2.6 x86_64 binary for guest-only TPROXY capability proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v30-rc9-xray-official"
+          curl -fL --retry 3 --max-time 120 \
+            -o "$RUNNER_TEMP/v30-rc9-xray-official/xray.zip" \
+            https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-64.zip
+          unzip -j "$RUNNER_TEMP/v30-rc9-xray-official/xray.zip" xray \
+            -d "$RUNNER_TEMP/v30-rc9-xray-official"
+          chmod 755 "$RUNNER_TEMP/v30-rc9-xray-official/xray"
+          "$RUNNER_TEMP/v30-rc9-xray-official/xray" version |
+            tee "$RUNNER_TEMP/v30-rc9-xray-version.log"
+          grep -q 'Xray 26.2.6' "$RUNNER_TEMP/v30-rc9-xray-version.log"
+          sha256sum "$RUNNER_TEMP/v30-rc9-xray-official/xray.zip" \
+                    "$RUNNER_TEMP/v30-rc9-xray-official/xray" |
+            tee "$RUNNER_TEMP/v30-rc9-xray-sha256.log"
+          echo "XRAY_NATIVE_BINARY=$RUNNER_TEMP/v30-rc9-xray-official/xray" >> "$GITHUB_ENV"
+      - name: Run separate guest kernel real TPROXY and no-USB full-system fail-closed
+        shell: bash
+        timeout-minutes: 11
+        run: |
+          set -euo pipefail
+          for scenario in baseline rescue-missing; do
+            RC9_SCENARIO="$scenario" bash xray/lab/rc9_fullvm_runner.sh |
+              tee "$RUNNER_TEMP/rc9-$scenario.log"
+            grep -q 'RC9: HARD_NO_GO_PHYSICAL_KEENETIC_RUNTIME_CGROUP_BOOT_USB_TPROXY' "$RUNNER_TEMP/rc9-$scenario.log"
+            if [ "$scenario" = baseline ]; then
+              grep -q 'RC9: PASS_ACTUAL_XRAY_NATIVE_TPROXY_CAP_RAW_GUEST_AND_5_OF_5_RESTORE' "$RUNNER_TEMP/rc9-$scenario.log"
+            else
+              grep -q 'RC9: PASS_MISSING_RESCUE_VIRTUAL_DISK_ZERO_WRITES' "$RUNNER_TEMP/rc9-$scenario.log"
+            fi
+          done
+      - name: Publish guest serial logs and version/sha evidence (no production binary artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc9-qemu-xray-capabilities-and-missing-rescue-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/xray-v30-rc9-fullvm-*/first-boot.log
+            ${{ runner.temp }}/xray-v30-rc9-fullvm-*/second-boot.log
+            ${{ runner.temp }}/xray-v30-rc9-fullvm-*/cgroup-disposition.txt
+            ${{ runner.temp }}/xray-v30-rc9-fullvm-*/first-qemu-errors.log
+            ${{ runner.temp }}/xray-v30-rc9-fullvm-*/second-qemu-errors.log
+            ${{ runner.temp }}/v30-rc9-xray-version.log
+            ${{ runner.temp }}/v30-rc9-xray-sha256.log
+            ${{ runner.temp }}/rc9-*.log
+          if-no-files-found: warn
+          retention-days: 14
