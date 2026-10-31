@@ -1,0 +1,67 @@
+name: Xray v30 RC24 real MIPS32LE seamless qualified-pool refresh and TCP continuity
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc24-seamless-pool.yml'
+      - 'xray/lab/pool_generation_v30.py'
+      - 'xray/lab/pool_reconcile_v30.py'
+      - 'xray/lab/xray_v30_pool_handover_api.py'
+      - 'tests/test_xray_v30_seamless_pool_refresh_cas.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc24-mipsle-xray-seamless-pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate offline CAS, no-switch and unqualified endpoint exclusions
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_pool_generation_v30.py -v
+          python3 -m unittest discover -s tests -p test_xray_pool_reconcile_v30.py -v
+          python3 -m unittest discover -s tests -p test_xray_v30_seamless_pool_refresh_cas.py -v
+      - name: Install disposable MIPS32LE user emulator
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-user unzip curl
+      - name: Download and verify immutable official Xray 26.2.6 MIPS32LE release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/rc24-seamless-pool"
+          curl -fL --retry 3 --max-time 120 -o "$RUNNER_TEMP/rc24-seamless-pool/xray.zip" https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip
+          printf '1590b2bcefe64fb0604f29c8c75219bfbe8f63daa3bc8e3956edfa6da97c5869  %s\n' "$RUNNER_TEMP/rc24-seamless-pool/xray.zip" | sha256sum -c -
+          unzip -j "$RUNNER_TEMP/rc24-seamless-pool/xray.zip" xray -d "$RUNNER_TEMP/rc24-seamless-pool"
+          printf '3d2588c5ef770a6a7e1bfdd5db511130fb3acd79eb91bfcb108753b3e1dda1f6  %s\n' "$RUNNER_TEMP/rc24-seamless-pool/xray" | sha256sum -c -
+          chmod 700 "$RUNNER_TEMP/rc24-seamless-pool/xray"
+          cat > "$RUNNER_TEMP/rc24-seamless-pool/xray-qemu" <<'SH'
+          #!/bin/sh
+          exec qemu-mipsel "$XRAY_MIPS_BINARY" "$@"
+          SH
+          chmod 700 "$RUNNER_TEMP/rc24-seamless-pool/xray-qemu"
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/rc24-seamless-pool/xray"
+          qemu-mipsel "$XRAY_MIPS_BINARY" version
+      - name: Real Xray MIPS API preserve-active, add standby, change only new TCP and explicit rollback
+        shell: bash
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/rc24-seamless-pool/xray"
+          python3 -m xray.lab.xray_v30_pool_handover_api --xray "$RUNNER_TEMP/rc24-seamless-pool/xray-qemu" --run | tee "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+          grep -Fq 'POOL_API: PASS new qualified pool retains active A; no BO switch' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+          grep -Fq 'POOL_API: PASS changed pool sends new TCP to C; old A TCP survives' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+          grep -Fq 'POOL_API: PASS explicit BO rollback restores new TCP to A' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+          ! grep -Eq 'PRODUCTION_(READY|AUTHORIZED)|DEPLOY_SUCCESS' "$RUNNER_TEMP/rc24-seamless-pool/handover.log"
+      - name: Retain exact CI witnesses without secrets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc24-mipsle-seamless-pool-real-api-NO-DEPLOY
+          path: ${{ runner.temp }}/rc24-seamless-pool/handover.log
+          if-no-files-found: warn
+          retention-days: 14
