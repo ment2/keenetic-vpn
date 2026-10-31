@@ -1,0 +1,49 @@
+name: Xray v30 RC29 real MIPS49 original destination no redirect independent backend
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc29-original-destination.yml'
+      - 'xray/lab/rc29_original_*'
+      - 'tests/test_xray_v30_rc29_original_destination.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-mips49-original-destination:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source gates for isolated original-destination forwarding
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc29_original_destination.py -v
+          bash -n xray/lab/rc29_original_runner.sh
+          bash -n xray/lab/rc29_original_netns.sh
+          sh -n xray/lab/rc29_original_guest.sh
+          python3 -m py_compile xray/lab/rc29_original_backend.py
+      - name: Install disposable QEMU and MIPS GCC
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Test original foreign destination over real MIPS Xray to independent backend stack
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc29_original_runner.sh | tee "$RUNNER_TEMP/rc29-result.log"
+          grep -Fq RC29_PASS_REAL_MIPS49_XRAY_TCP_UDP_ORIGINAL_DEST_INDEPENDENT_BACKEND "$RUNNER_TEMP/rc29-result.log"
+      - name: Preserve full evidence of PASS or HARD NO-GO
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc29-mips49-original-destination-independent-backend-no-deploy
+          path: |
+            ${{ runner.temp }}/rc29-real-original/serial.log
+            ${{ runner.temp }}/rc29-real-original/qemu-errors.log
+            ${{ runner.temp }}/rc29-real-original/backend.log
+            ${{ runner.temp }}/rc29-result.log
+          if-no-files-found: warn
+          retention-days: 14
