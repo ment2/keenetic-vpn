@@ -189,6 +189,75 @@ class XrayV30BrokerTests(unittest.TestCase):
                               side_effect=AssertionError("must not mutate kernel")):
                 self.assertEqual(self.b.wifi_once(), "WIFI_TPROXY_HEALTHY")
 
+    def test_watchdog_bootstrap_requires_exact_legacy_pid_and_ticks(self):
+        from xray.staging.v30_supervisor_core import atomic_pidfile
+        old = Identity(self.pid, 98765, str(self.paths.xray),
+                       ("/opt/bin/xray-watchdog.sh",))
+        atomic_pidfile(self.b._actor_pidfile("watchdog"), self.pid)
+        with patch.object(svc, "proc_identity", return_value=old):
+            self.assertEqual(self.b.actor_bootstrap("watchdog", self.pid, 98765),
+                             "ACTOR_LEGACY_PINNED")
+        active, observed = self.b._actor_load("watchdog")
+        self.assertTrue(active["legacy"])
+        self.assertEqual(observed, old)
+        with patch.object(svc, "proc_identity", return_value=old):
+            with self.assertRaises(FenceError):
+                self.b.actor_bootstrap("watchdog", self.pid, 98765)
+
+    def test_watchdog_scoped_stop_updates_compatibility_pidfile(self):
+        from xray.staging.v30_supervisor_core import atomic_journal, atomic_pidfile
+        old = Identity(self.pid, 98765, str(self.paths.xray),
+                       ("/opt/bin/xray-watchdog.sh",))
+        atomic_pidfile(self.b._actor_pidfile("watchdog"), self.pid)
+        atomic_journal(self.b._actor_path("watchdog"), {
+            "schema":1, "phase":"active", "identity":{
+                "pid":old.pid, "start_ticks":old.start_ticks,
+                "exe":old.exe, "argv":list(old.argv)}, "legacy":True})
+        with patch.object(svc, "proc_identity", side_effect=[
+                old, FenceError("stopped")]):
+            with patch.object(svc, "scoped_signal") as scoped:
+                self.assertEqual(self.b.actor_control("watchdog", "stop"),
+                                 "ACTOR_STOPPED_EXACT_IDENTITY")
+        scoped.assert_called_once_with(old, svc.signal.SIGTERM)
+        self.assertFalse(self.b._actor_pidfile("watchdog").exists())
+        self.assertEqual(self.b._actor_load("watchdog")[0]["phase"], "stopped")
+
+    def test_actor_start_requires_fully_cleared_old_pid_and_prepared_state(self):
+        from xray.staging.v30_supervisor_core import atomic_journal
+        old = Identity(self.pid, 98765, str(self.paths.xray),
+                       ("/opt/bin/xray-watchdog.sh",))
+        atomic_journal(self.b._actor_path("watchdog"), {
+            "schema":1, "phase":"stopped", "identity":{
+                "pid":old.pid, "start_ticks":old.start_ticks,
+                "exe":old.exe, "argv":list(old.argv)}, "legacy":True})
+        self.b._actor_prepared("watchdog").write_text("UNRECONCILED")
+        with patch.object(svc, "gated_spawn",
+                          side_effect=AssertionError("must not spawn")):
+            with self.assertRaisesRegex(FenceError, "unreconciled"):
+                self.b.actor_control("watchdog", "start")
+
+    def test_new_watchdog_gated_spawn_has_durable_pid_and_compatibility_file(self):
+        from xray.staging.v30_supervisor_core import atomic_journal
+        old = Identity(self.pid, 98765, str(self.paths.xray),
+                       ("/opt/bin/xray-watchdog.sh",))
+        atomic_journal(self.b._actor_path("watchdog"), {
+            "schema":1, "phase":"stopped", "identity":{
+                "pid":old.pid, "start_ticks":old.start_ticks,
+                "exe":old.exe, "argv":list(old.argv)}, "legacy":True})
+        argv=self.b._actor_expected_cmd("watchdog")
+        new=Identity(7777, 3333, str(Path(sys.executable).resolve()), argv)
+        def spawn(exe, args, journal):
+            self.assertEqual(tuple(args), argv)
+            Path(journal).write_text("PREPARED")
+            return 7777, 3333
+        with patch.object(svc, "gated_spawn", side_effect=spawn):
+            with patch.object(svc, "proc_identity", return_value=new):
+                self.assertEqual(self.b.actor_control("watchdog", "start"),
+                                 "ACTOR_STARTED_WITH_DURABLE_PID_TICKS")
+        self.assertEqual(self.b._actor_pidfile("watchdog").read_text().strip(), "7777")
+        self.assertEqual(self.b._actor_load("watchdog")[1], new)
+        self.assertFalse(self.b._actor_prepared("watchdog").exists())
+
     def test_source_has_no_global_killall_or_unguarded_cli_retry(self):
         source = Path(svc.__file__).read_text(encoding="utf-8")
         self.assertNotIn("killall xray", source)
