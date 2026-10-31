@@ -114,6 +114,17 @@ def guardian(root, role):
     meta = load(root / "runtime.json")
     (root / ("guardian-" + role + "-ready")).write_text("READY\n")
     deadline = time.monotonic() + 45
+    # Do not race the original boot/launch. Failure injection is driven only
+    # by the disposable demo after the controller has actually been killed.
+    while not (root / "controller-killed").exists():
+        if time.monotonic() >= deadline:
+            raise FenceError("controller never declared failed")
+        time.sleep(0.04)
+    if role == "secondary":
+        while not (root / "primary-held-lock").exists():
+            if time.monotonic() >= deadline:
+                raise FenceError("primary never owned flock")
+            time.sleep(0.04)
     while time.monotonic() < deadline:
         try:
             with supervisor_lock(root / "shared.lock", timeout=0.25):
@@ -187,9 +198,6 @@ def demo(xray, root, at):
     binary = os.environ.get("XRAY_MIPS_BINARY")
     if not binary:
         raise FenceError("missing pinned MIPS binary location")
-    qemubin = subprocess.run(["command", "-v", "qemu-mipsel"],
-                            shell=False, capture_output=True, text=True)
-    # command is a shell builtin, prefer exec path resolved by shutil.
     import shutil
     qemubin = shutil.which("qemu-mipsel")
     if not qemubin or not Path(binary).is_file():
@@ -251,6 +259,7 @@ def demo(xray, root, at):
         tracked.append((prepared["pid"], prepared["start_ticks"]))
         ctrl.kill()  # Own disposable runner process, never router
         ctrl.wait(timeout=3)
+        (root / "controller-killed").write_text("CONFIRMED_DISPOSABLE_CONTROLLER_EXIT\\n")
         end = time.monotonic() + 8
         while not (root / "primary-held-lock").exists():
             if time.monotonic() > end:
