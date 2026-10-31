@@ -1,0 +1,40 @@
+name: Xray v30 EXPERIMENTAL MIPS QEMU kernel TPROXY (known blocked)
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-mips-kernel-tproxy-experiment.yml'
+      - 'xray/lab/xray_v30_kernel_tproxy_netns.sh'
+      - 'xray/lab/xray_v30_kernel_tproxy_echo.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qemu-mips-kernel-tproxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install QEMU plus Linux namespace and netfilter tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-user iproute2 iptables unzip
+      - name: Download official Xray 26.2.6 MIPS32LE test binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/xray-mipsle"
+          curl -fL --retry 3 --max-time 120 -o "$RUNNER_TEMP/xray-mipsle/xray.zip" \
+            https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip
+          unzip -j "$RUNNER_TEMP/xray-mipsle/xray.zip" xray -d "$RUNNER_TEMP/xray-mipsle"
+          chmod 700 "$RUNNER_TEMP/xray-mipsle/xray"
+          qemu-mipsel "$RUNNER_TEMP/xray-mipsle/xray" version
+      - name: Attempt kernel IP_TRANSPARENT under QEMU user mode (experimental gate)
+        shell: bash
+        run: |
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          bash xray/lab/xray_v30_kernel_tproxy_netns.sh --run
