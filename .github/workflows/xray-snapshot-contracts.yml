@@ -26,6 +26,8 @@ on:
       - 'xray/lab/v30_sealed_descendant_inventory.py'
       - 'xray/lab/v30_guardian_generation_race.py'
       - 'xray/lab/v30_review_rescue_bundle.py'
+      - 'xray/lab/v30_kernel49_cgroup_v1_contract.py'
+      - 'xray/lab/v30_kernel49_nonusb_boot_rescue_contract.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -317,6 +319,27 @@ jobs:
           path: ${{ runner.temp }}/v30-kernel49-rescue-review.tar
           retention-days: 14
           if-no-files-found: error
+
+      - name: Linux 4.9 cgroup v1 and no-USB boot acceptance must remain HARD NO-GO
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_kernel49_cgroup_v1_contract --offline > "$RUNNER_TEMP/v30-kernel49-cgroup.json"
+          python -m xray.lab.v30_kernel49_nonusb_boot_rescue_contract --offline-plan > "$RUNNER_TEMP/v30-kernel49-boot-rescue.json"
+          python - <<'PY'
+          from pathlib import Path
+          import os,json
+          d=Path(os.environ["RUNNER_TEMP"])
+          c=json.loads((d/"v30-kernel49-cgroup.json").read_text())
+          b=json.loads((d/"v30-kernel49-boot-rescue.json").read_text())
+          assert c["status"]=="NO_PRODUCTION_RECOVERY"
+          assert c["production_recovery_authorized"] is False
+          assert b["decision"]=="HARD_NO_GO"
+          assert b["physical_boot_proven"] is False
+          assert b["automatic_restore_authorized"] is False
+          assert c["router_commands"]==b["production_commands"]==[]
+          print("PASS: physical cgroup-v1 and USB-free boot remain HARD NO-GO")
+          PY
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
