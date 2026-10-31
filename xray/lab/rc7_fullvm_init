@@ -44,8 +44,10 @@ fi
 for name in S97 S98 S99 watchdog wifi_rules; do
   cp "/mnt/rescue/originals/$name.sh" "/mnt/active/.$name.sh.tmp" || exit 1
   cmp "/mnt/rescue/originals/$name.sh" "/mnt/active/.$name.sh.tmp" || exit 1
+  /bin/rc7fsync "/mnt/active/.$name.sh.tmp" /mnt/active || { echo "RC7_VM: FAIL before-rename fdatasync"; poweroff -f; }
   sync
   mv "/mnt/active/.$name.sh.tmp" "/mnt/active/$name.sh" || exit 1
+  /bin/rc7fsync "/mnt/active/$name.sh" /mnt/active || { echo "RC7_VM: FAIL after-rename fdatasync"; poweroff -f; }
   sync
   case "$name" in
     S97) echo 'stage=1' > /mnt/active/journal ;;
@@ -54,6 +56,7 @@ for name in S97 S98 S99 watchdog wifi_rules; do
     watchdog) echo 'stage=4' > /mnt/active/journal ;;
     wifi_rules) echo 'stage=5' > /mnt/active/journal ;;
   esac
+  /bin/rc7fsync /mnt/active/journal /mnt/active || { echo "RC7_VM: FAIL journal fdatasync"; poweroff -f; }
   sync
   if [ "$STAGE" = first ] && [ "$name" = S98 ]; then
     echo "RC7_VM: POWER_CUT_POINT_AFTER_FSYNC_TWO_FILES"
