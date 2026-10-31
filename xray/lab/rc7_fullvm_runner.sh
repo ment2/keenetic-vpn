@@ -10,6 +10,10 @@ for command_name in qemu-system-x86_64 busybox debugfs gcc cpio mkfs.ext4; do co
 KERNEL="$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' -type f | sort -V | tail -1)"
 test -s "$KERNEL" || { echo "RC7: NO_REAL_FULL_SYSTEM_KERNEL_HARD_NO_GO"; exit 77; }
 echo "RC7: QEMU full-system kernel=$KERNEL"
+# Ubuntu packaged kernel is root-readable only; copy inside disposable runner.
+sudo cp "$KERNEL" "$WORK/guest-vmlinuz"
+sudo chmod 644 "$WORK/guest-vmlinuz"
+KERNEL="$WORK/guest-vmlinuz"
 cp "$(command -v busybox)" "$WORK/initramfs/bin/busybox"
 # Stock Ubuntu kernels may ship virtio/ext4 as .ko.zst rather than built-ins.
 # Copy only kernel-provided dependency modules, in modprobe load order, into
