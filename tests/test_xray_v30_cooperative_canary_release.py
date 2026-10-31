@@ -34,7 +34,7 @@ class CooperativeReleaseContracts(unittest.TestCase):
     def test_unfenced_legacy_writers_refuse_lock(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(FenceError, "legacy restart"):
-                with canary.coordinated_trial_lock(lock=Path(d) / "lock"):
+                with canary.coordinated_trial_lock():
                     pass
 
     def test_different_lock_incompatible_even_if_writer_fenced(self):
