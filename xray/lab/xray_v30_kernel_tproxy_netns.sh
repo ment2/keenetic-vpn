@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # DISPOSABLE GITHUB ACTIONS ONLY. Real IPv4 kernel TPROXY TCP/UDP smoke, no router.
 set -euo pipefail
-if [[ "${1:-}" != "--run" || "${GITHUB_ACTIONS:-}" != "true" || -z "${RUNNER_TEMP:-}" || -z "${XRAY_MIPS_BINARY:-}" ]]; then
-  echo "REFUSE: requires --run, GITHUB_ACTIONS=true and pinned Xray binary" >&2
+if [[ ( "${1:-}" != "--run" && "${1:-}" != "--native-run" ) || "${GITHUB_ACTIONS:-}" != "true" || -z "${RUNNER_TEMP:-}" ]]; then
+  echo "REFUSE: requires --run/--native-run, GITHUB_ACTIONS=true and pinned Xray binary" >&2
   exit 2
+fi
+if [[ "${1:-}" == "--native-run" ]]; then
+  [[ -n "${XRAY_NATIVE_BINARY:-}" ]] || exit 2
+  xray_cmd=("$XRAY_NATIVE_BINARY")
+else
+  [[ -n "${XRAY_MIPS_BINARY:-}" ]] || exit 2
+  xray_cmd=(qemu-mipsel "$XRAY_MIPS_BINARY")
 fi
 if [[ -e /opt/etc/xray/config.json || -e /opt/etc/init.d/S97xray ]]; then
   echo "REFUSE: production Entware detected" >&2
@@ -26,7 +33,7 @@ cleanup() {
     cat "$tmp/xray.log" "$tmp/server.log" 2>/dev/null
   fi
   if [[ -n "$xray_pid" ]] && [[ -f "/proc/$xray_pid/cmdline" ]] &&
-     tr '\0' ' ' <"/proc/$xray_pid/cmdline" | grep -q 'qemu-mipsel'; then
+     tr '\0' ' ' <"/proc/$xray_pid/cmdline" | grep -Eq 'qemu-mipsel|/xray( |$)'; then
     sudo kill "$xray_pid" 2>/dev/null
   fi
   if [[ -n "$server_pid" ]] && [[ -f "/proc/$server_pid/cmdline" ]] &&
@@ -61,6 +68,8 @@ sudo ip -n xv30c route add 10.199.72.0/24 via 10.199.71.1
 sudo ip -n xv30s route add 10.199.71.0/24 via 10.199.72.1
 # No Internet default route in any lab namespace.
 sudo ip netns exec xv30g sysctl -qw net.ipv4.ip_forward=1
+# Independent native host kernel control: IP_TRANSPARENT must work here.
+sudo ip netns exec xv30g python3 -c 'import socket; s=socket.socket(); s.setsockopt(socket.SOL_IP,19,1); print("KERNEL_TPROXY: native IP_TRANSPARENT setsockopt supported",flush=True); s.close()'
 sudo ip netns exec xv30g iptables -P FORWARD DROP
 sudo ip -n xv30g rule add fwmark 0x40000000/0x40000000 table 100 priority 20000
 sudo ip -n xv30g route add local 0.0.0.0/0 dev lo table 100
@@ -90,9 +99,9 @@ cat > "$tmp/config.json" <<'JSON'
 JSON
 # The test server is the *only* routable destination and is also the
 # Xray's original destination; no Internet path exists.
-sudo ip netns exec xv30g qemu-mipsel "$XRAY_MIPS_BINARY" run -test -config "$tmp/config.json"
+sudo ip netns exec xv30g "${xray_cmd[@]}" run -test -config "$tmp/config.json"
 sudo ip netns exec xv30s bash -c 'echo "$$" > "$1"; exec python3 -u -m xray.lab.xray_v30_kernel_tproxy_echo server' _ "$tmp/server.pid" >"$tmp/server.log" 2>&1 &
-sudo ip netns exec xv30g bash -c 'echo "$$" > "$1"; exec qemu-mipsel "$2" run -config "$3"' _ "$tmp/xray.pid" "$XRAY_MIPS_BINARY" "$tmp/config.json" >"$tmp/xray.log" 2>&1 &
+sudo ip netns exec xv30g bash -c 'echo "$" > "$1"; shift; exec "$@"' _ "$tmp/xray.pid" "${xray_cmd[@]}" run -config "$tmp/config.json" >"$tmp/xray.log" 2>&1 &
 for _ in $(seq 1 30); do
   if [[ -s "$tmp/server.pid" && -s "$tmp/xray.pid" ]] &&
      sudo ip netns exec xv30g ss -lnt | grep -q ':12345'; then
