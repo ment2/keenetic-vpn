@@ -36,7 +36,10 @@ WIFI_PIDFILE = Path("/opt/var/run/xray-wifi.pid")
 BACKUP_MANIFEST_SHA = "f27c336f66f1bbb9ef22a82f7e8aa84f80f9bee808b3a87abf6a5372e79d5c62"
 BIN_SHA = "680db07db2b5d53080bfecb8752bc830c6a890367aa3bc57d42d4660506591f2"
 BASE_SHA = "66d074f32fffbf4a251576c8297714e9647174546e9e73e5bf27cf2768efe6d7"
+S97_SHA = "87ea1dc13a9be95d57c0595d7a7f13b03fe97bd56ab1f144a3c94d57cc588d5d"
+S99_SHA = "e8423e15ed2cf4d3662e5725d27d6e58bd08bbdd807b47fcabe30391ac4c738b"
 WD_SHA = "dddcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08"
+WIFI_RULES_SHA = "ead5de5555aaab1170a140ca3d41ea546330a99ba873b1961bee536bc12780ef"
 WIFI_SHA = "6742e5e7f2a2bd41b85e9975371e7c46e66f0cfc6f5f843bf2c5dc1434c53601"
 
 
@@ -158,10 +161,16 @@ def verify_backup():
         raise GateError("old config backup SHA mismatch")
     if checksum(ACTIVE) != BASE_SHA or checksum(XRAY) != BIN_SHA:
         raise GateError("active config or Xray binary changed")
-    if checksum("/opt/bin/xray-watchdog.sh") != WD_SHA:
-        raise GateError("legacy watchdog source changed")
-    if checksum("/opt/etc/init.d/S98xray-wifi") != WIFI_SHA:
-        raise GateError("wifi rule repair source changed")
+    pinned = (
+        ("/opt/etc/init.d/S97xray", S97_SHA),
+        ("/opt/etc/init.d/S99xray-watchdog", S99_SHA),
+        ("/opt/bin/xray-watchdog.sh", WD_SHA),
+        ("/opt/etc/init.d/S98xray-wifi", WIFI_SHA),
+        ("/opt/bin/xray-wifi-rules.sh", WIFI_RULES_SHA),
+    )
+    for path, digest in pinned:
+        if checksum(path) != digest:
+            raise GateError("supervisor/source drift detected: " + Path(path).name)
 
 
 def preflight(expected_pid, expected_ticks, expected_config_sha):
@@ -325,6 +334,7 @@ def restore(reason):
                 raise GateError("old TCP/UDP listeners not restored")
             if not socks_openai_check():
                 raise GateError("old SOCKS VPN probe failed")
+            safe_kernel()
             # Only resume original watchdog and S98 AFTER old Xray recovered.
             guarded_signal(s["wifi"], signal.SIGCONT, "/opt/etc/init.d/S98xray-wifi")
             guarded_signal(s["watchdog"], signal.SIGCONT, "/opt/bin/xray-watchdog.sh")
