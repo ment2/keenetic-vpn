@@ -106,6 +106,17 @@ jobs:
           print("PASS: frozen legacy supervisor release gate BLOCKS trial; no router actions")
           PY
 
+      - name: Real disposable two-process TCP/UDP cutover and independent guardian crash recovery
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_fenced_process_recovery_lab --demo "$RUNNER_TEMP/v30-real-process-recovery" |
+            tee "$RUNNER_TEMP/v30-real-process-recovery.log"
+          grep -q 'PASS: old real TCP and UDP -> candidate real TCP and UDP' "$RUNNER_TEMP/v30-real-process-recovery.log"
+          grep -q 'PASS: independent detached guardian acquired lock and restored old TCP+UDP' "$RUNNER_TEMP/v30-real-process-recovery.log"
+          grep -q 'LIMITATION: fake endpoints, not Xray' "$RUNNER_TEMP/v30-real-process-recovery.log"
+
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
