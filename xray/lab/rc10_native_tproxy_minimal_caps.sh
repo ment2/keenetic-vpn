@@ -19,7 +19,7 @@ fi
 set -x
 tmp="$(mktemp -d "/tmp/v30-rc10-tproxy.XXXXXX")"
 chmod 755 "$tmp"  # allow only read access to non-root Xray config, disposable path
-xray_pid="" ; server_pid=""
+xray_pid="" ; server_pid="" ; xray_ticks="" ; server_ticks=""
 cleanup() {
   status=$?
   set +e
@@ -33,13 +33,12 @@ cleanup() {
     sudo ip netns exec xv10g ss -lntup
     cat "$tmp/xray.log" "$tmp/server.log" 2>/dev/null
   fi
-  if [[ -n "$xray_pid" ]] && [[ -f "/proc/$xray_pid/cmdline" ]] &&
-     tr '\0' ' ' <"/proc/$xray_pid/cmdline" | grep -Eq 'qemu-mipsel|/xray( |$)'; then
-    sudo kill "$xray_pid" 2>/dev/null
+  # Never signal an unpinned or reused PID. pidfd pins the actual kernel process.
+  if [[ -n "$xray_pid" && -n "$xray_ticks" ]]; then
+    sudo python3 xray/lab/rc11_pidfd_guard.py "$xray_pid" "$xray_ticks" xray || true
   fi
-  if [[ -n "$server_pid" ]] && [[ -f "/proc/$server_pid/cmdline" ]] &&
-     tr '\0' ' ' <"/proc/$server_pid/cmdline" | grep -q 'xray_v30_kernel_tproxy_echo'; then
-    sudo kill "$server_pid" 2>/dev/null
+  if [[ -n "$server_pid" && -n "$server_ticks" ]]; then
+    sudo python3 xray/lab/rc11_pidfd_guard.py "$server_pid" "$server_ticks" xray_v30_kernel_tproxy_echo || true
   fi
   sudo ip netns del xv10c 2>/dev/null
   sudo ip netns del xv10g 2>/dev/null
@@ -116,17 +115,19 @@ for _ in $(seq 1 30); do
 done
 [[ -s "$tmp/server.pid" && -s "$tmp/xray.pid" ]]
 server_pid="$(cat "$tmp/server.pid")" ; xray_pid="$(cat "$tmp/xray.pid")"
+server_ticks="$(python3 -c 'import sys;sys.path.insert(0,"xray/lab");from rc11_pidfd_guard import start_ticks;print(start_ticks(int(sys.argv[1])))' "$server_pid")"
 # Exact process identity/privilege assertions before and after packets.
 test "$(awk '/^Uid:/ {print $2}' "/proc/$xray_pid/status")" = 65534
 test "$(awk '/^CapEff:/ {print $2}' "/proc/$xray_pid/status")" = 0000000000002000
 test "$(awk '/^NoNewPrivs:/ {print $2}' "/proc/$xray_pid/status")" = 1
-START_TICKS="$(awk '{print $22}' "/proc/$xray_pid/stat")"
+START_TICKS="$(python3 -c 'import sys;sys.path.insert(0,"xray/lab");from rc11_pidfd_guard import start_ticks;print(start_ticks(int(sys.argv[1])))' "$xray_pid")"
+xray_ticks="$START_TICKS"
 test -n "$START_TICKS"
 echo "RC10_TPROXY: REAL_XRAY_UID65534_ONLY_CAP_NET_RAW_STARTTICKS_VERIFIED"
 sudo ip netns exec xv10c python3 -m xray.lab.xray_v30_kernel_tproxy_echo client
 # Kill ONLY this disposable test instance and assert the namespace's
 # FORWARD=DROP prevents fallback to original test destination.
-sudo kill "$xray_pid"
+sudo python3 xray/lab/rc11_pidfd_guard.py "$xray_pid" "$xray_ticks" xray
 for _ in $(seq 1 30); do
   if ! sudo kill -0 "$xray_pid" 2>/dev/null; then break; fi
   sleep 0.1
