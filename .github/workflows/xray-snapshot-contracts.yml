@@ -28,6 +28,7 @@ on:
       - 'xray/lab/v30_review_rescue_bundle.py'
       - 'xray/lab/v30_kernel49_cgroup_v1_contract.py'
       - 'xray/lab/v30_kernel49_nonusb_boot_rescue_contract.py'
+      - 'xray/staging/v30-kernel49-rc5-boot-rescue-review.json'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -340,6 +341,16 @@ jobs:
           assert c["router_commands"]==b["production_commands"]==[]
           print("PASS: physical cgroup-v1 and USB-free boot remain HARD NO-GO")
           PY
+
+      - name: Publish RC5 nonbootable rescue review artifact with exact plan and five frozen originals
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-kernel49-rc5-boot-rescue-review-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/v30-kernel49-rescue-review.tar
+            xray/staging/v30-kernel49-rc5-boot-rescue-review.json
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
