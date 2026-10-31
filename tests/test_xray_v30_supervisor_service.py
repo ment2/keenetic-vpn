@@ -144,7 +144,7 @@ class XrayV30BrokerTests(unittest.TestCase):
 
     def test_wifi_repair_mangle_write_requires_preserved_fail_closed(self):
         self.b.run = lambda cmd: (
-            "-P FORWARD DROP\\n-A FORWARD -j XRAY_KS_HOME" if cmd[-1]=="FORWARD" else
+            "-P FORWARD DROP\n-A FORWARD -j XRAY_KS_HOME" if cmd[-1]=="FORWARD" else
             "-A XRAY_KS_HOME -i br0 -j DROP" if cmd[-1]=="XRAY_KS_HOME" else
             "-P FORWARD DROP")
         self.b._failclosed_kernel_under_lock()
@@ -154,11 +154,11 @@ class XrayV30BrokerTests(unittest.TestCase):
         def run(cmd):
             seen.append(cmd)
             if cmd[-1] == "FORWARD" and "-S" in cmd:
-                return "-P FORWARD DROP\\n-A FORWARD -j XRAY_KS_HOME"
+                return "-P FORWARD DROP\n-A FORWARD -j XRAY_KS_HOME"
             if cmd[-1] == "XRAY_KS_HOME" and "-S" in cmd:
                 return "-A XRAY_KS_HOME -i br0 -j DROP"
             if cmd[-1] == "XRAY_WIFI" and "-S" in cmd:
-                return "-A XRAY_WIFI -p tcp -j TPROXY --on-port 12345\\n-A XRAY_WIFI -p udp -j TPROXY --on-port 12345"
+                return "-A XRAY_WIFI -p tcp -j TPROXY --on-port 12345\n-A XRAY_WIFI -p udp -j TPROXY --on-port 12345"
             if cmd == ["ip","route","show","table","100"]:
                 return "local default dev lo table 100"
             if cmd == ["ip","rule","show"]:
