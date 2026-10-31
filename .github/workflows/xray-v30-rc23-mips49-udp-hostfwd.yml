@@ -1,0 +1,45 @@
+name: Xray v30 RC23 independent isolated QEMU MIPS Linux4.9 bidirectional UDP hostfwd positive proof
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc23-mips49-udp-hostfwd.yml'
+      - 'xray/lab/rc23_mips49_udp_hostfwd_*'
+      - 'tests/test_xray_v30_rc23_udp_hostfwd_positive.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc23-udp-positive-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove experiment contracts and shell syntax offline
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc23_udp_hostfwd_positive.py -v
+          bash -n xray/lab/rc23_mips49_udp_hostfwd_runner.sh
+      - name: Prepare standalone disposable MIPS QEMU with pinned Debian Linux4.9
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod
+      - name: Require real host-received UDP exact bytes with SLIRP restrict on (no Xray)
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc23_mips49_udp_hostfwd_runner.sh | tee "$RUNNER_TEMP/rc23-result.log"
+          grep -Fq 'RC23: PASS_INDEPENDENT_BIDIRECTIONAL_UDP_HOSTFWD_RESTRICT_ON_NO_XRAY' "$RUNNER_TEMP/rc23-result.log"
+      - name: Retain complete host and guest logs even on HARD NO-GO
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc23-mips49-udp-restrict-on-hostfwd-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/rc23-udp-hostfwd/serial.log
+            ${{ runner.temp }}/rc23-udp-hostfwd/qemu-errors.log
+            ${{ runner.temp }}/rc23-result.log
+          if-no-files-found: warn
+          retention-days: 14
