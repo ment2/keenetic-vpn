@@ -69,7 +69,7 @@ echo RC30_GUEST_NEW_ONLY_TUPLE_PINNED_CUTOVER_READY
 seen=0
 for n in $(/bin/busybox seq 1 180);do
  /sbin/iptables -t mangle -xvnL PREROUTING >/lab/newcounts
- if /bin/busybox awk '($3=="TPROXY"&&$4=="tcp"&&$1+0>0){t++} ($3=="TPROXY"&&$4=="udp"&&$1+0>0){u++} END{exit(t>=2&&u>=2)?0:1}' /lab/newcounts;then seen=1;break;fi
+ if /bin/busybox awk '($3=="TPROXY"){i++; if(i<=4 && $1+0>0) positive[i]=1} END{exit positive[1]&&positive[2]&&positive[3]&&positive[4]?0:1}' /lab/newcounts;then seen=1;break;fi
  /bin/busybox sleep 0.1
 done
 if [ "$seen" != 1 ];then
