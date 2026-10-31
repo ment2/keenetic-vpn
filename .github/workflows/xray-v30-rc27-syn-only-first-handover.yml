@@ -19,8 +19,8 @@ jobs:
       - name: Verify first migration contracts and compile source
         run: |
           set -euo pipefail
-          python3 -m unittest discover -s tests -p test_xray_v30_rc27_first_seamless_migration.py -v
-          python3 -m py_compile xray/lab/rc27_seamless_first_migration_socks.py
+          python3 -m unittest discover -s tests -p test_xray_v30_rc27_syn_only_first_handover.py -v
+          python3 -m py_compile xray/lab/rc27_socks_syn_only_first_handover.py
       - name: Install disposable network namespaces and user-mode MIPS runtime
         run: |
           set -euo pipefail
