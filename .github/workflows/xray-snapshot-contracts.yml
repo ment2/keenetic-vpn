@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - snapshot/keenetic-production-2026-10-30
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
     paths:
       - 'xray/production/opt/**'
       - 'tests/**'
