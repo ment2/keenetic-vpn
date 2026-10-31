@@ -34,6 +34,17 @@ test "$caps" = 0000000000002000
 # emits this marker ONLY after PR_SET_NO_NEW_PRIVS succeeds, before exec.
 # PR_SET_NO_NEW_PRIVS survives exec. Do not infer from a missing proc field.
 /bin/busybox grep -Fq 'RC9_CAP: BEFORE_EXEC target=xray raw=1 uid=65534 gid=65534 no_new_privs=1' /lab/xray.log
+# Record guest UDP socket ownership constraints; fails closed on absent
+# 12345 transparent socket or 19292 synthetic backend socket.
+if ! /bin/busybox grep -q ':3039 ' /proc/net/udp; then
+ echo 'RC21_GUEST: HARD_NO_GO_XRAY_UDP_SOCKET_12345_MISSING'
+ exit 2
+fi
+if ! /bin/busybox grep -q ':4B5C ' /proc/net/udp; then
+ echo 'RC21_GUEST: HARD_NO_GO_LOCAL_BACKEND_UDP_SOCKET_19292_MISSING'
+ exit 2
+fi
+echo 'RC21_GUEST: UDP_XRAY_LISTENER_12345_AND_BACKEND_19292_CONFIRMED'
 echo 'RC21_GUEST: REAL_XRAY_UID65534_CAP_NET_RAW_NNP_AND_TPROXY_LISTENER_READY'
 # Do not let unreceived UDP block the disposable guest until QEMU times out.
 # No PID-only signals; parent only reads its exact child status.
@@ -52,12 +63,17 @@ echo 'RC21_GUEST: MANGLE_TCP_UDP_RULE_COUNTERS_BEGIN'
 /bin/busybox cat /lab/counters
 echo 'RC21_GUEST: XRAY_LOG_BEGIN'
 /bin/busybox tail -n 100 /lab/xray.log
+# Do not turn a known UDP EADDRINUSE into a green packet-path result.
+if /bin/busybox grep -Fq 'fake: socket bind: address already in use' /lab/xray.log; then
+ echo 'RC21_GUEST: HARD_NO_GO_XRAY_UDP_FAKE_SOCKET_BIND_COLLISION'
+ exit 4
+fi
 if [ "$backend_done" != 1 ]; then
  echo 'RC21_GUEST: HARD_NO_GO_UDP_BACKEND_NOT_RECEIVED_WITHIN_DEADLINE'
  exit 3
 fi
 wait "$backend"
 /bin/busybox awk '($3=="TPROXY" && $4=="tcp" && $1+0>=1){tcp=1} ($3=="TPROXY" && $4=="udp" && $1+0>=1){udp=1} END{if(tcp&&udp)exit 0;exit 2}' /lab/counters
-echo 'RC21_GUEST: REAL_XRAY_BACKEND_TCP_UDP_AND_TPROXY_COUNTERS'
+echo 'RC21_GUEST: REAL_XRAY_BACKEND_TCP_UDP_AND_TPROXY_COUNTERS_GUEST_LOOPBACK_REDIRECT_ONLY'
 /bin/busybox tail -n 45 /lab/xray.log
 echo 'RC21_GUEST: HARD_NO_GO_HOST_UDP_RETURN_DIRECT_FALLBACK_PHYSICAL_BOOT_RESCUE'
