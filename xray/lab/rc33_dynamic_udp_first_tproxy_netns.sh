@@ -28,7 +28,7 @@ for n in $(seq 1 60); do
  if grep -Fq 'RC30_BACKEND_INDEPENDENT_ORIGINAL_DEST_READY' "$W/backend.log" 2>/dev/null; then break;fi
  sleep 0.1
 done
-grep -Fq 'RC33_BACKEND_INDEPENDENT_ORIGINAL_DEST_READY' "$W/backend.log"
+grep -Fq 'RC30_BACKEND_INDEPENDENT_ORIGINAL_DEST_READY' "$W/backend.log"
 # Force only host-originated 10.77.0.3/32 traffic through guest 10.77.0.2.
 # Guest Xray's outbound to backend is still connected /24, no redirect.
 ip route add 10.77.0.3/32 via 10.77.0.2 dev br30
