@@ -11,6 +11,25 @@ KERNEL="$(find /boot -maxdepth 1 -name 'vmlinuz-*' -type f | sort -V | tail -1)"
 test -s "$KERNEL" || { echo "RC7: NO_REAL_FULL_SYSTEM_KERNEL_HARD_NO_GO"; exit 77; }
 echo "RC7: QEMU full-system kernel=$KERNEL"
 cp "$(command -v busybox)" "$WORK/initramfs/bin/busybox"
+# Stock Ubuntu kernels may ship virtio/ext4 as .ko.zst rather than built-ins.
+# Copy only kernel-provided dependency modules, in modprobe load order, into
+# guest initramfs. This VM doesn't borrow any host kernel state at runtime.
+mkdir -p "$WORK/initramfs/mods"
+KVER="$(basename "$KERNEL" | sed 's/^vmlinuz-//')"
+n=0
+for modname in virtio_pci virtio_blk ext4; do
+  while read -r opname module_path; do
+    if [ "$opname" != insmod ]; then continue; fi
+    n=$((n+1))
+    out="$WORK/initramfs/mods/$(printf '%03d' "$n").ko"
+    case "$module_path" in
+      *.zst) zstd -dc "$module_path" > "$out" ;;
+      *.xz) xz -dc "$module_path" > "$out" ;;
+      *) cp "$module_path" "$out" ;;
+    esac
+  done < <(modprobe -S "$KVER" --show-depends "$modname")
+done
+echo "RC7: initramfs load-order kernel modules=$n"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_fullvm_cgroup_probe.c" -o "$WORK/initramfs/bin/rc7cgroup"
 cp "$ROOT/xray/lab/rc7_fullvm_init" "$WORK/initramfs/init"
 chmod 700 "$WORK/initramfs/init" "$WORK/initramfs/bin/rc7cgroup" "$WORK/initramfs/bin/busybox"
