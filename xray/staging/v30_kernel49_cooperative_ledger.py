@@ -172,3 +172,31 @@ class Ledger:
                 d["inflight"]=None
             self._write(d)
             return True
+
+    def reconcile_for_lab(self,proof):
+        """Explicit offline-only rescue after a crashed owner.
+
+        This accepts evidence of a *disposable process experiment* only,
+        never a physical router proof. Already-queued calls are cancelled,
+        not silently replayed by a new owner. No signalling occurs here.
+        """
+        required=("old_parent_exited","old_child_exited","all_descendants_drained",
+                  "old_listener_absent","rescue_sha_verified",
+                  "no_unfenced_writers")
+        if not isinstance(proof,dict) or any(proof.get(key) is not True for key in required):
+            raise FenceError("incomplete independent recovery evidence")
+        with supervisor_lock(self.lock):
+            d=self._read()
+            if d["owner"] is None and not d["blocked"]:
+                raise FenceError("not a crashed owner needing reconciliation")
+            if d["inflight"] is not None:
+                d["receipts"].append({**d["inflight"]["request"],
+                                      "status":"UNCERTAIN"})
+                d["inflight"]=None
+            for req in d["pending"]:
+                d["receipts"].append({**req,"status":"CANCELLED_UNCERTAIN"})
+            d["pending"]=[]
+            d["owner"]=None
+            d["blocked"]=False
+            self._write(d)
+            return {"status":"OFFLINE_RECONCILED_ONLY","production_authorized":False}
