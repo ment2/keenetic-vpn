@@ -97,16 +97,17 @@ int main(int argc,char **argv){
  close(fd);
  for(int i=0;i<8;i++){
    pid_t p=fork();if(p<0)die("fork worker");
-   if(p==0){execl("/bin/rc8privdrop","rc8privdrop","worker",(char*)0);die("worker exec");}
+   if(p==0){drop();execl("/bin/rc8privdrop","rc8privdrop","worker",(char*)0);die("worker exec");}
    int status=0;waitpid(p,&status,0);
    if(!WIFEXITED(status)||WEXITSTATUS(status)!=0)die("privdrop child failed");
  }
+ dprintf(1,"RC8_GUEST: PRIVILEGES_DROPPED_BEFORE_EXEC_IN_ALL_WORKERS\n");
  dprintf(1,"RC8_GUEST: EIGHT_REAL_UNPRIV_FORK_SETSID_EXEC_ESCAPE_DENIALS_PASS\n");
  pid_t intermediary=fork();
  if(intermediary<0)die("fork intermediary");
  if(intermediary==0){
    pid_t orphan=fork();if(orphan<0)die("fork orphan");
-   if(orphan==0){execl("/bin/rc8privdrop","rc8privdrop","orphan",(char*)0);die("orphan exec");}
+   if(orphan==0){drop();execl("/bin/rc8privdrop","rc8privdrop","orphan",(char*)0);die("orphan exec");}
    _exit(0);
  }
  waitpid(intermediary,NULL,0);
