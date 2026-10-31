@@ -87,6 +87,25 @@ jobs:
             sh -n "$p"
           done
           echo "PASS: shell syntax check only; scripts NOT executed"
+      - name: Assert legacy supervisor S97/S98 live-cutover remains blocked (offline only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_supervisor_fencing_contract > "$RUNNER_TEMP/v30-supervisor-fencing-gate.json"
+          python - <<'PY'
+          from pathlib import Path
+          import json, os
+          status = json.loads((Path(os.environ["RUNNER_TEMP"]) / "v30-supervisor-fencing-gate.json").read_text())
+          assert status["decision"] == "NO_PRODUCTION_TRIAL"
+          assert status["authorization"] is False
+          assert status["production_commands"] == []
+          expected = ("S97_GLOBAL_KILLALL", "WATCHDOG_NO_COOPERATIVE_MUTEX",
+                      "S98_RULES_MUTATE_WITHOUT_SHARED_MUTEX", "WIFI_TPROXY_CHAIN_FLUSH")
+          for item in expected:
+              assert item in status["reasons"], item
+          print("PASS: frozen legacy supervisor release gate BLOCKS trial; no router actions")
+          PY
+
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
