@@ -44,7 +44,7 @@ gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_fullvm_cgroup_probe.c" -o "$WO
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc7_guest_fdatasync.c" -o "$WORK/initramfs/bin/rc7fsync"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc8_guest_privdrop.c" -o "$WORK/initramfs/bin/rc8privdrop"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_capwrap.c" -o "$WORK/initramfs/bin/rc9capwrap"
-gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_socket_cap_probe.c" -o "$WORK/initramfs/bin/rc9socket"
+gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc10_guest_socket_cap_probe.c" -o "$WORK/initramfs/bin/rc9socket"
 gcc -O2 -static -Wall -Wextra "$ROOT/xray/lab/rc9_guest_parent_crash.c" -o "$WORK/initramfs/bin/rc9owner"
 if [ -z "$XRAY_NATIVE_BINARY" ] || [ ! -f "$XRAY_NATIVE_BINARY" ]; then echo "RC10: official binary unavailable"; exit 77; fi
 cp "$XRAY_NATIVE_BINARY" "$WORK/initramfs/bin/xray"
