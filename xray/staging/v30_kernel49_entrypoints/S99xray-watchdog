@@ -1,0 +1,9 @@
+#!/bin/sh
+# LAB-ONLY S99: health request; never independent Xray restart.
+set -eu
+: "${XRAY_V30_DISPOSABLE_ROOT:?No lab root; production invocation denied}"
+case "${1:-}" in
+  status|check) ;;
+  *) echo "S99 start/stop not implemented (LAB ONLY)" >&2; exit 2 ;;
+esac
+exec python3 -m xray.lab.v30_kernel49_cooperative_lab --client "$XRAY_V30_DISPOSABLE_ROOT" S99 CHECK_HEALTH
