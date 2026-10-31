@@ -1,0 +1,67 @@
+name: Xray v30 RC27 disposable MIPS32LE SYN-only first API SOCKS migration keeping old TCP inode
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc27-syn-only-first-handover.yml'
+      - 'xray/lab/rc27_socks_syn_only_first_handover.py'
+      - 'tests/test_xray_v30_rc27_syn_only_first_handover.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-netns-syn-only-first-handover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify first migration contracts and compile source
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc27_first_seamless_migration.py -v
+          python3 -m py_compile xray/lab/rc27_seamless_first_migration_socks.py
+      - name: Install disposable network namespaces and user-mode MIPS runtime
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-user iproute2 iptables conntrack unzip curl
+      - name: Pin real Xray 26.2.6 MIPS32LE before isolated execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/rc27-xray"
+          curl -fL --retry 3 --max-time 120 -o "$RUNNER_TEMP/rc27-xray/xray.zip" https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip
+          printf '1590b2bcefe64fb0604f29c8c75219bfbe8f63daa3bc8e3956edfa6da97c5869  %s\n' "$RUNNER_TEMP/rc27-xray/xray.zip" | sha256sum -c -
+          unzip -j "$RUNNER_TEMP/rc27-xray/xray.zip" xray -d "$RUNNER_TEMP/rc27-xray"
+          printf '3d2588c5ef770a6a7e1bfdd5db511130fb3acd79eb91bfcb108753b3e1dda1f6  %s\n' "$RUNNER_TEMP/rc27-xray/xray" | sha256sum -c -
+          chmod 700 "$RUNNER_TEMP/rc27-xray/xray"
+          cat > "$RUNNER_TEMP/rc27-xray/xray-qemu" <<'SH'
+          #!/bin/sh
+          exec qemu-mipsel "$XRAY_MIPS_BINARY" "$@"
+          SH
+          chmod 700 "$RUNNER_TEMP/rc27-xray/xray-qemu"
+      - name: 'Real old and API-enabled MIPS Xray: disposable SYN-only first handover and old TCP inode witness'
+        shell: bash
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/rc27-xray/xray"
+          # unshare creates an entirely new network namespace. Do NOT alter host's
+          # iptables/routes; only ephemeral netns local OUTPUT NAT is allowed.
+          sudo --preserve-env=RUNNER_TEMP,GITHUB_ACTIONS,XRAY_MIPS_BINARY \
+            unshare --net -- python3 -m xray.lab.rc27_socks_syn_only_first_handover \
+            "$RUNNER_TEMP/rc27-xray/xray-qemu" | tee "$RUNNER_TEMP/rc27-migration.log"
+          grep -Fq 'RC27: PASS_FIRST_INGRESS_SOCKS_NEW_ONLY_TO_API_XRAY_OLD_TCP_DRAINS' "$RUNNER_TEMP/rc27-migration.log"
+          grep -Fq 'RC27: PASS_FAILED_CANDIDATE_NEW_REQUEST_BLOCKED_OLD_FLOW_LIVE' "$RUNNER_TEMP/rc27-migration.log"
+          grep -Fq 'RC27: PASS_ROLLBACK_SAME_10808_OLD_PROCESS_PID_STARTTICKS_AND_CAS' "$RUNNER_TEMP/rc27-migration.log"
+          grep -Fq 'RC27: COOPERATIVE_WATCHDOG_RESTART_SUPPRESSED_NO_KILLALL' "$RUNNER_TEMP/rc27-migration.log"
+          grep -Fq 'RC27: HARD_NO_GO_TPROXY_UDP_UNCOOPERATIVE_WATCHDOG_VENDOR_HARDWARE' "$RUNNER_TEMP/rc27-migration.log"
+      - name: Preserve evidence on failure, without secrets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc27-syn-only-first-handover-isolated-NO-DEPLOY
+          path: ${{ runner.temp }}/rc27-migration.log
+          if-no-files-found: warn
+          retention-days: 14
