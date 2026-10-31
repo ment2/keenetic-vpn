@@ -7,7 +7,7 @@ class RC18Source(unittest.TestCase):
   s=(ROOT/"xray/lab/rc18_mips49_guest_userland_runner.sh").read_text()
   c=(ROOT/"xray/lab/rc18_mips49_guest_userland_init.c").read_text()
   self.assertIn("-net none",s)
-  self.assertEqual(s.count("fetch "),8) # one function definition plus seven fetch commands
+  self.assertEqual(s.count("\nfetch "),7) # exactly seven pinned archive packages
   self.assertIn("sha256sum -c -",s)
   self.assertIn("execv(binary,args)",c)
   self.assertIn("waitpid(pid,&status,0)",c)
