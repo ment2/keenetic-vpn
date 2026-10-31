@@ -11,6 +11,7 @@ on:
       - 'xray/lab/xray_v30_dual_process.py'
       - 'xray/lab/stable_socks_ingress_v30.py'
       - 'xray/lab/xray_v30_stable_ingress_demo.py'
+      - 'xray/lab/xray_v30_pool_handover_api.py'
   workflow_dispatch:
 
 permissions:
@@ -66,4 +67,11 @@ jobs:
         run: |
           export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
           python3 -m xray.lab.xray_v30_stable_ingress_demo \
+            --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
+
+      - name: Keep qualified active endpoint when preparing new pool and verify BO rollback
+        shell: bash
+        run: |
+          export XRAY_MIPS_BINARY="$RUNNER_TEMP/xray-mipsle/xray"
+          python3 -m xray.lab.xray_v30_pool_handover_api \
             --xray "$RUNNER_TEMP/xray-mipsle/xray-qemu" --run
