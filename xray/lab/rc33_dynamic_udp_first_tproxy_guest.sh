@@ -122,7 +122,7 @@ test "$gen" -eq 2
 # Strict expected six rules, four migration-only + two original.
 test "$(/bin/busybox grep -c -- '-j TPROXY' /lab/rules-cutover)" = "$expected_rules"
 # Re-validate boot + generation before destructive rollback.
-test "$(/bin/busybox cat /proc/sys/kernel/random/boot_id)" = "$boot_id" && test "$gen" = 2 || {echo RC33_GUEST_HARD_NO_GO_STALE_CAS_ROLLBACK;exit 5;}
+test "$(/bin/busybox cat /proc/sys/kernel/random/boot_id)" = "$boot_id" && test "$gen" = 2 || { echo RC33_GUEST_HARD_NO_GO_STALE_CAS_ROLLBACK;exit 5; }
 for i in $(/bin/busybox seq 1 "$((flow_count+3))");do /sbin/iptables -t mangle -D PREROUTING 1;done
 /sbin/iptables -t mangle -S PREROUTING >/lab/rules-rollback
 test "$(/bin/busybox grep -c -- '-j TPROXY' /lab/rules-rollback)" = 2 || {
