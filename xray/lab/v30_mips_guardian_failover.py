@@ -50,7 +50,7 @@ def alive(pid, ticks):
 def check(port, marker):
     try:
         with socks_connect(port) as conn:
-            if echo(conn, marker) != "MIPS":
+            if echo(conn, marker.encode()) != "MIPS":
                 return False
         udp_associate(port, marker.encode())
         return True
