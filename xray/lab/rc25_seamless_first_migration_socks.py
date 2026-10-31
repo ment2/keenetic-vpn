@@ -96,6 +96,10 @@ def first_migration(xray):
                     "dport=10808" in line and "ESTABLISHED" in line
                     for line in ct.stdout.splitlines()
                 ):
+                    print("RC25_DIAG: CONNTRACK_RC",ct.returncode,flush=True)
+                    print("RC25_DIAG: CONNTRACK_TCP_LINES",repr(ct.stdout[:1800]),flush=True)
+                    print("RC25_DIAG: CONNTRACK_ERRORS",repr(ct.stderr[:700]),flush=True)
+                    print("RC25_DIAG: NAT_OUTPUT",exec_("iptables","-t","nat","-vnL","OUTPUT").stdout[:1500],flush=True)
                     raise Reject("HARD_NO_GO_OLD_TCP_CONNTRACK_NOT_ESTABLISHED_BEFORE_SWITCH")
                 print("RC25: OLD_10808_TCP_CONNTRACK_ESTABLISHED_BEFORE_REDIRECT",flush=True)
                 print("RC25: LEGACY_SOCKS_10808_TCP_ESTABLISHED_NO_API",flush=True)
