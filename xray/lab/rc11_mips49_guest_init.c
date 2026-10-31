@@ -79,6 +79,10 @@ int main(void){
  line("RC11_MIPS49: IN_GUEST_UNPRIVILEGED_TRANSPARENT_SOCKETS_DENIED");
  if(run("/bin/rc9capwrap","raw","socket"))fail("raw-only MIPS TCP UDP IP_TRANSPARENT");
  line("RC11_MIPS49: IN_GUEST_ONLY_CAP_NET_RAW_TCP_UDP_IP_TRANSPARENT_PASS");
+ if(run("/bin/rc7cgroup",NULL,NULL))fail("real MIPS kernel49 cgroup v1 and privileged descendant escape test");
+ line("RC11_MIPS49: PRIVILEGED_ESCAPE_NATIVELY_OBSERVED_IN_MIPS_CGROUP_V1_HARD_NO_GO");
+ if(run("/bin/rc8privdrop",NULL,NULL))fail("MIPS guest unprivileged detached child containment test");
+ line("RC11_MIPS49: EIGHT_UNPRIVILEGED_DESCENDANTS_AND_UNKNOWN_ORPHAN_NO_RESTART_PASS");
  if(run("/bin/rc10cas",NULL,NULL))fail("three waves guardian CAS");
  line("RC11_MIPS49: REAL_8X3_FLOCK_CAS_PREPARED_CRASH_RECONCILE_PASS");
  pid_t x=fork();if(x<0)fail("fork xray");
