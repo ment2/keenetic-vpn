@@ -21,7 +21,7 @@
     "cron"
   ],
   "git_blob_sha1": {
-    "xray/staging/v30_kernel49_cooperative_ledger.py": "1db93ddb07b5bfca256c14b5cc3666746d08dd1e",
+    "xray/staging/v30_kernel49_cooperative_ledger.py": "1da7d48499f22fd1fc56c4b3a528a366fc3d3c8c",
     "xray/lab/v30_kernel49_cooperative_lab.py": "96b7c337d71ded03328725b5ed24d41f4baea0fd",
     "xray/lab/v30_kernel49_descendant_guard_lab.py": "bad4351cb0f37e2ae401e960e373cd94dba5c7e0",
     "xray/staging/v30_kernel49_entrypoints/S97xray": "c0cd41f278d988dcddfc447809a6a3ec6eb468c5",
@@ -46,7 +46,8 @@
     ],
     "physical_router_proven": false,
     "offline_latest": "41213592037",
-    "all_validation": "PASS_OFFLINE_411_AND_REAL_MIPS_TCP_UDP_LAB"
+    "all_validation": "PASS_OFFLINE_411_AND_REAL_MIPS_TCP_UDP_LAB",
+    "next_release_candidate": "RC4_REVIEW_BUNDLE_ONLY"
   },
   "boot_rescue_gates": {
     "physical_separate_mount_verified": false,
@@ -57,7 +58,10 @@
     "real_xray_descendant_inventory_complete": false,
     "all_existing_cron_boot_spawners_migrated": false,
     "live_TPROXY_TCP_UDP_ipv6_dns_no_leak": false,
-    "owner_exact_new_bytes_approval": false
+    "owner_exact_new_bytes_approval": false,
+    "sealed_cgroup_v1_membership_proven_on_real_kernel49": false,
+    "full_proc_fd_socket_inode_inventory_proven": false,
+    "guardian_claim_real_holder_death_proven": false
   },
   "blocked_scenarios": [
     "stale_owner_generation",
@@ -66,7 +70,10 @@
     "unverified_backup_or_mount",
     "unfenced_S97_or_S98_or_cron",
     "inflight_UNCERTAIN_without_review",
-    "physical_router_boot_unproven"
+    "physical_router_boot_unproven",
+    "unsealed_cgroup_membership",
+    "unattributed_socket_inode",
+    "guardian_claim_generation_drift"
   ],
   "production_deployment": false
 }
