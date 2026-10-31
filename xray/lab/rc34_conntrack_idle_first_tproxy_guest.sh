@@ -88,9 +88,9 @@ test "$baseline" = 1 || { echo RC34_GUEST_HARD_NO_GO_OLD_BASELINE_PACKETS;exit 3
 # Collect actual UDP packet 5-tuples on eth1, not hardcoded source ports.
 # Fail closed if any observed old flow is missing or has inconsistent boot ID.
 wait "$observer" || { echo RC34_GUEST_HARD_NO_GO_OBSERVER_FAILED; /bin/busybox cat /lab/observer.log;exit 3; }
-test -s /lab/rc34-udp-flows.txt || { echo RC34_GUEST_HARD_NO_GO_FLOW_MAP_MISSING;exit 3; }
+test -s /lab/rc33-udp-flows.txt || { echo RC34_GUEST_HARD_NO_GO_FLOW_MAP_MISSING;exit 3; }
 boot_id=$(/bin/busybox cat /proc/sys/kernel/random/boot_id)
-mapheader=$(/bin/busybox head -n 1 /lab/rc34-udp-flows.txt)
+mapheader=$(/bin/busybox head -n 1 /lab/rc33-udp-flows.txt)
 test "$mapheader" = "boot=$boot_id generation=1 interface=eth1 count=2" || {
  echo RC34_GUEST_HARD_NO_GO_BOOT_GENERATION_FLOW_CAS_MISMATCH;exit 3;
 }
@@ -128,7 +128,7 @@ while read -r src sport dst dport;do
    echo RC34_GUEST_HARD_NO_GO_AF_PACKET_NOT_IN_KERNEL_MAP;exit 3;
  }
  observed_count=$((observed_count+1))
-done </lab/rc34-udp-flows.txt
+done </lab/rc33-udp-flows.txt
 test "$observed_count" = 2 || { echo RC34_GUEST_HARD_NO_GO_OBSERVER_COUNT;exit 3; }
 # Explicitly freeze EXACT kernel-seen old 5-tuples before broad UDP candidate.
 # This offline fixture has fixed expected counts, NOT a production proof of
