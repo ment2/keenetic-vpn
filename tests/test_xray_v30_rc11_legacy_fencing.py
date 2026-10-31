@@ -36,7 +36,7 @@ class RC11LegacyFencing(unittest.TestCase):
         self.blocked(replace(self.e,kernel_capability_boundary_verified=False),"CAPABILITY_BOUNDARY")
     def test_unsealed_or_unavailable_cgroup_v1_blocks(self):
         self.blocked(replace(self.e,cgroup_v1_available=False),"CGROUP_V1")
-        self.blocked(replace(self.e,cgroup_sealed_before_first_spawn=False),"SCOPE")
+        self.blocked(replace(self.e,cgroup_sealed_before_first_spawn=False),"CGROUP_NOT_SEALED")
         self.blocked(replace(self.e,cgroup_scope="/"),"SCOPE_UNKNOWN")
         self.blocked(replace(self.e,cgroup_membership_enumeration_complete=False),"MEMBERSHIP")
     def test_unknown_reparented_descendant_or_socket_is_never_invisible(self):
