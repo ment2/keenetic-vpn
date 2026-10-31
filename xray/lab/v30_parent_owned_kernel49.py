@@ -71,7 +71,7 @@ def owned_signal(child, sig):
     return "SENT_TO_DIRECT_CHILD_WITH_RESERVED_PID"
 
 
-def spawn_owned(executable, argv, journal):
+def spawn_owned(executable, argv, journal, *, on_prepared=None):
     """Release forked child only AFTER fsynced parent+child identity journal."""
     if not os.path.isabs(executable) or not argv or argv[0] != executable:
         raise FenceError("absolute executable/argv required")
@@ -113,6 +113,8 @@ def spawn_owned(executable, argv, journal):
                 "pid": pid, "start_ticks": ticks,
                 "parent_pid": parent, "argv": list(argv),
                 "pdeathsig": "SIGKILL", "pidfd_required": False})
+            if on_prepared is not None:
+                on_prepared(child)
             os.write(wfd, b"G")
             return child
         except BaseException:
