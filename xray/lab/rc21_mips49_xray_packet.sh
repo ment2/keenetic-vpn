@@ -25,9 +25,15 @@ if [ "$ready" != 1 ]; then
  /bin/busybox cat /lab/xray.log
  exit 2
 fi
-test "$(/bin/busybox awk '/Uid:/ {print $2}' /proc/$xraypid/status)" = 65534
-test "$(/bin/busybox awk '/CapEff:/ {print $2}' /proc/$xraypid/status)" = 0000000000002000
-test "$(/bin/busybox awk '/NoNewPrivs:/ {print $2}' /proc/$xraypid/status)" = 1
+uid=$(/bin/busybox awk '/^Uid:/ {print $2}' /proc/$xraypid/status)
+caps=$(/bin/busybox awk '/^CapEff:/ {print $2}' /proc/$xraypid/status)
+echo "RC21_GUEST: Xray process witness pid=$xraypid uid=$uid capeff=$caps"
+test "$uid" = 65534
+test "$caps" = 0000000000002000
+# Linux 4.9 may lack NoNewPrivs in /proc/PID/status. The exact capwrap
+# emits this marker ONLY after PR_SET_NO_NEW_PRIVS succeeds, before exec.
+# PR_SET_NO_NEW_PRIVS survives exec. Do not infer from a missing proc field.
+/bin/busybox grep -Fq 'RC9_CAP: BEFORE_EXEC target=xray raw=1 uid=65534 gid=65534 no_new_privs=1' /lab/xray.log
 echo 'RC21_GUEST: REAL_XRAY_UID65534_CAP_NET_RAW_NNP_AND_TPROXY_LISTENER_READY'
 wait "$backend"
 /sbin/iptables -t mangle -xvnL PREROUTING >/lab/counters
