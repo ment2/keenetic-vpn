@@ -132,11 +132,56 @@ class XrayV30BrokerTests(unittest.TestCase):
             with self.assertRaisesRegex(FenceError, "unknown"):
                 self.b.control("start")
 
-    def test_wifi_actor_holds_same_mutex_and_refuses_unsafe_repair(self):
+    def test_wifi_actor_refuses_unsafe_kernel_without_any_rewrite(self):
         with patch.object(self.b, "_wifi_check_under_lock", return_value=False):
-            with self.assertRaisesRegex(FenceError, "NOT_YET_MIGRATED"):
-                self.b.wifi_once()
+            with patch.object(self.b, "_failclosed_kernel_under_lock",
+                              side_effect=FenceError("no kill switch")):
+                with patch.object(self.b, "run",
+                                  side_effect=AssertionError("must not mutate kernel")):
+                    with self.assertRaisesRegex(FenceError, "no kill switch"):
+                        self.b.wifi_once()
         self.assertEqual(self.paths.lock.stat().st_mode & 0o777, 0o600)
+
+    def test_wifi_repair_mangle_write_requires_preserved_fail_closed(self):
+        self.b.run = lambda cmd: (
+            "-P FORWARD DROP\\n-A FORWARD -j XRAY_KS_HOME" if cmd[-1]=="FORWARD" else
+            "-A XRAY_KS_HOME -i br0 -j DROP" if cmd[-1]=="XRAY_KS_HOME" else
+            "-P FORWARD DROP")
+        self.b._failclosed_kernel_under_lock()
+
+    def test_wifi_repair_simulates_tcp_udp_with_shared_lock(self):
+        seen=[]
+        def run(cmd):
+            seen.append(cmd)
+            if cmd[-1] == "FORWARD" and "-S" in cmd:
+                return "-P FORWARD DROP\\n-A FORWARD -j XRAY_KS_HOME"
+            if cmd[-1] == "XRAY_KS_HOME" and "-S" in cmd:
+                return "-A XRAY_KS_HOME -i br0 -j DROP"
+            if cmd[-1] == "XRAY_WIFI" and "-S" in cmd:
+                return "-A XRAY_WIFI -p tcp -j TPROXY --on-port 12345\\n-A XRAY_WIFI -p udp -j TPROXY --on-port 12345"
+            if cmd == ["ip","route","show","table","100"]:
+                return "local default dev lo table 100"
+            if cmd == ["ip","rule","show"]:
+                return "20000: fwmark 0x40000000/0x40000000 lookup 100"
+            return ""
+        self.b.run=run
+        self.assertEqual(self.b.wifi_once(force_repair=True),
+                         "WIFI_REPAIRED_UNDER_SHARED_MUTEX")
+        self.assertTrue(any("--on-port" in cmd and "tcp" in cmd for cmd in seen))
+        self.assertTrue(any("--on-port" in cmd and "udp" in cmd for cmd in seen))
+        self.assertTrue(any("-F" in cmd and "XRAY_WIFI" in cmd for cmd in seen))
+
+    def test_wifi_missing_killswitch_fails_before_rule_writes(self):
+        seen=[]
+        def run(cmd):
+            seen.append(cmd)
+            if "-S" in cmd:
+                return "-A FORWARD -j ACCEPT"
+            raise AssertionError("MUTATING_OPERATION_NOT_ALLOWED")
+        self.b.run=run
+        with self.assertRaisesRegex(FenceError, "failclosed kernel"):
+            self.b.wifi_once(force_repair=True)
+        self.assertTrue(all("-S" in cmd for cmd in seen))
 
     def test_wifi_healthy_does_not_rewrite_kernel(self):
         with patch.object(self.b, "_wifi_check_under_lock", return_value=True):
@@ -150,7 +195,7 @@ class XrayV30BrokerTests(unittest.TestCase):
         self.assertNotIn("os.kill(", source)
         self.assertIn("scoped_signal(old, signal.SIGTERM)", source)
         self.assertIn("with supervisor_lock(self.p.lock)", source)
-        self.assertIn("WIFI_REPAIR_NOT_YET_MIGRATED_TO_BROKER", source)
+        self.assertIn("_failclosed_kernel_under_lock", source)
 
 
 if __name__ == "__main__":
