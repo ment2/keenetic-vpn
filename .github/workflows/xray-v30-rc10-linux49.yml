@@ -35,20 +35,20 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/v30-rc10-kernel-49"
           cd "$RUNNER_TEMP/v30-rc10-kernel-49"
-          curl -fL --retry 3 --max-time 120 -o Packages.gz \
-            https://archive.debian.org/debian/dists/stretch/main/binary-amd64/Packages.gz
+          # The current Stretch Packages.gz index no longer includes the
+          # archived 2020 4.9.0-13 binary even though the .deb remains.
+          # Discover its exact SHA in a disposable runner, then pin it in
+          # source control. Until pinned, stop BEFORE executing the kernel.
           TARGET="pool/main/l/linux/linux-image-4.9.0-13-amd64_4.9.228-1_amd64.deb"
-          gzip -dc Packages.gz > Packages
-          PACKAGE_SHA="$(awk -v filename="$TARGET" '
-             /^Filename: / { match_path=($2==filename) }
-             /^SHA256: / { if (match_path) { print $2; exit } }
-          ')"
-          if [[ ! "$PACKAGE_SHA" =~ ^[a-f0-9]{64}$ ]]; then
-            echo "RC10: BLOCKED signed Debian stretch metadata unavailable"; exit 78
-          fi
           curl -fL --retry 3 --max-time 120 -o kernel49.deb \
             "https://archive.debian.org/debian/$TARGET"
-          printf '%s  kernel49.deb\n' "$PACKAGE_SHA" | sha256sum -c -
+          PACKAGE_SHA="$(sha256sum kernel49.deb | awk '{print $1}')"
+          printf 'RC10_KERNEL49_PACKAGE_SHA_DISCOVERED=%s\n' "$PACKAGE_SHA"
+          PINNED_SHA="AWAITING_EXACT_ARCHIVE_SHA256"
+          if [ "$PINNED_SHA" != "$PACKAGE_SHA" ]; then
+            echo "RC10: source kernel SHA is not yet pinned; HARD_NO_GO before extracting/booting"
+            exit 78
+          fi
           dpkg-deb -x kernel49.deb kernel-root
           KVER=4.9.0-13-amd64
           test -s "kernel-root/boot/vmlinuz-$KVER"
