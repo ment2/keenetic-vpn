@@ -130,3 +130,11 @@ The previously failed SOCKS5 UDP test used **double-escaped byte literals** in i
 **GitHub CI 41136096595 SUCCESS**. Log markers: `PASS SOCKS5 UDP ASSOCIATE on both processes`, `PASS UDP old process after candidate failure`, `PASS old TCP stays alive while candidate handles new TCP`. The synthetic UDP echo uses an outbound `freedom` redirect **only to 127.0.0.1** as a test fixture; it is not a real VPN route and does not establish production fail-closed. The lab's default config remains UDP-disabled for static contract compatibility; its integration invocation explicitly enables UDP. These results supersede the earlier failed UDP diagnostic, but **do not** establish TPROXY UDP, kernel kill-switch, a stable production ingress port, or real watchdog coordination.
 
 **Remaining blockers:** actual ingress handoff and rollback on one stable port, real TPROXY TCP/UDP, supervised watchdog race, fail-closed kernel policy. No production changes authorized or made.
+
+## Cross-project production dependency discovered in ChatGPT Library (2026-10-31)
+
+**Required migration gate:** MenttwoGPT memory delivery depends on Xray SOCKS5 at `127.0.0.1:10808`. Its `S96cloudflare-sync` supervisor runs a one-shot Worker poll every 300 seconds; direct HTTPS to Cloudflare timed out, whereas SOCKS5 access succeeded. The production memory sync script has already been patched independently to use PySocks with remote DNS, TLS verification and a Worker destination allowlist. One-shot recovery delivered 5 queued proposals; all received Telegram message IDs, with final states 2 accepted / 3 rejected. A successful **autonomous** 300-second cycle is **not yet evidenced**.
+
+During Xray v30 first cutover and rollback, **do not introduce direct fallback**, preserve the SOCKS5 listener and proxy-side DNS, and test a non-mutating Worker reachability probe plus eventual supervisor-cycle health. Do not generate duplicate memory proposals or ACK pending items as part of a VPN smoke test. Rollback must not restore the old broken direct-HTTPS sync script.
+
+Incident cross-reference: `docs/incidents/2026-10-31-menttwogpt-memory-delivery-dependency.md`.
