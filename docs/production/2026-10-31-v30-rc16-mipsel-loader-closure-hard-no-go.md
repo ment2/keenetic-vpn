@@ -14,3 +14,17 @@ Next: pin exact hashes for every missing Debian mipsel library package and verif
 Separately, *privileged* legacy cgroup v1 escape was observed in RC11, and full S97/S98/S99/watchdog/cron containment plus independent USB-absent physical boot/rescue and vendor NDM5 certification are not proven.
 
 **HARD_NO_GO_PRODUCTION**. No production/main/snapshot/Cloudflare/firewall/routes/cron/merge/deploy/live trial.
+
+## Verified CI results and precise unresolved dependency witness
+
+- [RC14 full three-way isolated regression CI 41230585901](https://github.com/ment2/keenetic-vpn/actions/runs/41230585901): **SUCCESS** at `fdf8b6c8`; 573/573 offline tests, real native x86_64 TCP/UDP TPROXY, Debian Linux4.9 x86_64 QEMU full-system three two-boot rescue cases. This is not MIPS full packet path.
+- [RC15 Debian MIPS32LE package discovery CI 41230585893](https://github.com/ment2/keenetic-vpn/actions/runs/41230585893): **SUCCESS**. Exactly pinned archive SHA256 and MIPS32 little-endian ELF for `/bin/ip`, `/sbin/iptables`, `/bin/busybox`; relative guest symlinks permitted, absolute host-exiting symlinks excluded. No foreign MIPS executable run.
+- [RC16 MIPS32LE dependency-closure CI 41230670098](https://github.com/ment2/keenetic-vpn/actions/runs/41230670098): **SUCCESS** for a deliberate *negative* dependency closure test, not a MIPS networking test. Within **only the three extracted SHA256-pinned archive packages**:
+  - `ip` missing `ld.so.1`, `libc.so.6`, `libdl.so.2`.
+  - `iptables` missing `ld.so.1`, `libc.so.6`, `libip4tc.so.0`, `libip6tc.so.0`, `libm.so.6`, `libxtables.so.12`.
+  - `busybox-static` has no missing dynamically linked dependencies.
+- **Meaning:** exact additional MIPS userland library package SHA256s, loader/interpreter ABI, extension path and dependent guest execution are not yet demonstrated. An attempted TPROXY packet-path test now would lack prerequisite MIPS userland; negative evidence cannot establish actual kernel TPROXY failure.
+
+### Release decision
+
+**RC16 DISPOSABLE DEPENDENCY INVENTORY PASS, END-TO-END MIPS TCP/UDP UNTESTED, HARD_NO_GO_PRODUCTION.** Privileged legacy root cgroup v1 escape and physical USB-independent boot/power/no-leak acceptance remain independent HARD NO-GO gates. No new router jobs, changes to production/main/snapshot/Cloudflare/firewall/routes/cron, merge/deploy/live trial.
