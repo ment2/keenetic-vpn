@@ -45,7 +45,23 @@ class PidfdIdentityTests(unittest.TestCase):
                 os.close(fd)
         except OSError as exc:
             self.skipTest(f"host denied pidfd preflight: {exc}")
-        self.assertTrue(guarded_signal(self.child.pid, self.ticks, signal.SIGTERM, "sleep"))
+        # Real pidfd-only signaling must succeed. Retry only a transient false
+        # result for this owned test child; NO numeric-PID signal fallback.
+        success = False
+        for attempt in range(8):
+            if guarded_signal(self.child.pid, self.ticks, signal.SIGTERM, "sleep"):
+                success = True
+                break
+            if self.child.poll() is not None:
+                break
+            time.sleep(0.05)
+        cmdline = Path(f"/proc/{self.child.pid}/cmdline").read_bytes() if self.child.poll() is None else b"<exited>"
+        self.assertTrue(
+            success,
+            f"pidfd guard refused own sleep child: pid={self.child.pid}, "
+            f"initial_ticks={self.ticks}, current_ticks={start_ticks(self.child.pid) if self.child.poll() is None else 'exited'}, "
+            f"cmdline={cmdline!r}, attempts={attempt+1}",
+        )
         self.child.wait(timeout=5)
         self.assertIsNotNone(self.child.returncode)
 
