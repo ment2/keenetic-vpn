@@ -1,0 +1,13 @@
+#!/opt/bin/sh
+# STAGED ONLY. Bootstrapping and rollout must preserve trusted PID/start-ticks.
+# Agent may not copy/enable without exact-file approval.
+set -eu
+case "${1:-}" in
+  start) exec /opt/bin/python3 /opt/bin/v30_supervisor_service.py wifi-start ;;
+  stop) exec /opt/bin/python3 /opt/bin/v30_supervisor_service.py wifi-stop ;;
+  restart)
+    echo "manual two-phase wifi replacement requires separate approval" >&2
+    exit 3
+    ;;
+  *) echo "usage: $0 {start|stop}" >&2; exit 2 ;;
+esac
