@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "release": "v30-kernel49-rc4-rescue-review",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "REVIEW_ONLY_NOT_BOOTABLE_NOT_INSTALLABLE",
+  "paired_prior": "xray/staging/v30-kernel49-cooperative-boot-rescue-v1.json",
+  "ci_run": "41214849008",
+  "ci_unit_tests": 439,
+  "ci_conclusion": "success",
+  "mips_last_proven": "41213319142",
+  "review_archive_artifact_id": 13047593479,
+  "review_archive_artifact_name": "v30-kernel49-offline-rescue-review-rc4",
+  "archive_retention_days": 14,
+  "archive_is_bootable": false,
+  "archive_contains_executable_agent": false,
+  "hardware_boot_without_usb_proven": false,
+  "real_kernel49_proc_cgroup_capability_proven": false,
+  "real_reparented_process_inventory_proven": false,
+  "production_cutover_authorized": false,
+  "router_jobs_submitted": 0,
+  "production_commands": [],
+  "source_git_blob_sha1": {
+    "xray/staging/v30_kernel49_cooperative_ledger.py": "1da7d48499f22fd1fc56c4b3a528a366fc3d3c8c",
+    "xray/lab/v30_sealed_descendant_inventory.py": "73cc5da16c121a9a54ad30fd972aa7360bb7c629",
+    "xray/lab/v30_guardian_generation_race.py": "5faeae528f80c8070ce1ca694ef8e50f9773f308",
+    "xray/lab/v30_review_rescue_bundle.py": "cc6f8907193bf007546ff599429dc663ecca9efd"
+  },
+  "safety_gates": {
+    "sealed_process_group_before_xray_spawn": false,
+    "complete_double_proc_fd_tcp_udp_snapshot": false,
+    "old_legacy_cron_watchdog_s97_s98_s99_in_same_fence": false,
+    "actual_Keenetic_4_9_kernel_capabilities": false,
+    "physical_nonusb_rescue_verified": false,
+    "full_cold_boot_out_of_USB_test": false,
+    "real_mips_kernel_tproxy_ipv6_dns_killswitch": false,
+    "exact_file_owner_install_approval": false
+  },
+  "design_constraints": [
+    "guardian_cas_token_must_match_exact_owner_generation",
+    "guardian_failover_requires_verified_previous_guardian_death",
+    "no_os_kill_non_parent_or_pid_reuse",
+    "no_automatic_uncertain_restart_replay",
+    "two_consecutive_inventory_scans_plus_sealed_scope_required",
+    "socket_inodes_and_detached_grandchildren_must_be_absent",
+    "source_archive_is_mode_0600_review_only",
+    "no_source_install_or_reboot_commands_in_archive"
+  ],
+  "release_decision": "HARD_NO_GO_PRODUCTION"
+}
