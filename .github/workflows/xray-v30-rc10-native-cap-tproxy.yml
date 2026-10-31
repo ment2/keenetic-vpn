@@ -46,6 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           export GITHUB_ACTIONS=true
+          echo "RC10_NATIVE: verified exact PID wrapper and CAP_NET_RAW-only TPROXY script"
           bash xray/lab/rc10_native_tproxy_minimal_caps.sh --native-run \
             > "$RUNNER_TEMP/rc10-native-netns.log" 2>&1 || {
               tail -n 160 "$RUNNER_TEMP/rc10-native-netns.log"; exit 1;
