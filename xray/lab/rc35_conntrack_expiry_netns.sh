@@ -54,7 +54,7 @@ set +e
 python3 - <<'PY'
 import os,socket,time
 from pathlib import Path
-serial=Path(os.environ["RUNNER_TEMP"])/"rc35-conntrack-idle-tproxy-handover"/"serial.log"
+serial=Path(os.environ["RUNNER_TEMP"])/"rc35-conntrack-expiry-negative"/"serial.log"
 dst=("10.77.0.3",19301)
 def marker(value,seconds=21):
  for _ in range(int(seconds*10)):
