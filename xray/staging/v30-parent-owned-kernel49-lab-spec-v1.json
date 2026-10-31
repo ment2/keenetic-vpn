@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "release": "v30-parent-owned-kernel49-lab-rc2",
+  "repository": "ment2/keenetic-vpn",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "paired_supervisor_manifest": "xray/staging/v30-release-manifest-v1.json",
+  "paired_rescue_contract": "xray/staging/v30-rescue-contract-v1.json",
+  "status": "LAB_ONLY_NOT_INSTALLABLE",
+  "deploy_authorized": false,
+  "cutover_authorized": false,
+  "router_commands": [],
+  "archived_kernel": "4.9-ndm-5",
+  "historical_evidence_job": "ea140581-a4db-42f5-ac4d-46c8c6c462ba",
+  "required_kernel_primitives": [
+    "prctl(PR_SET_PDEATHSIG)",
+    "waitid(P_PID,WEXITED|WNOHANG|WNOWAIT)",
+    "waitpid(PID) by sole reaper",
+    "flock",
+    "fork/exec"
+  ],
+  "excluded_kernel_primitives": [
+    "pidfd_open",
+    "pidfd_send_signal"
+  ],
+  "component_git_blob_sha1": {
+    "xray/lab/v30_parent_owned_kernel49.py": "39870202391bfdfce4494de1d1bc823daf89a966",
+    "xray/lab/v30_parent_owned_mips_recovery.py": "8b0de30cf648cb3e9343818dc6830897d3bf4884",
+    "tests/test_xray_v30_parent_owned_kernel49.py": "688d7015d4d8a6fbb43544fbe7331aad99ba920b"
+  },
+  "lab_evidence": {
+    "mips_ci": "41211906271",
+    "mips_type": "actual Xray 26.2.6 linux/mipsle via qemu-mipsel on runner kernel",
+    "confirmed_scenarios": [
+      "parent_crash",
+      "child_exit",
+      "rollback",
+      "prepared"
+    ],
+    "transport": [
+      "SOCKS5_TCP",
+      "SOCKS5_UDP_ASSOCIATE"
+    ],
+    "kernel49_hardware_tested": false,
+    "native_mips_kernel_tproxy_tested": false
+  },
+  "safety_invariants": [
+    "only_direct_parent_signals_unreaped_child",
+    "no_SIGCHLD_IGN_or_autoreap",
+    "WNOWAIT_reserves_child_PID_until_waitpid",
+    "child_PDEATHSIG_SIGKILL_and_parent_check_after_prctl",
+    "child_exec_gate_closed_until_parent_fsynced_journal",
+    "guardian_never_signals_stale_journal_pid",
+    "guardian_aborts_if_candidate_pid_ticks_still_alive",
+    "candidate_and_legacy_same_live_socket_owner_must_not_overlap",
+    "all_legacy_cron_S97_S98_S99_migrate_to_cooperative_lock",
+    "independent_nonUSB_boot_rescue_not_proven"
+  ],
+  "mandatory_remaining_live_proofs": [
+    "real_kernel49_PR_SET_PDEATHSIG_and_WNOWAIT_probe",
+    "complete_live_legacy_spawner_and_descendant_inventory",
+    "on_router_mips32le_TCP_UDP_TPROXY_DNS_IPv6_killswitch",
+    "root_only_boot_rescue_independent_of_Entware_USB",
+    "reviewed_parent_lifecycle_manager_rescue_and_exact_hashes",
+    "explicit_owner_approval_for_exact_files"
+  ]
+}
