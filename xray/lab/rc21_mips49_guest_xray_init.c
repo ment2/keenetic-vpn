@@ -14,6 +14,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 static void logline(const char *msg){dprintf(1,"RC13_GUEST: %s\n",msg);}
 static void fail(const char *msg){
@@ -57,6 +58,7 @@ int main(void){
  mkdir("/proc",0555);mkdir("/sys",0555);
  if(mount("proc","/proc","proc",0,NULL))fail("mount proc");
  if(mount("sysfs","/sys","sysfs",0,NULL))fail("mount sys");
+ if(mount("devtmpfs","/dev","devtmpfs",0,NULL))fail("mount guest devtmpfs");
  FILE *f=fopen("/mod/order.txt","r");if(!f)fail("open module order");
  char filename[100],name[100];
  int n=0;
