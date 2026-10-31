@@ -1,0 +1,63 @@
+name: Xray v30 RC12 MIPS32LE Linux4.9 netfilter module discovery ONLY
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc12-mips49-module-discovery.yml'
+      - 'xray/lab/rc12_archived_mips49_netfilter_inventory.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archived-mips-modules-no-packet-claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native host metadata readers only
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends kmod binutils
+      - name: Verify exact archived MIPS kernel bytes and inventory xt_TPROXY/xt_socket
+        shell: bash
+        run: |
+          set -euo pipefail
+          D="$RUNNER_TEMP/rc12-mips49"
+          mkdir -p "$D/root"
+          curl -fL --retry 3 --max-time 120 \
+            -o "$D/kernel.deb" \
+            https://archive.debian.org/debian/pool/main/l/linux/linux-image-4.9.0-13-4kc-malta_4.9.228-1_mipsel.deb
+          printf '9a5dff9c498bf5736ca9f97cbb005b4b60bd139aa0f30f5bab9feca783907d9b  %s\n' "$D/kernel.deb" | sha256sum -c -
+          dpkg-deb -x "$D/kernel.deb" "$D/root"
+          python3 -m xray.lab.rc12_archived_mips49_netfilter_inventory \
+            --deb "$D/kernel.deb" --root "$D/root" --out "$D/module-inventory.json" |
+            tee "$D/discovery.log"
+          python3 - "$D/module-inventory.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["release_decision"]=="HARD_NO_GO_PRODUCTION"
+          assert d["router_commands"]==[]
+          assert not d["deployment_authorized"]
+          assert not d["actual_mips49_tcp_tproxy_packets_verified"]
+          assert not d["actual_mips49_udp_tproxy_packets_verified"]
+          assert not d["actual_mips49_ipv6_dns_no_leak_verified"]
+          assert not d["physical_vendor_ndm5_kernel_compatible"]
+          assert len(d["required"]) == 5
+          print("RC12: PASS_ARCHIVED_MIPS_MODULE_INVENTORY_NOT_A_PACKET_PATH_TEST")
+          PY
+      - name: Upload only JSON metadata and discovery logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc12-mips49-archived-modules-inventory-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/rc12-mips49/module-inventory.json
+            ${{ runner.temp }}/rc12-mips49/discovery.log
+          if-no-files-found: warn
+          retention-days: 14
