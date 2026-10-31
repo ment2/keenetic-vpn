@@ -24,8 +24,9 @@ class StagedSupervisorTemplatesTests(unittest.TestCase):
                 p=subprocess.run(["sh","-n",str(script)],capture_output=True)
                 self.assertEqual(p.returncode,0,p.stderr)
                 src=script.read_text()
-                self.assertNotIn("killall",src)
-                self.assertNotIn("iptables ",src)
+                executable_lines="\n".join(x for x in src.splitlines() if not x.lstrip().startswith("#"))
+                self.assertNotIn("killall",executable_lines)
+                self.assertNotIn("iptables ",executable_lines)
                 self.assertIn("v30_supervisor_service.py",src)
 
     def test_every_mutating_entrypoint_routes_through_one_broker(self):
