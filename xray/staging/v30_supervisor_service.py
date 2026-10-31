@@ -18,12 +18,12 @@ import time
 
 try:
     from v30_supervisor_core import (
-        FenceError, Identity, atomic_journal, gated_spawn, proc_identity,
+        FenceError, Identity, atomic_journal, atomic_pidfile, gated_spawn, proc_identity,
         proc_stat, scoped_signal, supervisor_lock,
     )
 except ImportError:
     from xray.staging.v30_supervisor_core import (
-        FenceError, Identity, atomic_journal, gated_spawn, proc_identity,
+        FenceError, Identity, atomic_journal, atomic_pidfile, gated_spawn, proc_identity,
         proc_stat, scoped_signal, supervisor_lock,
     )
 
@@ -344,13 +344,19 @@ class Broker:
                     time.sleep(0.04)
                 else:
                     raise FenceError("actor process did not exit")
+                existing = self._actor_pidfile(role)
+                if not existing.exists() or existing.read_text().strip() != str(old.pid):
+                    raise FenceError("actor PID file drift after scoped stop")
                 atomic_journal(self._actor_path(role), {
                     **data, "phase": "stopped"})
+                existing.unlink()
                 return "ACTOR_STOPPED_EXACT_IDENTITY"
             if data["phase"] != "stopped":
                 if proc_identity(old.pid) != old:
                     raise FenceError("unexpected active actor")
                 return "ACTOR_ALREADY_ACTIVE"
+            if self._actor_prepared(role).exists() or self._actor_pidfile(role).exists():
+                raise FenceError("unreconciled actor prepared/pidfile")
             cmd = list(self._actor_expected_cmd(role))
             pid, start = gated_spawn(cmd[0], cmd, self._actor_prepared(role))
             deadline = time.monotonic() + 4
@@ -364,11 +370,13 @@ class Broker:
                 time.sleep(0.05)
             else:
                 raise FenceError("new actor identity never reached intended argv")
+            atomic_pidfile(self._actor_pidfile(role), pid)
             atomic_journal(self._actor_path(role), {
                 "schema": 1, "phase": "active",
                 "identity": asdict(new), "legacy": False})
-            # Existing script's PID file is separate from this private
-            # journal. A production installation must update it atomically.
+            # A stale "prepared" journal is a safety signal on any failed
+            # transition; unlink only AFTER the active identity is durable.
+            self._actor_prepared(role).unlink()
             return "ACTOR_STARTED_WITH_DURABLE_PID_TICKS"
 
     def loop(self, op, seconds):
