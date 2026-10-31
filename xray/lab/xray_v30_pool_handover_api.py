@@ -14,6 +14,7 @@ import tempfile
 
 from xray.lab.pool_reconcile_v30 import reconcile
 from xray.lab.pool_generation_v30 import Coordinator, Generation
+from xray.lab.stable_socks_ingress_v30 import proc_start_ticks
 from xray.lab.xray_v30_api_continuity import (
     EchoBackend, config, echo, free_port, socks_connect, wait_port,
 )
@@ -39,6 +40,14 @@ def run(xray):
                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             wait_port(socks_port, process, timeout=25)
             wait_port(api_port, process, timeout=25)
+            process_identity = (process.pid, proc_start_ticks(process.pid))
+            assert process_identity[0] > 1 and process_identity[1] > 0
+            def assert_same_process():
+                assert process.poll() is None, "seamless refresh restarted Xray"
+                assert (process.pid, proc_start_ticks(process.pid)) == process_identity, (
+                    "Xray PID/start-ticks changed across subscription refresh"
+                )
+
 
             def api(*args):
                 return subprocess.run([xray, "api", args[0], "-s", f"127.0.0.1:{api_port}", *args[1:]],
@@ -92,6 +101,7 @@ def run(xray):
                     failed_closed = True
                 assert failed_closed, "failed candidate allowed an unverified new flow"
                 assert echo(old, b"old-a-during-c-failure") == "A"
+                assert_same_process()
                 print("POOL_API: PASS dead selected C blocks new TCP while old A survives", flush=True)
 
                 # Restore only by an explicit API BO override to known-good A.
@@ -101,6 +111,10 @@ def run(xray):
                     assert echo(rolled, b"rollback-a") == "A"
                 assert echo(old, b"old-a-after-rollback") == "A"
                 print("POOL_API: PASS explicit BO rollback restores new TCP to A", flush=True)
+                assert_same_process()
+                with socks_connect(socks_port) as no_listener_restart:
+                    assert echo(no_listener_restart, b"same-stable-listener") == "A"
+                print("POOL_API: PASS SAME_MIPS_XRAY_PID_STARTTICKS_AND_SOCKS_PORT_THROUGH_REFRESH_FAILURE_ROLLBACK", flush=True)
                 print("POOL_API: NOT TESTED automatic leastPing, VLESS, UDP, TPROXY, router firewall", flush=True)
         finally:
             if process is not None:
