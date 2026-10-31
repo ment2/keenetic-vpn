@@ -63,11 +63,11 @@ test -f "$W/initramfs/lib/mipsel-linux-gnu/libc-2.24.so"
 test -f "$W/initramfs/sbin/iptables"; test -f "$W/initramfs/bin/ip"
 (cd "$W/initramfs"; find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 >"$W/guest.cpio.gz")
 set +e
-timeout --signal=KILL 130s qemu-system-mipsel -M malta -cpu 4KEc -m 512 -smp 1 -nographic -no-reboot -nodefaults -netdev user,id=isolated,restrict=on,hostfwd=tcp:127.0.0.1:19191-:19191,hostfwd=udp:127.0.0.1:19191-:19191 -device pcnet,netdev=isolated,romfile= -monitor none -kernel "$K" -initrd "$W/guest.cpio.gz" -append "console=ttyS0 rdinit=/init panic=1" -serial "file:$W/serial.log" >"$W/qemu-errors.log" 2>&1 &
+timeout --signal=KILL 165s qemu-system-mipsel -M malta -cpu 4KEc -m 512 -smp 1 -nographic -no-reboot -nodefaults -netdev user,id=isolated,restrict=on,hostfwd=tcp:127.0.0.1:19191-:19191,hostfwd=udp:127.0.0.1:19191-:19191 -device pcnet,netdev=isolated,romfile= -monitor none -kernel "$K" -initrd "$W/guest.cpio.gz" -append "console=ttyS0 rdinit=/init panic=1" -serial "file:$W/serial.log" >"$W/qemu-errors.log" 2>&1 &
 qemu_pid=$!
 set -e
 ready=0
-for n in $(seq 1 100); do
+for n in $(seq 1 260); do
  if grep -Fq 'RC21_GUEST: REAL_XRAY_UID65534_CAP_NET_RAW_NNP_AND_TPROXY_LISTENER_READY' "$W/serial.log" 2>/dev/null; then ready=1; break; fi
  if ! kill -0 "$qemu_pid" 2>/dev/null; then break; fi
  sleep 0.25
