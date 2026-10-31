@@ -211,16 +211,65 @@ class Broker:
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return False
 
-    def wifi_once(self):
-        """Wifi actor's repair holds the SAME lock used by S97 and cutover.
+    def _failclosed_kernel_under_lock(self):
+        """No repair if the underlying home kill-switch is not pinned."""
+        rules = self.run(["/opt/sbin/iptables", "-S", "FORWARD"]).splitlines()
+        home = self.run(["/opt/sbin/iptables", "-S", "XRAY_KS_HOME"])
+        ip6 = self.run(["/opt/sbin/ip6tables", "-S", "FORWARD"])
+        if (len(rules) < 2 or rules[1] != "-A FORWARD -j XRAY_KS_HOME"
+                or "-i br0" not in home or "-j DROP" not in home
+                or "-P FORWARD DROP" not in ip6):
+            raise FenceError("failclosed kernel not proven: refuse rule repair")
 
-        The existing old wifi-rules.sh can independently mutate the kernel;
-        release gate remains closed until every entrypoint is replaced.
+    def _wifi_repair_under_lock(self):
+        """Replicate the archived TPROXY repair under a shared exclusive lock.
+
+        This method MUST ONLY run from the broker under supervisor_lock.
+        All other direct rule writers must be replaced before this can be
+        safely installed. In-flight legacy script descendants still block
+        any first production cutover.
         """
+        self._failclosed_kernel_under_lock()
+        mark = "0x40000000/0x40000000"
+        if ("fwmark " + mark + " lookup 100") not in self.run(["ip", "rule", "show"]):
+            self.run(["ip", "rule", "add", "fwmark", mark,
+                      "lookup", "100", "priority", "20000"])
+        self.run(["ip", "route", "replace", "local", "default",
+                  "dev", "lo", "table", "100"])
+        try:
+            self.run(["/opt/sbin/iptables", "-t", "mangle", "-S", "XRAY_WIFI"])
+        except subprocess.CalledProcessError:
+            self.run(["/opt/sbin/iptables", "-t", "mangle", "-N", "XRAY_WIFI"])
+        self.run(["/opt/sbin/iptables", "-t", "mangle", "-F", "XRAY_WIFI"])
+        excluded = (
+            "0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10",
+            "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12",
+            "192.168.0.0/16", "224.0.0.0/4", "240.0.0.0/4",
+        )
+        for network in excluded:
+            self.run(["/opt/sbin/iptables", "-t", "mangle", "-A",
+                      "XRAY_WIFI", "-d", network, "-j", "RETURN"])
+        for proto in ("tcp", "udp"):
+            self.run(["/opt/sbin/iptables", "-t", "mangle", "-A",
+                      "XRAY_WIFI", "-p", proto, "-j", "TPROXY",
+                      "--on-port", "12345", "--tproxy-mark", mark])
+            jump = ["/opt/sbin/iptables", "-t", "mangle", "-C",
+                    "PREROUTING", "-s", "192.168.1.0/24",
+                    "-i", "br0", "-p", proto, "-j", "XRAY_WIFI"]
+            try:
+                self.run(jump)
+            except subprocess.CalledProcessError:
+                self.run(jump[:3] + ["-I"] + jump[4:5] + ["1"] + jump[5:])
+        if not self._wifi_check_under_lock():
+            raise FenceError("rule repair failed verification: fail closed")
+        return "WIFI_REPAIRED_UNDER_SHARED_MUTEX"
+
+    def wifi_once(self, *, force_repair=False):
+        """Same mutex for repair, periodic watcher and future cutover."""
         with supervisor_lock(self.p.lock):
-            if self._wifi_check_under_lock():
+            if not force_repair and self._wifi_check_under_lock():
                 return "WIFI_TPROXY_HEALTHY"
-            raise FenceError("WIFI_REPAIR_NOT_YET_MIGRATED_TO_BROKER")
+            return self._wifi_repair_under_lock()
 
     def loop(self, op, seconds):
         if op not in ("watchdog-once", "wifi-once"):
@@ -241,7 +290,7 @@ class Broker:
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("op", choices=("bootstrap", "start", "stop", "restart",
-        "watchdog-once", "watchdog-loop", "wifi-once", "wifi-loop"))
+        "watchdog-once", "watchdog-loop", "wifi-once", "wifi-repair", "wifi-loop"))
     p.add_argument("--expected-pid", type=int)
     p.add_argument("--expected-ticks", type=int)
     a = p.parse_args()
@@ -258,6 +307,8 @@ def main():
         b.loop("wifi-once", 60)
     elif a.op == "wifi-once":
         print(b.wifi_once())
+    elif a.op == "wifi-repair":
+        print(b.wifi_once(force_repair=True))
     else:
         print(b.control(a.op))
 
