@@ -41,7 +41,7 @@ def disposable(root):
 
 def _fresh():
     return {"schema":SCHEMA,"sequence":0,"owner_generation":0,
-            "owner":None,"pending":[],"inflight":None,"receipts":[],
+            "owner":None,"pending":[],"inflight":None,"recovery_claim":None,"receipts":[],
             "blocked":False,"production_authorized":False}
 
 
@@ -187,6 +187,8 @@ class Ledger:
             raise FenceError("incomplete independent recovery evidence")
         with supervisor_lock(self.lock):
             d=self._read()
+            if d.get("recovery_claim") is not None:
+                raise FenceError("recovery generation already claimed; legacy reconciliation forbidden")
             if d["owner"] is None and not d["blocked"]:
                 raise FenceError("not a crashed owner needing reconciliation")
             if d["inflight"] is not None:
@@ -200,3 +202,81 @@ class Ledger:
             d["blocked"]=False
             self._write(d)
             return {"status":"OFFLINE_RECONCILED_ONLY","production_authorized":False}
+
+
+    def begin_scoped_recovery(self, *, expected_generation, guardian_ticks):
+        """Durably claim one exact crashed-owner generation under shared flock.
+
+        Only a disposable guardian can claim. This does not establish owner
+        death or safe new service startup. No background process signals.
+        """
+        if not isinstance(expected_generation,int) or expected_generation<=0:
+            raise FenceError("invalid owner generation")
+        if not isinstance(guardian_ticks,int) or guardian_ticks<=0:
+            raise FenceError("guardian start ticks missing")
+        with supervisor_lock(self.lock):
+            d=self._read()
+            old=d.get("owner")
+            if d.get("recovery_claim") is not None:
+                raise FenceError("recovery already claimed by other guardian")
+            if old is None or old.get("generation") != expected_generation:
+                raise FenceError("stale generation; cannot claim newer owner")
+            d["blocked"]=True
+            if d["inflight"] is not None:
+                d["receipts"].append({**d["inflight"]["request"],"status":"UNCERTAIN"})
+                d["inflight"]=None
+            claim={"owner_generation":expected_generation,
+                   "guardian_pid":os.getpid(),"guardian_ticks":guardian_ticks,
+                   "token":uuid.uuid4().hex,"attempt":1}
+            d["recovery_claim"]=claim
+            self._write(d)
+            return claim.copy()
+
+    def takeover_scoped_recovery(self, old_claim, *,
+                                 guardian_ticks, verified_old_guardian_dead=False):
+        """New guardian must CAS exact prior claim and prove holder gone.
+
+        This is a synthetic/protocol proof only, not OS-level durable
+        evidence. No rescue is authorized on a physical router.
+        """
+        if verified_old_guardian_dead is not True or not isinstance(guardian_ticks,int) or guardian_ticks<=0:
+            raise FenceError("old guardian death unproven")
+        with supervisor_lock(self.lock):
+            d=self._read()
+            if d.get("recovery_claim") != old_claim or not d["blocked"]:
+                raise FenceError("recovery claim changed or not held")
+            new=dict(old_claim)
+            new.update({"guardian_pid":os.getpid(),"guardian_ticks":guardian_ticks,
+                        "token":uuid.uuid4().hex,"attempt":old_claim["attempt"]+1})
+            d["recovery_claim"]=new
+            self._write(d)
+            return new.copy()
+
+    def finish_scoped_recovery(self, claim, proof):
+        """Reconcile only the exact crash generation, never an unrelated owner.
+
+        All positive proofs are supplied by an independently audited LAB
+        inventory. The procedure cannot be used to assert physical safety.
+        """
+        required=("old_parent_exited","old_child_exited","all_descendants_drained",
+                  "old_listener_absent","rescue_sha_verified","no_unfenced_writers",
+                  "two_consecutive_sealed_scope_scans")
+        if not isinstance(proof,dict) or any(proof.get(x) is not True for x in required):
+            raise FenceError("scoped recovery evidence incomplete")
+        with supervisor_lock(self.lock):
+            d=self._read()
+            if (not d["blocked"] or d.get("recovery_claim") != claim or
+                d.get("owner") is None or
+                d["owner"]["generation"]!=claim["owner_generation"] or
+                d["inflight"] is not None):
+                raise FenceError("scoped recovery generation drift")
+            for req in d["pending"]:
+                d["receipts"].append({**req,"status":"CANCELLED_UNCERTAIN"})
+            d["pending"]=[]
+            d["owner"]=None
+            d["blocked"]=False
+            d["recovery_claim"]=None
+            self._write(d)
+            return {"status":"LAB_SCOPED_RECOVERY_ONLY",
+                    "rescued_owner_generation":claim["owner_generation"],
+                    "production_authorized":False}
