@@ -7,6 +7,8 @@ on:
     paths:
       - 'xray/production/opt/**'
       - 'tests/**'
+      - 'tools/**'
+      - 'xray/production/MANIFEST.sha256'
       - '.github/workflows/xray-snapshot-contracts.yml'
   workflow_dispatch:
 
@@ -32,8 +34,39 @@ jobs:
               ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
           print('PASS: parsed', len(files), 'Python source files')
           PY
-      - name: Run non-mutating static source contract tests
-        run: python -m unittest discover -s tests -p 'test_xray_*.py' -v
+      - name: Verify frozen production snapshot SHA256 and Git modes (offline only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/verify_production_snapshot.py --output "$RUNNER_TEMP/snapshot-integrity.json"
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import os
+          report = json.loads((Path(os.environ["RUNNER_TEMP"]) / "snapshot-integrity.json").read_text())
+          assert report["status"] == "PASS_FROZEN_GITHUB_SNAPSHOT"
+          assert report["verified_files"] == 63
+          assert report["router_live_hashes_checked"] is False
+          assert report["full_router_recovery_verified"] is False
+          print("PASS: 63 archived files exactly match manifest; NOT a live router comparison")
+          PY
+      - name: Parse active production shell and init scripts without executing
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            xray/production/opt/bin/xray-safe-hourly.sh \
+            xray/production/opt/bin/xray-watchdog.sh \
+            xray/production/opt/bin/xray-ks-home.sh \
+            xray/production/opt/bin/xray-wifi-rules.sh \
+            xray/production/opt/etc/init.d/S97xray \
+            xray/production/opt/etc/init.d/S98xray-wifi \
+            xray/production/opt/etc/init.d/S99xray-watchdog; do
+            sh -n "$p"
+          done
+          echo "PASS: shell syntax check only; scripts NOT executed"
+      - name: Run non-mutating source and snapshot mutation tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Execute synthetic first-migration dry-run and assert NO DEPLOY
         shell: bash
