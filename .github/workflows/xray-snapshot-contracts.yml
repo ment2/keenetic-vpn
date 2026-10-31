@@ -28,6 +28,10 @@ on:
       - 'xray/lab/v30_review_rescue_bundle.py'
       - 'xray/lab/v30_kernel49_cgroup_v1_contract.py'
       - 'xray/lab/v30_kernel49_nonusb_boot_rescue_contract.py'
+      - 'xray/lab/v30_rc6_cgroup_v1_lab.py'
+      - 'xray/lab/v30_rc6_rescue_guardian.sh'
+      - 'xray/lab/v30_rc6_rescue_package.py'
+      - 'xray/lab/v30_rc6_offline_boot_rehearsal.py'
       - 'xray/staging/v30-kernel49-rc5-boot-rescue-review.json'
       - 'tests/**'
       - 'tools/**'
@@ -351,6 +355,46 @@ jobs:
             xray/staging/v30-kernel49-rc5-boot-rescue-review.json
           retention-days: 14
           if-no-files-found: error
+
+      - name: Rehearse USB absent and partial original restoration using only independent host shell
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_rc6_offline_boot_rehearsal --demo "$RUNNER_TEMP/v30-rc6-offline-boot"
+          test -f "$RUNNER_TEMP/v30-rc6-offline-boot/rehearsal-result.json"
+          python - <<'PY'
+          from pathlib import Path
+          import os,json
+          p=Path(os.environ["RUNNER_TEMP"])/"v30-rc6-offline-boot/rehearsal-result.json"
+          r=json.loads(p.read_text())
+          assert r["status"]=="HOST_SHELL_RECOVERY_ONLY"
+          assert r["restored_origins"]==5
+          assert r["induced_partial_restore_count"]==2
+          assert r["physical_separate_device_verified"] is False
+          assert r["production_restore_authorized"] is False
+          print("RC6: PASS separate host POSIX shell restored exact 5/5 after 2/5 interrupted writes and corrupt-backup refusal")
+          PY
+
+      - name: Build byte-identical offline RC6 rescue review tar with standalone host shell guardian
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_rc6_rescue_package --build "$RUNNER_TEMP/v30-rc6-host-shell-rescue-NO-DEPLOY.tar" |
+            tee "$RUNNER_TEMP/v30-rc6-package.json"
+          python -m xray.lab.v30_rc6_rescue_package --verify "$RUNNER_TEMP/v30-rc6-host-shell-rescue-NO-DEPLOY.tar"
+          grep -q 'VERIFIED_OFFLINE_REHEARSAL_PACKAGE_ONLY' "$RUNNER_TEMP/v30-rc6-package.json"
+          echo "RC6: PASS portable review tar, NOT an independent boot image"
+
+      - name: Publish RC6 non-bootable host shell rehearsal source and results
+        uses: actions/upload-artifact@v4
+        with:
+          name: v30-rc6-offline-host-shell-boot-review-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/v30-rc6-host-shell-rescue-NO-DEPLOY.tar
+            ${{ runner.temp }}/v30-rc6-offline-boot/rehearsal-result.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
