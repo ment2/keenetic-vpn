@@ -191,6 +191,7 @@ jobs:
           python -m xray.lab.v30_reboot_usb_fault_matrix --demo "$RUNNER_TEMP/v30-reboot-usb-matrix" |
             tee "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
           grep -q 'USB_FAULT: PASS missing backup blocks before any additional active script writes' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
+          grep -q 'USB_FAULT: PASS corrupted backup SHA blocks writes despite returned USB' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
           grep -q 'REBOOT_REPLAY: PASS restored 5/5 archived S97/S98/S99/watchdog/rules SHA256' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
 
       - name: Run non-mutating source and snapshot mutation tests
