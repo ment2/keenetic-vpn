@@ -11,6 +11,7 @@ KERNEL="$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' -type f | sort -V | t
 test -s "$KERNEL" || { echo "RC7: NO_REAL_FULL_SYSTEM_KERNEL_HARD_NO_GO"; exit 77; }
 echo "RC7: QEMU full-system kernel=$KERNEL"
 # Ubuntu packaged kernel is root-readable only; copy inside disposable runner.
+KVER="$(basename "$KERNEL" | sed 's/^vmlinuz-//')"
 sudo cp "$KERNEL" "$WORK/guest-vmlinuz"
 sudo chmod 644 "$WORK/guest-vmlinuz"
 KERNEL="$WORK/guest-vmlinuz"
@@ -19,7 +20,6 @@ cp "$(command -v busybox)" "$WORK/initramfs/bin/busybox"
 # Copy only kernel-provided dependency modules, in modprobe load order, into
 # guest initramfs. This VM doesn't borrow any host kernel state at runtime.
 mkdir -p "$WORK/initramfs/mods"
-KVER="$(basename "$KERNEL" | sed 's/^vmlinuz-//')"
 n=0
 for modname in virtio_pci virtio_blk ext4; do
   while read -r opname module_path; do
