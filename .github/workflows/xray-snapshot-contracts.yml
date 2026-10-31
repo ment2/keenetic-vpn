@@ -22,6 +22,7 @@ on:
       - 'xray/lab/v30_parent_owned_mips_recovery.py'
       - 'xray/staging/v30_kernel49_cooperative_ledger.py'
       - 'xray/lab/v30_kernel49_cooperative_lab.py'
+      - 'xray/lab/v30_kernel49_descendant_guard_lab.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -265,6 +266,17 @@ jobs:
           grep -q 'USB_FAULT: PASS missing backup blocks before any additional active script writes' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
           grep -q 'USB_FAULT: PASS corrupted backup SHA blocks writes despite returned USB' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
           grep -q 'REBOOT_REPLAY: PASS restored 5/5 archived S97/S98/S99/watchdog/rules SHA256' "$RUNNER_TEMP/v30-reboot-usb-matrix.log"
+
+      - name: Detached-grandchild PDEATHSIG survival must block new guardian and preserve fail closed
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_kernel49_descendant_guard_lab --demo "$RUNNER_TEMP/v30-kernel49-orphan" |
+            tee "$RUNNER_TEMP/v30-kernel49-orphan.log"
+          grep -q 'DESCENDANT49: PASS direct child died but detached grandchild TCP+UDP remained' "$RUNNER_TEMP/v30-kernel49-orphan.log"
+          grep -q 'DESCENDANT49: PASS guardian refuses restart while orphan retains TCP+UDP' "$RUNNER_TEMP/v30-kernel49-orphan.log"
+          grep -q 'DESCENDANT49: PASS after voluntary orphan exit guardian can reconcile without PID signals' "$RUNNER_TEMP/v30-kernel49-orphan.log"
 
       - name: Run non-mutating source and snapshot mutation tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
