@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "release": "v30-rc11-mips32le-kernel49-actual-guest-legacy-root-escape-review",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "decision": "HARD_NO_GO_PRODUCTION",
+  "scope": "DISPOSABLE_QEMU_AND_OFFLINE_REVIEW_ONLY",
+  "source_blobs": {
+    "xray/lab/rc11_mips49_guest_init.c": "ab867f953b5fd72bf042ef7467315d133d54705e",
+    "xray/lab/rc11_mips49_fullsystem_runner.sh": "d18b72be34220135c9365d540622d4200a57654a",
+    ".github/workflows/xray-v30-rc11-mips49-fullsystem.yml": "d6bfb328d79f86169ecc121c219483891be69fda",
+    ".github/workflows/xray-v30-rc11-mips49-discovery.yml": "2de39c694844d68e84ca902f428353665bc1843f",
+    "xray/lab/rc11_privileged_legacy_fencing_contract.py": "56be3cc3c92e07e1b5f8aa8ade4a008e43654814",
+    "tests/test_xray_v30_rc11_legacy_fencing.py": "bc9c84a9b20b7d160b97adaabd00a4be2cdb7d66"
+  },
+  "archive_pins": {
+    "kernel_arch": "linux/mipsel",
+    "kernel_version": "4.9.0-13-4kc-malta",
+    "kernel_deb": "linux-image-4.9.0-13-4kc-malta_4.9.228-1_mipsel.deb",
+    "kernel_deb_sha256": "9a5dff9c498bf5736ca9f97cbb005b4b60bd139aa0f30f5bab9feca783907d9b",
+    "kernel_vmlinux_sha256": "20f5380e02f2e40d4495fd61a854e5867f5ccdf95c8c1fd3d53fe27e8be1797f",
+    "xray_release": "v26.2.6",
+    "xray_archive": "Xray-linux-mips32le.zip",
+    "xray_archive_sha256": "1590b2bcefe64fb0604f29c8c75219bfbe8f63daa3bc8e3956edfa6da97c5869",
+    "xray_executable_sha256": "3d2588c5ef770a6a7e1bfdd5db511130fb3acd79eb91bfcb108753b3e1dda1f6",
+    "source_signature_verified": false,
+    "source_content_sha_verified": true
+  },
+  "evidence": {
+    "discovery_ci": {
+      "id": 41225710199,
+      "conclusion": "success",
+      "executable_binaries_loaded": false
+    },
+    "mips_fullsystem_ci": {
+      "id": 41226245794,
+      "conclusion": "success",
+      "artifact_id": 13051534522,
+      "guest_kernel": "4.9.0-13-4kc-malta",
+      "machine": "QEMU malta -cpu 4KEc",
+      "mode": "full-system, own guest kernel",
+      "real_kernel_mipsel": true,
+      "genuine_xray_mips32le": true,
+      "uid": 65534,
+      "gid": 65534,
+      "only_cap_net_raw_effective_mask": "0x2000",
+      "PR_GET_NO_NEW_PRIVS_after_exec": 1,
+      "real_mips_ip_transparent_tcp_udp_without_caps_denied": true,
+      "real_mips_ip_transparent_tcp_udp_with_raw_only_allowed": true,
+      "real_mips_xray_tcp_udp_transparent_listener": true,
+      "real_mips_xray_direct_parent_owned_pid_start_ticks": true,
+      "real_mips_cgroup_v1_pids_mount": true,
+      "real_mips_fork_setsid_exec_and_socket_inode_inventory": true,
+      "real_mips_eight_nonroot_descendants_cannot_escape": true,
+      "real_mips_unknown_orphan_prevents_restart": true,
+      "real_mips_privileged_cgroup_escape_succeeded": true,
+      "real_mips_guardian_cas_three_generations_eight_processes": true,
+      "real_mips_crashed_prepared_did_not_commit": true,
+      "guest_tproxy_ipv4_tcp_packet_forwarding_verified": false,
+      "guest_tproxy_ipv4_udp_packet_forwarding_verified": false,
+      "guest_tproxy_ipv6_packet_forwarding_verified": false,
+      "guest_dns_no_leak_verified": false,
+      "guest_stable_kill_switch_verified": false,
+      "no_virtual_default_route": true
+    },
+    "legacy_fencing_contract": {
+      "exact_actor_count": 7,
+      "archived_source_hash_count": 5,
+      "excludes_live_SHA_inference": true,
+      "scan_without_early_seal_is_not_proof": true,
+      "rejects_pid_reuse_and_socket_inodes": true,
+      "rejects_root_escape": true,
+      "rejects_missing_boot_cron_flock_ack": true,
+      "guardian_stale_generation_rejected": true,
+      "review_only_even_with_synthetic_all_true": true
+    },
+    "previous_rc10": {
+      "kernel49_amd64_fullsystem_ci": 41224765496,
+      "native_x86_tproxy_tcp_udp_ci": 41224152158,
+      "virtual_rescue_baseline_restored": 5,
+      "virtual_rescue_missing_writes": 0,
+      "virtual_rescue_detached_writes": 0,
+      "previous_review": "xray/staging/v30-rc10-linux49-capability-tproxy-cas-rescue-review.json"
+    }
+  },
+  "physical_acceptance": {
+    "vendor_ndm5_same_kernel_or_config": false,
+    "physical_usb_independent_boot_guardian_verified": false,
+    "physical_cold_boot_with_usb_removed_verified": false,
+    "physical_flash_power_loss_rollback_verified": false,
+    "all_privileged_legacy_writer_processes_fenced": false,
+    "privileged_cgroup_escape_prevented": false,
+    "physical_current_pid_boot_id_start_ticks_socket_inventory_verified": false,
+    "physical_xray_exact_shas_owner_approved": false,
+    "mips_kernel49_full_tcp_udp_packet_redirection_tested": false,
+    "physical_dns_ipv6_no_leak_kill_switch_verified": false,
+    "approved_live_cutover_or_deploy": false
+  },
+  "precise_blockers": [
+    "QEMU Debian Malta MIPS32LE Linux 4.9 not Keenetic 4.9-ndm-5 vendor kernel/config/board",
+    "Real MIPS32LE transparent socket CAP_NET_RAW and Xray listener proved, but no MIPS guest netfilter xt_TPROXY + ip rule packet topology was installed; TCP/UDP packet path on 4.9 remains untested",
+    "QEMU MIPS privileged cgroup v1 escape SUCCEEDED, demonstrating root legacy actors can evade scope",
+    "No full physical S97/S98/S99/watchdog/cron boot writer inventory and prevention of external spawners",
+    "No physical persistent USB-independent boot guardian or electrical power-loss study",
+    "No router read-only preflight in current RC11; restricted/blocked MCP paths were never circumvented",
+    "No physical MIPS vendor no-leak IPv4/IPv6/DNS/TCP/UDP evidence"
+  ],
+  "authorization": {
+    "router_jobs": 0,
+    "production_modifications": false,
+    "cloudflare_modifications": false,
+    "firewall": false,
+    "routes": false,
+    "cron": false,
+    "main": false,
+    "snapshot": false,
+    "merge": false,
+    "deploy": false,
+    "live_trial": false,
+    "automatic_rollback": false
+  },
+  "artifact_expiration": "2026-11-14"
+}
