@@ -23,7 +23,7 @@ fetch libc6 'g/glibc/libc6_2.24-11+deb9u4_mipsel.deb' 5515fb37ad178bb61b5ce53e0d
 fetch libip4tc0 'i/iptables/libip4tc0_1.6.0+snapshot20161117-6_mipsel.deb' f2182182b5a4834c7cb81cbedb8666731c0de8368cf53b9a908d58dca9369db8
 fetch libip6tc0 'i/iptables/libip6tc0_1.6.0+snapshot20161117-6_mipsel.deb' 80b61d515779bc62fbbac799d5d5fbe102f97f860d4ec11a42ca3dc4f3c3f820
 fetch libxtables12 'i/iptables/libxtables12_1.6.0+snapshot20161117-6_mipsel.deb' d820b1df1df638a5d2682a827f06c7e4032546da786db2f714bf70b1dad0937b
-python3 -m xray.lab.rc19_mips49_nic_module_pack --root "$W/root" --dest "$W/initramfs/mod" | tee "$W/module-order.log"
+python3 -m xray.lab.rc20_mips49_tproxy_module_pack --root "$W/root" --dest "$W/initramfs/mod" | tee "$W/module-order.log"
 mkdir -p "$W/initramfs/lab"
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/init" xray/lab/rc20_mips49_guest_tproxy_init.c
 mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -o "$W/initramfs/lab/echo" xray/lab/rc20_mips49_tproxy_echo.c
