@@ -31,3 +31,31 @@ This proves a **stable loopback TCP SOCKS front-end in a disposable environment*
 ## Production state
 
 No router commands submitted in this feature work, no production config edits, no Xray restart, no route/cron/firewall/kill-switch change, no merge/deploy. This laboratory result **does not authorize** production cutover.
+
+## Follow-up: subscription pool continuity on real MIPSLE Xray
+
+New `xray/lab/xray_v30_pool_handover_api.py` exercises actual Xray 26.2.6 linux/mipsle `ado` and `bo` with the existing pure `reconcile` / `Coordinator` logic. **GitHub CI [41190821835](https://github.com/ment2/keenetic-vpn/actions/runs/41190821835) SUCCESS**; real disposable process logs:
+
+- `POOL_API: PASS new qualified pool retains active A; no BO switch` (new standby C is added without sending BO for the still-qualified endpoint A).
+- `POOL_API: PASS changed pool sends new TCP to C; old A TCP survives` (active A removed/disqualified from new pool).
+- `POOL_API: PASS explicit BO rollback restores new TCP to A`.
+
+The endpoints are synthetic local echo servers, not real VPN. An injected health gate requests explicit BO rollback; automatic leastPing fallback, OpenAI reachability, real upstream failure and production stability are NOT proven.
+
+## Read-only router parity checkpoint
+
+- Read-only diagnostic `711886cd-0a0e-4317-a10c-1080353dd767`: **done, exit 0**, Keenetic ONLINE, load ~0.9, available disk 3.53 GB.
+- First attempted read-only shell job `d4b68bc2-ebdd-4d88-8592-ee3154afe0d1`: **done, exit 2**, shell quoting syntax error; no changes, do not repeat.
+- Corrected read-only job `3d9343ec-7266-4268-8b68-0c9ec73d43c7`: **done, exit 0**. Xray version `26.2.6 linux/mipsle`, PID **13546**, start_ticks **100216734**.
+- Current config SHA256 `66d074f32fffbf4a251576c8297714e9647174546e9e73e5bf27cf2768efe6d7`; matches previously recorded live hash.
+- Xray binary SHA256 `680db07db2b5d53080bfecb8752bc830c6a890367aa3bc57d42d4660506591f2`.
+- S97xray init SHA256 `87ea1dc13a9be95d57c0595d7a7f13b03fe97bd56ab1f144a3c94d57cc588d5d`.
+- S99xray-watchdog SHA256 `e8423e15ed2cf4d3662e5725d27d6e58bd08bbdd807b47fcabe30391ac4c738b`.
+- xray-watchdog.sh SHA256 `dddcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08`.
+- TCP listeners present at `127.0.0.1:10808` and `:::12345`; fwmark `0x40000000/0x40000000` priority 20000 routes to table 100; table 100 `local default dev lo`. This is **not** a full iptables or leak audit.
+
+No Xray restart, no files written to router, no firewall, route, cron or watchdog changes.
+
+## Final deployment gate
+
+The new-pool API mechanism now passes a synthetic real-MIPSLE test, but **the current production Xray has no API** and its current init script uses global `killall xray`. A zero-downtime first migration of both SOCKS5 10808 and TPROXY 12345 remains unproven. Before production activation require separate explicit approval of exact maintenance cutover/rollback commands and a tolerated disruption window, plus TPROXY/UDP/kernel fail-closed and watchdog fencing verification.
