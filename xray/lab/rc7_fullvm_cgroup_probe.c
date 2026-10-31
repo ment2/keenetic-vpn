@@ -21,7 +21,7 @@
 
 static void stop(const char *m){ dprintf(1,"RC7_GUEST: FAIL %s errno=%d\n",m,errno); _exit(27); }
 static void put(const char *p,const char *v){
- int fd=open(p,O_WRONLY|O_CLOEXEC); if(fd<0)stop(p);
+ int fd=open(p,O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC,0600); if(fd<0)stop(p);
  if(write(fd,v,strlen(v))!=(ssize_t)strlen(v))stop("write"); close(fd);
 }
 static int present(const char *path,int pid){
@@ -119,6 +119,7 @@ int main(int argc,char **argv){
    dprintf(1,"RC7_GUEST: CGROUP_V1_UNAVAILABLE_HARD_NO_GO errno=%d\n",errno);
    return 77;
  }
+ dprintf(1,"RC7_GUEST: REAL_CGROUP_V1_PIDS_MOUNT_PASS\n");
  mkdir("/run/cgroup-pids/v30",0700);
  char self[48];snprintf(self,sizeof(self),"%d\n",getpid());
  put("/run/cgroup-pids/v30/cgroup.procs",self);
