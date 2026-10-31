@@ -51,6 +51,7 @@ if [ "$ready" != 1 ]; then
  wait "$qemu_pid" || true
  exit 1
 fi
+set +e
 python3 - <<'PY'
 import socket
 tcp=b'RC19-TCP-PAYLOAD-20261031'
@@ -61,14 +62,33 @@ with socket.create_connection(("127.0.0.1",19191),timeout=9) as s:
  assert got==tcp,("TCP_MISMATCH",got)
  print("RC19_HOST: ACTUAL_TCP_GUEST_BYTES_PASS",len(got))
 with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as s:
- s.settimeout(9)
- s.sendto(udp,("127.0.0.1",19191))
- got,_=s.recvfrom(512)
- assert got==udp,("UDP_MISMATCH",got)
- print("RC19_HOST: ACTUAL_UDP_GUEST_BYTES_PASS",len(got))
+ s.settimeout(1.5)
+ last=None
+ for attempt in range(1,7):
+  s.sendto(udp,("127.0.0.1",19191))
+  print("RC19_HOST: UDP_TRY",attempt,flush=True)
+  try:
+   got,_=s.recvfrom(512)
+   assert got==udp,("UDP_MISMATCH",got)
+   print("RC19_HOST: ACTUAL_UDP_GUEST_BYTES_PASS",len(got),flush=True)
+   break
+  except socket.timeout as exc:
+   last=exc
+ else:
+  raise RuntimeError("RC19_BLOCKER_QEMU_SLIRP_UDP_HOSTFWD_TIMEOUT") from last
 PY
+client_status=$?
+set -e
+if [ "$client_status" -ne 0 ]; then
+ echo "RC19_HARD_NO_GO_HOST_CLIENT_PACKET_CHECK_FAILED"
+ tail -n 130 "$W/serial.log" || true
+ tail -n 40 "$W/qemu-errors.log" || true
+ exit "$client_status"
+fi
+set +e
 wait "$qemu_pid"
 status=$?
+set -e
 
 grep -E 'RC18_GUEST:|RC13_GUEST:|RC19_GUEST:' "$W/serial.log" || true
 test "$status" -eq 0
