@@ -41,7 +41,7 @@ jobs:
           exec qemu-mipsel "$XRAY_MIPS_BINARY" "$@"
           SH
           chmod 700 "$RUNNER_TEMP/rc25-xray/xray-qemu"
-      - name: Real old and API-enabled MIPS Xray: netns-local NEW-only redirect, old TCP drain, candidate failure, rollback
+      - name: 'Real old and API-enabled MIPS Xray: netns-local NEW-only redirect, old TCP drain, candidate failure, rollback'
         shell: bash
         timeout-minutes: 4
         run: |
