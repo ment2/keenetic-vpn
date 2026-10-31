@@ -77,8 +77,25 @@ def run(xray):
                                    continuity_verified=True)
                 print("POOL_API: PASS changed pool sends new TCP to C; old A TCP survives", flush=True)
 
-                # Synthetic C health gate fails AFTER promotion: use explicit
-                # rollback to the known-good, still-running A. Do not remove A.
+                # Inject a REAL failure of the selected C backend after a
+                # successful promotion. No implicit direct/freedom fallback
+                # or silent return to A is allowed before explicit BO rollback.
+                c.close()
+                failed_closed = False
+                try:
+                    with socks_connect(socks_port) as broken:
+                        unexpected = echo(broken, b"candidate-c-is-down")
+                        raise RuntimeError(
+                            "selected dead C silently rerouted to " + unexpected
+                        )
+                except (OSError, AssertionError):
+                    failed_closed = True
+                assert failed_closed, "failed candidate allowed an unverified new flow"
+                assert echo(old, b"old-a-during-c-failure") == "A"
+                print("POOL_API: PASS dead selected C blocks new TCP while old A survives", flush=True)
+
+                # Restore only by an explicit API BO override to known-good A.
+                # No removal of A or automatic fallback is simulated.
                 api("bo", "-b", "lab-balancer", "lab-a")
                 with socks_connect(socks_port) as rolled:
                     assert echo(rolled, b"rollback-a") == "A"
