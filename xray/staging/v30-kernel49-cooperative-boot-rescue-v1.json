@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "release": "v30-kernel49-cooperative-lab-rc3",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "status": "LAB_ONLY_NOT_DEPLOYABLE",
+  "production_authorized": false,
+  "install_authorized": false,
+  "automatic_reboot_recovery_authorized": false,
+  "merge_authorized": false,
+  "router_commands": [],
+  "paired_rc1_release": "xray/staging/v30-release-manifest-v1.json",
+  "paired_rc1_rescue": "xray/staging/v30-rescue-contract-v1.json",
+  "paired_rc2_parent_owned": "xray/staging/v30-parent-owned-kernel49-lab-spec-v1.json",
+  "common_mutex": "/opt/var/run/xray-v30-supervisor.lock",
+  "disposable_mutex": "<disposable-root>/shared.lock",
+  "entrypoint_roles": [
+    "S97",
+    "S98",
+    "S99",
+    "watchdog",
+    "cron"
+  ],
+  "git_blob_sha1": {
+    "xray/staging/v30_kernel49_cooperative_ledger.py": "1db93ddb07b5bfca256c14b5cc3666746d08dd1e",
+    "xray/lab/v30_kernel49_cooperative_lab.py": "96b7c337d71ded03328725b5ed24d41f4baea0fd",
+    "xray/lab/v30_kernel49_descendant_guard_lab.py": "bad4351cb0f37e2ae401e960e373cd94dba5c7e0",
+    "xray/staging/v30_kernel49_entrypoints/S97xray": "c0cd41f278d988dcddfc447809a6a3ec6eb468c5",
+    "xray/staging/v30_kernel49_entrypoints/S98xray-wifi": "7dac151c2b384c994a98f227a366c995bb26e146",
+    "xray/staging/v30_kernel49_entrypoints/S99xray-watchdog": "6f13b2825d9b0b3755b8282162641a673146631e",
+    "xray/staging/v30_kernel49_entrypoints/xray-watchdog.sh": "e0bb85ee454cb76c9bc7244568f2a8749d0333ec",
+    "xray/staging/v30_kernel49_entrypoints/xray-safe-hourly.sh": "04281c73cf38a361723ce39d19ea056f58817ae6",
+    "xray/staging/v30_kernel49_entrypoints/xray-fc-cron-guard.sh": "7807f32082785d8618575ecd8cda30cde2d138b9"
+  },
+  "lab_evidence": {
+    "mips_existing": "41211906271",
+    "mips_cooperative": "PENDING_INDEPENDENT_CI_COMPLETION",
+    "offline_descendant": "41213319195",
+    "tests_proven": [
+      "single_direct_child_parent",
+      "shared_flock_sequential_S97_restart",
+      "S98_check_only",
+      "S99_watchdog_cron_health_only",
+      "owner_and_guardian_crash",
+      "UNCERTAIN_never_automatically_replayed",
+      "orphan_grandchild_TCP_UDP_blocks_recovery"
+    ],
+    "physical_router_proven": false
+  },
+  "boot_rescue_gates": {
+    "physical_separate_mount_verified": false,
+    "physical_cold_boot_without_entware_usb": false,
+    "guardian_executable_off_usb": false,
+    "crypto_hashes_verified_on_real_router": false,
+    "kernel49_signal_semantics_verified_on_host": false,
+    "real_xray_descendant_inventory_complete": false,
+    "all_existing_cron_boot_spawners_migrated": false,
+    "live_TPROXY_TCP_UDP_ipv6_dns_no_leak": false,
+    "owner_exact_new_bytes_approval": false
+  },
+  "blocked_scenarios": [
+    "stale_owner_generation",
+    "old_child_or_listener_alive",
+    "unknown_detached_descendant",
+    "unverified_backup_or_mount",
+    "unfenced_S97_or_S98_or_cron",
+    "inflight_UNCERTAIN_without_review",
+    "physical_router_boot_unproven"
+  ],
+  "production_deployment": false
+}
