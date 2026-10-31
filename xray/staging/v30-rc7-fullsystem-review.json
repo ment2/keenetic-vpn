@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "release": "v30-rc7-fullsystem-cgroup1-guest-powercut-review",
+  "repository": "ment2/keenetic-vpn",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "source_git_blobs": {
+    "xray/lab/rc7_fullvm_cgroup_probe.c": "7f66dce16b5986c7a0e2bfb65a6039f53d98682f",
+    "xray/lab/rc7_fullvm_init": "039071ae14d6d8643930a00574216f4bbbd29646",
+    "xray/lab/rc7_fullvm_runner.sh": "49101d8160b0a78c36ddf4f07dc0d264d0b488a5",
+    "xray/lab/rc7_guest_fdatasync.c": "aa8786fff09384a4787450a53226f198cf81b9ed",
+    ".github/workflows/xray-v30-rc7-fullsystem.yml": "85d93923e4c3b80eb857b9aba505502bbfaf3747"
+  },
+  "paired_rc6": "xray/staging/v30-kernel49-rc6-offline-review.json",
+  "fullsystem": {
+    "run_id": 41218961516,
+    "conclusion": "success",
+    "arch": "x86_64",
+    "kernel": "6.8.0-147-generic",
+    "acceleration": "QEMU TCG full-system, two guest boots",
+    "real_cgroup_v1_pids_mounted": true,
+    "real_fork_exec_inheritance": true,
+    "real_detached_child_sockets_tcp_udp_inode": true,
+    "privileged_descendant_escaped_cgroup_v1": true,
+    "scope_is_secure": false,
+    "guardian_flock_rounds": 2,
+    "guardians_per_round": 8,
+    "cas_generation_claim_inside_vm": false,
+    "prior_mips_guardian_cas_ci": 41215515431,
+    "actual_mips_kernel49_proven": false
+  },
+  "rescue": {
+    "separate_virtual_ext4_disks": 2,
+    "simulated_entware_usb_attached_first_boot": true,
+    "simulated_usb_absent_second_boot": true,
+    "host_forced_qemu_sigkill_after_two_files": true,
+    "guest_fdatasync_file_and_fsync_directory": true,
+    "recovered_journal_stage_2": true,
+    "exact_five_sha256_verified": true,
+    "restored_originals": 5,
+    "physical_device_independence_proven": false,
+    "actual_hardware_powerloss_proven": false,
+    "actual_physical_usb_removal_proven": false
+  },
+  "github_artifact": {
+    "name": "v30-rc7-qemu-fullsystem-guest-and-crash-logs-NO-DEPLOY",
+    "id": 13048184541,
+    "expires": "2026-11-14T16:18:11Z"
+  },
+  "remaining_gates": [
+    "real physical Keenetic Linux4.9 cgroup controller/mount/rights unknown",
+    "privileged child can migrate out of cgroup1 on tested guest; no sealed descendant containment proof",
+    "installed legacy S97/S98/S99 watchdog cron still unfenced",
+    "physical nonUSB boot guardian and cold-boot without flash untested",
+    "real mips kernel TPROXY TCP UDP IPv4 IPv6 DNS killswitch leak checks untested",
+    "owner exact release SHA256 and production action not approved"
+  ],
+  "authorization": {
+    "router_jobs": 0,
+    "prod": false,
+    "live_trial": false,
+    "merge": false,
+    "main": false,
+    "snapshot": false,
+    "cloudflare": false,
+    "firewall": false,
+    "routes": false,
+    "cron": false,
+    "automatic_restore": false
+  },
+  "release_decision": "HARD_NO_GO_PRODUCTION",
+  "source_artifacts_only": true
+}
