@@ -17,7 +17,7 @@ if [[ -e /opt/etc/xray/config.json || -e /opt/etc/init.d/S97xray ]]; then
   exit 2
 fi
 set -x
-tmp="$(mktemp -d "${RUNNER_TEMP}/v30-rc10-tproxy.XXXXXX")"
+tmp="$(mktemp -d "/tmp/v30-rc10-tproxy.XXXXXX")"
 chmod 755 "$tmp"  # allow only read access to non-root Xray config, disposable path
 xray_pid="" ; server_pid=""
 cleanup() {
@@ -100,6 +100,7 @@ cat > "$tmp/config.json" <<'JSON'
 JSON
 # The test server is the *only* routable destination and is also the
 # Xray's original destination; no Internet path exists.
+chmod 644 "$tmp/config.json" # verified unprivileged Xray must be able to read JSON
 sudo ip netns exec xv10g "${xray_cmd[@]}" run -test -config "$tmp/config.json"
 sudo ip netns exec xv10s bash -c 'echo "$$" > "$1"; exec python3 -u -m xray.lab.xray_v30_kernel_tproxy_echo server' _ "$tmp/server.pid" >"$tmp/server.log" 2>&1 &
 sudo ip netns exec xv10g bash -c 'echo "$" > "$1"; shift; exec "$@"' _ "$tmp/xray.pid" \
