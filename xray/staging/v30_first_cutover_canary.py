@@ -412,7 +412,7 @@ def trial(args):
         with transaction_lock():
             guarded_signal(watchdog, signal.SIGSTOP, "/opt/bin/xray-watchdog.sh")
             guarded_signal(wifi, signal.SIGSTOP, "/opt/etc/init.d/S98xray-wifi")
-            state_update(phase="fenced")
+            state_update(phase="fencing")
             # Must prove the watchdog and S98 *actually stopped* before
             # terminating the only production listener. SIGSTOP delivery alone
             # is not proof of fencing.
@@ -423,6 +423,7 @@ def trial(args):
             else:
                 raise GateError("watchdog or S98 did not enter stopped state")
             safe_kernel()
+            state_update(phase="fenced")
             if owned_xray_pids() != [args.expected_old_pid]:
                 raise GateError("competing Xray after watcher fence")
             guarded_signal([args.expected_old_pid, args.expected_old_ticks],
