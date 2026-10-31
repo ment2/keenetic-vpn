@@ -1,0 +1,49 @@
+name: Xray v30 RC30 real MIPS49 dual-Xray first TPROXY TCP UDP cutover known-tuple gating
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc30-first-tproxy-cutover.yml'
+      - 'xray/lab/rc30_first_tproxy_*'
+      - 'tests/test_xray_v30_rc30_first_tproxy_cutover.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-mips49-first-tproxy-cutover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source gates for isolated first-tproxy-cutover forwarding
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc30_original_destination.py -v
+          bash -n xray/lab/rc30_first_tproxy_runner.sh
+          bash -n xray/lab/rc30_first_tproxy_netns.sh
+          sh -n xray/lab/rc30_first_tproxy_cutover_guest.sh
+          python3 -m py_compile xray/lab/rc30_first_tproxy_backend.py
+      - name: Install disposable QEMU and MIPS GCC
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Prove old/new TCP UDP flows across real MIPS49 TPROXY cutover and rollback
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc30_first_tproxy_runner.sh | tee "$RUNNER_TEMP/rc30-result.log"
+          grep -Fq RC30_PASS_KNOWN_TUPLE_TPROXY_TCP_UDP_INITIAL_CUTOVER_ONLY "$RUNNER_TEMP/rc30-result.log"
+      - name: Preserve full evidence of PASS or HARD NO-GO
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc30-first-tproxy-known-tuple-independent-backend-no-deploy
+          path: |
+            ${{ runner.temp }}/rc30-first-tproxy-handover/serial.log
+            ${{ runner.temp }}/rc30-first-tproxy-handover/qemu-errors.log
+            ${{ runner.temp }}/rc30-first-tproxy-handover/backend.log
+            ${{ runner.temp }}/rc30-result.log
+          if-no-files-found: warn
+          retention-days: 14
