@@ -1,0 +1,49 @@
+name: Xray v30 RC22 MIPS Linux4.9 disposable postdeath direct-bypass test HARD NO-GO
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc22-mips49-postdeath.yml'
+      - 'xray/lab/rc22_mips49_*'
+      - 'tests/test_xray_v30_rc22_postdeath_packet_gate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc22-qemu-postdeath-traffic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail-closed source regression before disposable guest launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc22_postdeath_packet_gate.py -v
+          bash -n xray/lab/rc22_mips49_postdeath_runner.sh
+          /bin/sh -n xray/lab/rc22_mips49_postdeath_packet.sh
+      - name: Prepare pinned cross-arch standalone MIPS QEMU sandbox
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross \
+            binutils-mipsel-linux-gnu cpio gzip curl kmod
+      - name: Challenge post-death direct fallback with real isolated TCP and UDP
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc22_mips49_postdeath_runner.sh | tee "$RUNNER_TEMP/rc22-result.log"
+          grep -Fq 'RC22: BOUNDED_NO_SENTINEL_RECEIPT_AFTER_XRAY_DEATH_ONLY_NOT_VENDOR_NOREGRESS' "$RUNNER_TEMP/rc22-result.log"
+      - name: Preserve full guest and host logs for HARD NO-GO audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc22-disposable-mips-postdeath-counterexample-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/rc22-mips49/serial.log
+            ${{ runner.temp }}/rc22-mips49/qemu-errors.log
+            ${{ runner.temp }}/rc22-result.log
+          if-no-files-found: warn
+          retention-days: 14
