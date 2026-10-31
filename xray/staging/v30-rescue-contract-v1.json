@@ -24,7 +24,7 @@
       "staging_sha256": "de4b130dc31be1129eee52acea95a90120b08454a19b83fbec680a34d782e228",
       "restore_source": "xray/production/opt/etc/init.d/S97xray",
       "restore_sha256": "87ea1dc13a9be95d57c0595d7a7f13b03fe97bd56ab1f144a3c94d57cc588d5d",
-      "restore_mode": "0700",
+      "restore_mode": "0755",
       "source_snapshot_git_mode": "100755"
     },
     {
@@ -33,7 +33,7 @@
       "staging_sha256": "7caad6f2a56fd56ec9aa3d4082b2fca10cd866173d082a505fc74c0d114b604a",
       "restore_source": "xray/production/opt/etc/init.d/S98xray-wifi",
       "restore_sha256": "6742e5e7f2a2bd41b85e9975371e7c46e66f0cfc6f5f843bf2c5dc1434c53601",
-      "restore_mode": "0700",
+      "restore_mode": "0755",
       "source_snapshot_git_mode": "100755"
     },
     {
@@ -42,7 +42,7 @@
       "staging_sha256": "bb80fd8858057e88a58a200f4a4e60c56df28c34cff7331c809a2a17d363ccaa",
       "restore_source": "xray/production/opt/etc/init.d/S99xray-watchdog",
       "restore_sha256": "e8423e15ed2cf4d3662e5725d27d6e58bd08bbdd807b47fcabe30391ac4c738b",
-      "restore_mode": "0700",
+      "restore_mode": "0755",
       "source_snapshot_git_mode": "100755"
     },
     {
@@ -51,7 +51,7 @@
       "staging_sha256": "8b0dd73ba30d81657d8851eff5bc2447627cd3357589fc3ab5022c1a4dea03d3",
       "restore_source": "xray/production/opt/bin/xray-watchdog.sh",
       "restore_sha256": "dddfcc1d324e30b91df041378645ada869a18b4d35f2842383e5d319fc859e08",
-      "restore_mode": "0700",
+      "restore_mode": "0755",
       "source_snapshot_git_mode": "100755"
     },
     {
@@ -60,7 +60,7 @@
       "staging_sha256": "b7d31628129490e5b521de5a519b2e51b823879f35956022dd1e310d09b136cb",
       "restore_source": "xray/production/opt/bin/xray-wifi-rules.sh",
       "restore_sha256": "ead5de5555aaab1170a140ca3d41ea546330a99ba873b1961bee536bc12780ef",
-      "restore_mode": "0700",
+      "restore_mode": "0755",
       "source_snapshot_git_mode": "100755"
     }
   ],
