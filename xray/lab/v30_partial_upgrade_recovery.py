@@ -20,6 +20,21 @@ from xray.staging.v30_supervisor_core import (
 
 NAMES = ("S97xray", "S98xray-wifi", "S99xray-watchdog",
          "xray-watchdog.sh", "xray-wifi-rules.sh")
+REPO = Path(__file__).resolve().parents[2]
+OLD_ROOT = REPO / "xray/production/opt"
+NEW_ROOT = REPO / "xray/staging/v30_supervisor_templates"
+
+
+def actual_release_contents(name):
+    if name not in NAMES:
+        raise FenceError("unexpected file name")
+    relative = "etc/init.d/" + name if name.startswith("S9") else "bin/" + name
+    old_path = OLD_ROOT / relative
+    new_path = NEW_ROOT / name
+    if old_path.is_symlink() or new_path.is_symlink():
+        raise FenceError("symlink in frozen release")
+    return old_path.read_bytes(), new_path.read_bytes()
+
 
 
 def root_only_temp(path):
@@ -87,21 +102,27 @@ def preflight(root, manifest):
     return True
 
 
-def prepare(root):
+def prepare(root, *, real_bundle=False):
     root = root_only_temp(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     for sub in ("active", "backup", "candidate"):
         (root / sub).mkdir(mode=0o700)
     entries = {}
     for name in NAMES:
-        old = (name + "-v29-frozen-test\n").encode()
-        new = (name + "-v30-cooperative-test\n").encode()
+        if real_bundle:
+            old, new = actual_release_contents(name)
+        else:
+            old = (name + "-v29-frozen-test\n").encode()
+            new = (name + "-v30-cooperative-test\n").encode()
         for sub, contents in (("active", old), ("backup", old), ("candidate", new)):
             path = root / sub / name
             replace_bytes(path, contents, 0o700)
         entries[name] = {"original": digest(old), "candidate": digest(new),
                          "mode": 0o700}
-    atomic_journal(root / "manifest.json", {"schema": 1, "entries": entries})
+    atomic_journal(root / "manifest.json", {
+        "schema": 1, "entries": entries,
+        "source_kind": "frozen_actual_script_bytes" if real_bundle else "synthetic_bytes",
+    })
     atomic_journal(root / "txn.json", {"phase": "old", "updated": []})
 
 
@@ -161,9 +182,9 @@ def recover(root):
         (root / "success").write_text("PARTIAL_UPGRADE_ALL_FIVE_RESTORED\n")
 
 
-def demo(root):
+def demo(root, *, real_bundle=False):
     root = root_only_temp(root)
-    prepare(root)
+    prepare(root, real_bundle=real_bundle)
     child = subprocess.Popen([sys.executable, "-m",
         "xray.lab.v30_partial_upgrade_recovery", "--updater", str(root)],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -189,6 +210,14 @@ def demo(root):
         print("PARTIAL_UPGRADE: PASS killed updater after 2/5 staged files replaced")
         print("PARTIAL_UPGRADE: PASS independent interpreter recovered 5/5 original SHA256/modes")
         print("PARTIAL_UPGRADE: PASS fsynced manifest/intent and shared flock fail-closed")
+        if real_bundle:
+            m = json.loads((root / "manifest.json").read_text())
+            assert m["source_kind"] == "frozen_actual_script_bytes"
+            for name in NAMES:
+                old, new = actual_release_contents(name)
+                assert m["entries"][name]["original"] == digest(old)
+                assert m["entries"][name]["candidate"] == digest(new)
+            print("PARTIAL_UPGRADE: PASS real frozen legacy and staged replacement bytes 5/5")
         print("LIMITATION: disposable files, not real S97/S98 process migration or reboot")
     finally:
         if child.poll() is None:
@@ -202,9 +231,10 @@ def main():
     group.add_argument("--demo", type=Path)
     group.add_argument("--updater", type=Path)
     group.add_argument("--recover", type=Path)
+    p.add_argument("--frozen-staging", action="store_true")
     a = p.parse_args()
     if a.demo is not None:
-        demo(a.demo)
+        demo(a.demo, real_bundle=a.frozen_staging)
     elif a.updater is not None:
         updater(a.updater)
     else:
