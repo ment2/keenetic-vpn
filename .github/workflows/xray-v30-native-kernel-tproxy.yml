@@ -1,0 +1,40 @@
+name: Xray v30 native kernel TPROXY isolated control
+
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-native-kernel-tproxy.yml'
+      - 'xray/lab/xray_v30_kernel_tproxy_netns.sh'
+      - 'xray/lab/xray_v30_kernel_tproxy_echo.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-kernel-tproxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install isolated namespace and netfilter tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends iproute2 iptables unzip
+      - name: Download pinned official Xray 26.2.6 linux amd64 test binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/xray-native"
+          curl -fL --retry 3 --max-time 120 -o "$RUNNER_TEMP/xray-native/xray.zip" \
+            https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-64.zip
+          unzip -j "$RUNNER_TEMP/xray-native/xray.zip" xray -d "$RUNNER_TEMP/xray-native"
+          chmod 700 "$RUNNER_TEMP/xray-native/xray"
+          "$RUNNER_TEMP/xray-native/xray" version
+      - name: Compare native IP_TRANSPARENT, TCP and UDP under disposable netns
+        shell: bash
+        run: |
+          export XRAY_NATIVE_BINARY="$RUNNER_TEMP/xray-native/xray"
+          bash xray/lab/xray_v30_kernel_tproxy_netns.sh --native-run
