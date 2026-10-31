@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "release": "RC14-PIDFD-historical-RC10-provenance-reconciliation",
+  "scope": "DISPOSABLE_GITHUB_ACTIONS_AND_OFFLINE_ONLY",
+  "branch": "feature/xray-v30-stable-tcp-ingress-lab-20261031",
+  "original_rc10": {
+    "manifest_path": "xray/staging/v30-rc10-linux49-capability-tproxy-cas-rescue-review.json",
+    "manifest_git_blob_sha": "1752f38a0680cf2e56f4cb5d5a8ecdddbd06c191",
+    "old_file_path": "xray/lab/rc10_native_tproxy_minimal_caps.sh",
+    "archive_copy_path": "xray/lab/archive/rc10_native_tproxy_minimal_caps_historical.sh",
+    "original_git_blob_sha": "9b5b0f6c14b59d37eaa0fd17c27890e6a8895660",
+    "historical_commit": "d4363ec6462024aa5e8b5b0b82f3c93ec7a23cbd",
+    "manifest_edited": false
+  },
+  "current_pidfd_revision": {
+    "script_path": "xray/lab/rc10_native_tproxy_minimal_caps.sh",
+    "script_git_blob_sha": "9164b2cf57010c53a7cf90b2421940ac1b00aa60",
+    "pidfd_guard_path": "xray/lab/rc11_pidfd_guard.py",
+    "pidfd_guard_git_blob_sha": "98435adf5e3ec91fe6f0e0fac8f89d3457ac5e1c",
+    "native_workflow_path": ".github/workflows/xray-v30-rc10-native-cap-tproxy.yml",
+    "native_workflow_git_blob_sha": "e6d455652303755b87e314c4b2c95133ccf9fd78",
+    "proven_successful_native_ci_id": 41229534586
+  },
+  "certification": {
+    "historical_rc10_source_is_immutable": true,
+    "new_sha_requires_independent_evidence": true,
+    "production_authorized": false,
+    "kernel49_native_mips_packet_path_proven": false,
+    "physical_legacy_root_cgroup_fencing_proven": false,
+    "physical_non_usb_boot_rescue_proven": false,
+    "physical_vendor_ndm5_no_leak_proven": false
+  },
+  "decision": "HARD_NO_GO_PRODUCTION",
+  "router_jobs": 0,
+  "production_commands": []
+}
