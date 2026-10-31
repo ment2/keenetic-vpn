@@ -11,6 +11,7 @@ on:
       - 'xray/lab/v30_first_migration_transaction.py'
       - 'xray/lab/v30_autonomous_guard_rehearsal.py'
       - 'xray/lab/v30_partial_upgrade_recovery.py'
+      - 'xray/lab/v30_release_manifest_contract.py'
       - 'tests/**'
       - 'tools/**'
       - 'xray/production/MANIFEST.sha256'
@@ -39,6 +40,23 @@ jobs:
               ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
           print('PASS: parsed', len(files), 'Python source files')
           PY
+      - name: Verify versioned nine-file SHA256 Git blob and frozen mode release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m xray.lab.v30_release_manifest_contract --verify > "$RUNNER_TEMP/v30-release-integrity.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          result=json.loads((Path(os.environ["RUNNER_TEMP"])/"v30-release-integrity.json").read_text())
+          assert result["verified"] == 9
+          assert result["status"] == "PASS_STAGED_INTEGRITY_ONLY"
+          assert result["production_trial_allowed"] is False
+          assert result["deployment_allowed"] is False
+          assert len(result["unresolved_gates"]) == 8
+          print("PASS: 9 exact staged SHA256/git blobs and 5 frozen original SHA/modes; NOT deploy authorization")
+          PY
+
       - name: Pin exact first-cutover canary SHA256 (never execute live trial)
         shell: bash
         run: |
