@@ -7,7 +7,7 @@ WORK="$RUNNER_TEMP/xray-v30-rc7-fullvm"
 test ! -e "$WORK"
 mkdir -p "$WORK"/initramfs/bin "$WORK"/initramfs/proc "$WORK"/initramfs/sys "$WORK"/initramfs/dev "$WORK"/initramfs/run "$WORK"/initramfs/mnt "$WORK"/rescue "$WORK"/active
 for command_name in qemu-system-x86_64 busybox debugfs gcc cpio mkfs.ext4; do command -v "$command_name"; done
-KERNEL="$(find /boot -maxdepth 1 -name 'vmlinuz-*' -type f | sort -V | tail -1)"
+KERNEL="$(find /boot -maxdepth 1 -name 'vmlinuz-*-generic' -type f | sort -V | tail -1)"
 test -s "$KERNEL" || { echo "RC7: NO_REAL_FULL_SYSTEM_KERNEL_HARD_NO_GO"; exit 77; }
 echo "RC7: QEMU full-system kernel=$KERNEL"
 cp "$(command -v busybox)" "$WORK/initramfs/bin/busybox"
@@ -87,6 +87,8 @@ done
 if [ "$SUCCESS" != 1 ]; then
   echo "RC7: FIRST_BOOT_FAILED_OR_TIMED_OUT" >&2
   tail -65 "$FIRST_LOG" || true
+  echo "RC7: QEMU_STARTUP_DIAGNOSTIC:"
+  cat "$WORK/first-qemu-errors.log" || true
   exit 1
 fi
 echo "RC7: QEMU_POWER_CUT_AFTER_EXACTLY_TWO_FSYNC_WRITES"
