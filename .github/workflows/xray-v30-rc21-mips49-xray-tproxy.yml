@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/xray-v30-rc21-mips49-xray-tproxy.yml'
       - 'xray/lab/rc21_mips49_*'
+      - 'xray/lab/rc19_mips49_tcpudp_echo.c'
+      - 'tests/test_xray_v30_rc21_udp_lab_contract.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,6 +17,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Static fail-closed test of isolated original destination and separate UDP backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc21_udp_lab_contract.py -v
+          bash -n xray/lab/rc21_mips49_xray_tproxy_runner.sh
+          /bin/sh -n xray/lab/rc21_mips49_xray_packet.sh
       - name: Install disposable MIPS Linux4.9 full-system QEMU and cross-compiler
         run: |
           set -euo pipefail
