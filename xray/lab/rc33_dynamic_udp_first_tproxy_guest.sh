@@ -91,7 +91,7 @@ while read -r src sport dst dport;do
  /sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -s "$src" -d "$dst" -p udp --sport "$sport" --dport "$dport" -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
  flow_count=$((flow_count+1))
 done </lab/rc33-udp-flows.txt
-test "$flow_count" = 2 || {echo RC33_GUEST_HARD_NO_GO_DYNAMIC_FLOW_COUNT;exit 3;}
+test "$flow_count" = 2 || { echo RC33_GUEST_HARD_NO_GO_DYNAMIC_FLOW_COUNT;exit 3; }
 /sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -p tcp --dport 19301 --tcp-flags SYN,RST,ACK SYN -j TPROXY --on-port 22345 --tproxy-mark 0x40000000/0x40000000
 /sbin/iptables -t mangle -I PREROUTING 1 -i eth1 -s 10.77.0.1 -p tcp --sport 21111 --dport 19301 -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 /sbin/iptables -t mangle -S PREROUTING >/lab/rules-cutover
