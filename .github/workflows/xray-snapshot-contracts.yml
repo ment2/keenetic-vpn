@@ -38,6 +38,16 @@ jobs:
               ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
           print('PASS: parsed', len(files), 'Python source files')
           PY
+      - name: Pin exact first-cutover canary SHA256 (never execute live trial)
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\\n' \\
+            93f187cadbe985e65e67f619f9f3d7c1c8f120cdb9a506b22419a75cdeabdb4d \\
+            xray/staging/v30_first_cutover_canary.py | sha256sum -c -
+          sha256sum xray/staging/v30_first_cutover_canary.py
+          echo 'PASS: pinned canary content exact; no router or network operations'
+
       - name: Compile proposed first-cutover canary without executing it
         shell: bash
         run: |
