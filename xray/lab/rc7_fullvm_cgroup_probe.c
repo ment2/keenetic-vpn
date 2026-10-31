@@ -42,6 +42,7 @@ static void guardian_races(void){
   for(int round=0;round<2;round++){
     int fd=open("/run/rc7-guardian.lock",O_CREAT|O_RDWR,0600);
     if(fd<0)stop("guardian lock open");
+    close(fd);
     pid_t ids[8];int holders[8]={0},won=0;
     for(int j=0;j<8;j++){
       int pipefd[2];if(pipe(pipefd))stop("guardian pipe");
@@ -49,11 +50,14 @@ static void guardian_races(void){
       if(ids[j]<0)stop("guardian fork");
       if(ids[j]==0){
         close(pipefd[0]);
-        int rc=flock(fd,LOCK_EX|LOCK_NB);
+        int ownfd=open("/run/rc7-guardian.lock",O_CREAT|O_RDWR,0600);
+        if(ownfd<0)_exit(7);
+        int rc=flock(ownfd,LOCK_EX|LOCK_NB);
         char c=rc==0?'W':'L';
         write(pipefd[1],&c,1);
         close(pipefd[1]);
         if(c=='W')sleep(3);
+        close(ownfd);
         _exit(0);
       }
       close(pipefd[1]);char c='?';
@@ -66,7 +70,6 @@ static void guardian_races(void){
       if(holders[j])kill(ids[j],SIGKILL); /* parent of unreaped test child only */
       waitpid(ids[j],NULL,0);
     }
-    close(fd);
     dprintf(1,"RC7_GUEST: REAL_EIGHT_GUARDIAN_FLOCK_RACE_ROUND_%d_ONE_WINNER\n",round+1);
   }
 }
@@ -130,6 +133,12 @@ int main(int argc,char **argv){
    usleep(10000);
  }
  if(!found)stop("child not inherited");
+ int ready=0;
+ for(int i=0;i<300;i++){
+   if(access("/run/rc7childready",F_OK)==0){ready=1;break;}
+   usleep(10000);
+ }
+ if(!ready)stop("detached child did not bind sockets");
  if(!fd_in_net(pid,"tcp")||!fd_in_net(pid,"udp"))stop("TCP/UDP FD socket inode crosscheck");
  dprintf(1,"RC7_GUEST: REAL_TCP_UDP_FD_INODE_OWNER_PASS\n");
  dprintf(1,"RC7_GUEST: REAL_CGROUP_V1_FORK_INHERIT_PASS pid=%d\n",pid);
