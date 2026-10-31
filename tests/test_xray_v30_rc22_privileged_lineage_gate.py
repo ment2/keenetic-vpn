@@ -47,7 +47,8 @@ class RC22PrivilegedLegacyLineage(unittest.TestCase):
             (replace(self.task,generation=8),"BEFORE_BOOT_OR_GENERATION_CAS_MISMATCH"),
             (replace(self.task,boot_id="other-boot"),"BEFORE_BOOT_OR_GENERATION_CAS_MISMATCH"),
             (replace(self.task,start_ticks=0),"BEFORE_PROCESS_IDENTITY_MISSING"),
-            (replace(self.task,ppid=0),"BEFORE_PROCESS_IDENTITY_MISSING")):
+            (replace(self.task,ppid=0),"BEFORE_PROCESS_IDENTITY_MISSING"),
+            (replace(self.task,ppid=1),"BEFORE_PROCESS_IDENTITY_MISSING")):
             with self.subTest(reason=reason):
                 self.denied(replace(self.e,before=(child,)),reason)
     def test_duplicate_orphan_pid_reuse_and_socket_inventory(self):
