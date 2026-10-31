@@ -1,0 +1,36 @@
+name: Xray v30 RC26 evidence-only UDP return and legacy fencing fail-closed
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc26-evidence-gate.yml'
+      - 'xray/lab/rc26_udp_legacy_cutover_gate.py'
+      - 'tests/test_xray_v30_rc26_udp_legacy_cutover_gate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-only-failclosed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify every unresolved physical and packet witness still gates production
+        run: |
+          set -euo pipefail
+          python3 -m py_compile xray/lab/rc26_udp_legacy_cutover_gate.py
+          python3 -m unittest discover -s tests -p 'test_xray_v30_rc26_udp_legacy_cutover_gate.py' -v
+          python3 - <<'PY'
+          from xray.lab.rc26_udp_legacy_cutover_gate import current_confirmed_evidence, evaluate
+          e=evaluate(current_confirmed_evidence())
+          assert e["state"]=="HARD_NO_GO" and not e["production_authorized"]
+          for k in ["UNPROVEN:exact_host_udp_return_positive_control",
+                    "UNPROVEN:old_tcp_conntrack_established_before_cutover",
+                    "ACTUAL_PRIVILEGED_CGROUP_ESCAPE_OBSERVED"]:
+              assert k in e["reasons"],(k,e)
+          print("RC26: VERIFIED_OFFLINE_REVIEW_HARD_NO_GO_NO_ROUTER_IO")
+          PY
