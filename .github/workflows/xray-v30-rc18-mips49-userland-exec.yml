@@ -1,0 +1,40 @@
+name: Xray v30 RC18 real Linux4.9 MIPS32LE pinned glibc/iproute2/iptables exec NO NIC
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc18-mips49-userland-exec.yml'
+      - 'xray/lab/rc18_mips49_guest_userland_*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-mips-userland-qemu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install disposable QEMU/cross compiler
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod
+      - name: Execute SHA-pinned MIPS userland in actual full-system Linux4.9
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc18_mips49_guest_userland_runner.sh | tee "$RUNNER_TEMP/rc18-result.log"
+          grep -Fq 'RC18: SUCCESS_EXECUTABLE_MIPS49_USERLAND_CLOSURE_NO_NIC' "$RUNNER_TEMP/rc18-result.log"
+      - name: Keep disposable guest logs only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc18-mips49-userland-executed-NO-PACKET-NO-DEPLOY
+          path: |
+            ${{ runner.temp }}/rc18-mips49/serial.log
+            ${{ runner.temp }}/rc18-mips49/qemu-errors.log
+            ${{ runner.temp }}/rc18-mips49/module-order.log
+            ${{ runner.temp }}/rc18-result.log
+          if-no-files-found: warn
+          retention-days: 14
