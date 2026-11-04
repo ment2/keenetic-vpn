@@ -18,6 +18,10 @@ class ContractTests(unittest.TestCase):
         for raw in ("ok", "HTTP 401", "network_error", {"status": "ok"}, None):
             self.assertNotEqual(self.make(raw)["status"], "reachable")
 
+    def test_unhashable_status_fails_closed(self):
+        self.assertEqual(self.make({"status": ["reachable"]})["status"], "unknown")
+        self.assertEqual(self.make({"status": {"value": "reachable"}})["status"], "unknown")
+
     def test_success_requires_route_witness(self):
         self.assertEqual(self.make("reachable", False)["status"], "unknown")
 
