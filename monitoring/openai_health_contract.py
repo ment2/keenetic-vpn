@@ -22,6 +22,12 @@ def normalize_openai_result(tag, node_id, raw, *, route_verified, duration_ms, c
     # Fail closed: only exact contract value 'reachable' constitutes positive evidence.
     # Other existing results are sanitized categories, not free text exceptions.
     status = raw if isinstance(raw, str) else (raw.get("status") if isinstance(raw, dict) else None)
+    if status == "xray_start_failed":
+        status = "unreachable"
+    elif isinstance(status, str) and status.startswith("http_"):
+        # Only the dedicated probe's explicit 401 witness becomes reachable.
+        # All other response codes are failures; never leak arbitrary HTTP text.
+        status = "http_error"
     if not isinstance(status, str) or status not in _ALLOWED:
         status = "unknown"
     if status == "reachable" and not route_verified:
