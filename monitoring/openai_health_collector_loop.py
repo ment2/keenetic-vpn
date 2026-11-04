@@ -78,7 +78,13 @@ def monitor(*, interval_s=900,max_cycles=0,publish=False,
     directory.mkdir(parents=True,exist_ok=True,mode=0o700)
     os.chmod(directory,0o700)
     with os.fdopen(os.open(directory/"openai.lock",os.O_RDWR|os.O_CREAT,0o600),"r+") as lock:
-        fcntl.flock(lock.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
+        try:
+            fcntl.flock(lock.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:
+            # Another cycle owns the lock. Do not spawn competing Xray probes
+            # and do not emit a noisy traceback from the cron job.
+            print("OPENAI_CYCLE_SKIPPED lock_busy", flush=True)
+            return
         stop=[False]
         def shutdown(sig,frame):stop[0]=True
         old_term=signal.signal(signal.SIGTERM,shutdown)
