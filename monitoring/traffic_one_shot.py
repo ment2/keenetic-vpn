@@ -66,11 +66,14 @@ def collect_once(interfaces, state_dir, publish=False, broker='192.168.0.169', u
         path = Path(state_dir) / (iface + '.json')
         old = previous_sample(path, iface)
         event = event_from_sample(sample, old, stamp)
-        save_snapshot_atomic(path, sample)
         if publish:
             password = load_password(secret_file)
             publish_once(host=broker, port=1883, username=username, password=password,
                          topic=f'keenetic/vpn-monitor/v1/traffic/{iface}', payload=event)
+        # Advance baseline only after successful PUBACK when publishing.
+        # If broker is unavailable, keep previous snapshot so missed bytes
+        # are counted on recovery, unless the gap is too long to trust.
+        save_snapshot_atomic(path, sample)
         results.append((iface, event['interval']['status']))
     return results
 
