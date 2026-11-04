@@ -33,4 +33,9 @@ class TrafficOneShotTests(unittest.TestCase):
             self.assertEqual(result,[('apclii0','baseline')])
             self.assertEqual(mqtt.call_args.kwargs['topic'],'keenetic/vpn-monitor/v1/traffic/apclii0')
             self.assertEqual(mqtt.call_args.kwargs['payload']['interval']['status'],'baseline')
+    def test_failed_puback_does_not_advance_baseline(self):
+        with tempfile.TemporaryDirectory() as temp, patch('monitoring.traffic_one_shot.read_snapshot',return_value=self.sample()), patch('monitoring.traffic_one_shot.load_password',return_value='fake'), patch('monitoring.traffic_one_shot.publish_once',side_effect=ConnectionError("broker down")):
+            with self.assertRaises(ConnectionError):
+                collect_once(['apclii0'],temp,publish=True)
+            self.assertFalse((Path(temp)/'apclii0.json').exists())
 if __name__=='__main__':unittest.main()
