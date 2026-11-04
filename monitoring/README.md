@@ -1,6 +1,6 @@
 # Keenetic VPN Monitoring + Home Assistant
 
-Status: PLANNING; not deployed. Date: 2026-11-04.
+Status: PARTIALLY DEPLOYED (MQTT sensors + scheduled OpenAI probe confirmed; HA dashboard YAML prepared, not yet installed/verified). Date: 2026-11-04.
 
 ## Purpose
 Create passive/read-only long-term monitoring of individual Xray/VLESS VPN servers, quality, outages, egress IP and configuration generation; publish trends to Home Assistant on existing mini-PC. This is a separate feature branch of ment2/keenetic-vpn.
@@ -35,3 +35,11 @@ Per-node route provenance confirmed, subscription reordering preserves node ID, 
 
 ## Current state
 Documentation only. No production Keenetic changes; no mini-PC or Home Assistant changes; no credentials collected or stored. See library /Keenetic/VPN-Monitoring for matching project overview.
+
+## Update 2026-11-04: verified runtime and panel
+
+The earlier planning sections above are historical, not the current deployment status. The router has the isolated OpenAI monitor on a 15-minute schedule; the latest confirmed journal contained 3 full rounds with 5 reachable nodes and vpn06/vpn07 network_error. MQTT discovery publishes 3 OpenAI sensors per node (21). Earlier user confirmation reports 28 general VLESS sensors and 12 interface counters. Sensor registration and current live status in HA require direct verification.
+
+The `write_file` update was initially blocked because a hardlinked backup made `st_nlink=2`, which agent_safety explicitly rejects. A separate independent backup was created; update succeeded with git blob `326ecbfb905377cbef740c72829d53a163bc2704` and SHA256 `a5e4d80dbc9709ad2cece194f2a4b07891022fa2489ec9ab56d81d3617b27236`; conflict test `LOCK_CONTENTION_TEST_OK` passed with no Xray/MQTT probes.
+
+See `monitoring/diagnostics/2026-11-04-monitor-writefile-lockfix-and-ha-dashboard.md` for job IDs, incident and verification. See `monitoring/homeassistant/keenetic_vpn_dashboard.yaml` for the complete native Lovelace dashboard YAML. The dashboard YAML has **not** been imported into HA in this interaction; a connected HA admin control or user-side import and entity-ID review is still required. Control-agent architecture is documented separately in `ment2/keenetic-control`, branch `feature/homeassistant-admin-agent-20261104`.
