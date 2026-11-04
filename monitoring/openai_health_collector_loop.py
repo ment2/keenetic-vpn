@@ -42,6 +42,33 @@ def one_round(config, probe, *, publish=False, password=None, sink=None):
     return results
 
 
+def rotate_history(path, *, max_bytes=2 * 1024 * 1024, backups=3):
+    """Bounded local-only file retention, invoked under openai.lock."""
+    path = Path(path)
+    if not 65536 <= max_bytes <= 64 * 1024 * 1024 or not 1 <= backups <= 10:
+        raise ValueError("unsafe retention configuration")
+    if not path.exists():
+        return False
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("unsafe history path")
+    if path.stat().st_size < max_bytes:
+        return False
+    oldest = path.with_name(path.name + "." + str(backups))
+    if oldest.exists():
+        if oldest.is_symlink() or not oldest.is_file():
+            raise ValueError("unsafe rotation target")
+        oldest.unlink()
+    for index in range(backups - 1, 0, -1):
+        previous = path.with_name(path.name + "." + str(index))
+        following = path.with_name(path.name + "." + str(index + 1))
+        if previous.exists():
+            if previous.is_symlink() or not previous.is_file():
+                raise ValueError("unsafe rotation source")
+            previous.replace(following)
+    path.replace(path.with_name(path.name + ".1"))
+    return True
+
+
 def monitor(*, interval_s=900,max_cycles=0,publish=False,
             config_path="/opt/etc/xray/config.json",
             history_dir="/opt/var/lib/vpn-monitor/openai"):
@@ -68,6 +95,7 @@ def monitor(*, interval_s=900,max_cycles=0,publish=False,
                     if publish and count==0:
                         publish_for_inventory(entries=entries,host=HOST,
                             username="keenetic_monitor",password=password)
+                    rotate_history(directory/"history.jsonl")
                     with os.fdopen(os.open(directory/"history.jsonl",os.O_WRONLY|os.O_APPEND|os.O_CREAT,0o600),"a") as sink:
                         statuses=one_round(config,probe,publish=publish,password=password,sink=sink)
                     print("OPENAI_CYCLE",count+1,statuses,flush=True)
