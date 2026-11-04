@@ -37,7 +37,7 @@ def _packet(kind, payload):
     return bytes([kind]) + _remaining(len(payload)) + payload
 
 def publish_once(*, host, port, username, password, topic, payload, client_id="keenetic-traffic-monitor", retain=False):
-    if not isinstance(topic, str) or not topic.startswith("keenetic/vpn-monitor/v1/") or any(c in topic for c in "+#\x00"):
+    if not isinstance(topic, str) or not (topic.startswith("keenetic/vpn-monitor/v1/") or (topic.startswith("homeassistant/sensor/keenetic6059_") and topic.endswith("/config"))) or any(c in topic for c in "+#\x00"):
         raise ValueError("topic not allowed")
     if not 1 <= port <= 65535:
         raise ValueError("port")
