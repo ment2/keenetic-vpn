@@ -26,6 +26,19 @@ class OpenAIProbeTests(unittest.TestCase):
             self.assertNotEqual(event["status"],"reachable")
             self.assertFalse(event["route_verified"])
 
+    def test_xray_start_and_http_errors_sanitized(self):
+        cases = {
+            "xray_start_failed": "unreachable",
+            "http_403": "http_error",
+            "http_200": "http_error",
+            "network_error": "network_error",
+            "timeout": "timeout",
+        }
+        for raw, expected in cases.items():
+            event = probe_one(cfg(), "vpn01", lambda _: raw)
+            self.assertEqual(event["status"], expected)
+            self.assertFalse(event["route_verified"])
+
     def test_exception_fails_closed(self):
         def fail(_):raise RuntimeError("private-uuid")
         event=probe_one(cfg(),"vpn01",fail)
