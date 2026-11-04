@@ -29,7 +29,7 @@ def normalize_result(tag, node_id, raw, duration_s, now=None):
     except ValueError:
         address = None
         status = "failed"
-    country = raw.get("country_code") if status == "ok" else None
+    if status == "ok" and address is None:\n        status = "failed"\n    country = raw.get("country_code") if status == "ok" else None
     if not isinstance(country,str) or not re.fullmatch("[A-Z]{2}",country):
         country = None
     return {
