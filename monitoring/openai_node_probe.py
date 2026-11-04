@@ -32,13 +32,13 @@ def probe_one(config, tag, probe):
         raise ValueError("missing/duplicate VLESS outbound")
     node = next(item for item in inventory(config) if item["tag"] == tag)
     started = time.monotonic()
-    # The route witness is the installed check's private Xray proxy path,
-    # *not* an assertion that the OpenAI endpoint responded successfully.
+    # Only explicit HTTP 401 from isolated SOCKS5-to-OpenAI demonstrates
+    # that the OpenAI route actually worked; failures have no positive witness.
     try:
         raw = probe(outbounds[0])
     except Exception:
         raw = "unknown"
     duration_ms = min(120000, max(0, round((time.monotonic()-started)*1000)))
     return normalize_openai_result(tag, node["node_id"], raw,
-        route_verified=True, duration_ms=duration_ms,
+        route_verified=(raw == "reachable"), duration_ms=duration_ms,
         checked_at=datetime.now(timezone.utc).isoformat())
