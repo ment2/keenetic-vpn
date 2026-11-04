@@ -25,15 +25,17 @@ def one_round(config, probe, *, publish=False, password=None, sink=None):
         tag = entry["tag"]
         try:
             event = probe_one(config, tag, probe)
+            # Persist the sanitized measurement *before* attempting MQTT.
+            # A broker outage must not erase already-observed probe evidence.
+            if sink is not None:
+                sink.write(json.dumps(event, separators=(",",":")) + "\n")
+                sink.flush()
             if publish:
                 if not password:
                     raise ValueError("missing local MQTT password")
                 publish_once(host=HOST,port=1883,username="keenetic_monitor",
                     password=password,topic=TOPIC.format(node_id=event["node_id"]),
                     payload=event,client_id="keenetic-vpn-openai")
-            if sink is not None:
-                sink.write(json.dumps(event, separators=(",",":")) + "\n")
-                sink.flush()
             results.append((tag,event["status"]))
         except Exception as exc:
             results.append((tag,"error:"+type(exc).__name__))
