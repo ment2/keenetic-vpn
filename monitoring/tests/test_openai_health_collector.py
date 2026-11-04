@@ -61,7 +61,15 @@ class OpenAIProbeTests(unittest.TestCase):
         sink=io.StringIO()
         results=one_round(cfg(),lambda _: "reachable",publish=True,password=None,sink=sink)
         self.assertEqual(results,[("vpn01","error:ValueError")])
-        self.assertEqual(sink.getvalue(),"")
+        self.assertEqual(json.loads(sink.getvalue())["status"], "reachable")
+
+    def test_mqtt_outage_preserves_history(self):
+        sink=io.StringIO()
+        with patch("monitoring.openai_health_collector_loop.publish_once", side_effect=OSError("offline")):
+            result=one_round(cfg(),lambda _: "reachable",publish=True,password="secret",sink=sink)
+        self.assertEqual(result,[("vpn01","error:OSError")])
+        self.assertEqual(json.loads(sink.getvalue())["status"], "reachable")
+        self.assertNotIn("secret", sink.getvalue())
 
     def test_invalid_interval_never_reads_config(self):
         with self.assertRaises(ValueError):
