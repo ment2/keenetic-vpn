@@ -4,7 +4,7 @@ from monitoring.xray_change_gate import decide
 
 def conf(tags):
     return json.dumps({"outbounds":[{"tag":t,"protocol":"vless"} for t in tags],
-     "routing":{"balancers":[{"tag":"auto","fallbackTag":tags[0]}]}}).encode()
+     "routing":{"balancers":[{"tag":"auto","fallbackTag":tags[0] if tags else None}]}}).encode()
 
 class GateTests(unittest.TestCase):
     def test_identical_live_skips(self):
