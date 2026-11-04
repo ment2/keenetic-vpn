@@ -27,3 +27,11 @@ This is a read-only hardware inventory, NOT an approved production cutover, depl
 - First hardware operation, if separately reviewed, should be a non-destructive creation of a separate off-USB rescue package with exact manifest verification, on-device mount/persistence proof and local recovery procedure; **do not assume merely writing to /root proves USB-independent boot recovery**. Real physical USB-unplug/reboot would require user intervention.
 - No `killall`, S97 restart, config replacement, cron/firewall/route edits, Xray deployment or main/snapshot merge occurred.
 - Previous RC37 offline CI 41814237742 SUCCESS 752/752 at SHA 52f3a042. Attempts to add a further process-control test through the GitHub connector were safety-blocked; do not retry/bypass that block. This preflight is read-only and independent of it.
+
+
+## Additional independent media check and CI (same day)
+
+- Router read-only job `480a176c-1de4-4325-be24-accef42b5c76`, done exit 0: `/`, `/root` and `/etc` belong to a **read-only** root filesystem (`/dev/root`, 0 free writable bytes). `/opt` is a **writable USB mount** (`/dev/sda1`, approximately 3.73 GB available); `/tmp` is volatile tmpfs (approximately 130 MB free). Therefore **none of these existing writable mounts provides a durable, independent, non-USB rescue**. Do not attempt to write to read-only root or claim `/tmp` survives reboot.
+- `xray/lab/rc38_rescue_archive_audit.py` added as strictly read-only archive verifier with safe root-relative path constraints, symlink denial, SHA256/size verification and original-mode restoration requirements. It never restores files or authorizes production.
+- `tests/test_xray_v30_rc38_rescue_archive_audit.py`: 10 dedicated negative/positive tests. Full GitHub Actions source-contracts **762/762 SUCCESS**, run https://github.com/ment2/keenetic-vpn/actions/runs/41815955189 at exact source SHA `460decc23552d9efbe9bb7a8be880de00f513a96` (job 126526627458). This is runner-side CI, **not physical USB-loss testing**.
+- User action is needed to establish an independent and recoverable off-USB rescue path (e.g., separate reliable storage with tested local restoration). There is no safe automatic deployment path on the verified current mounts. Still `HARD_NO_GO_PRODUCTION`.
