@@ -3,9 +3,16 @@ on:
   push:
     branches: [feature/vpn-monitoring-home-assistant-20261104]
     paths:
-      - 'monitoring/**'
+      - 'monitoring/**/*.py'
       - '.github/workflows/vpn-monitoring-tests.yml'
   workflow_dispatch:
+
+# Keep only the newest offline test run per feature branch, rather than
+# accumulating a separate ubuntu-latest job for every rapid source commit.
+concurrency:
+  group: vpn-monitoring-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit:
     runs-on: ubuntu-latest
