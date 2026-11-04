@@ -21,6 +21,7 @@ BLOCKERS = (
     "VENDOR_KERNEL_AND_PHYSICAL_RESCUE_NOT_ACCEPTED",
     "DNS_IPV6_NO_LEAK_NOT_VERIFIED",
     "DURABLE_GENERATION_CAS_AND_ROLLBACK_NOT_VERIFIED",
+    "FRESH_PER_NODE_OPENAI_ATTESTATIONS_NOT_VERIFIED_BY_MODEL",
 )
 
 
@@ -36,6 +37,7 @@ class PoolReview:
     added_tags: tuple[str, ...]
     identity_conflicts: tuple[str, ...]
     active_endpoint_known: bool
+    runtime_config_verified: bool
     release_blockers: tuple[str, ...]
     production_authorized: bool = False
     router_commands: tuple = ()
@@ -73,7 +75,7 @@ def _qualified(config):
 
 
 def review(live_raw, candidate_raw, pending_raw=None, *, active_tag=None,
-           observed_live_owner=False):
+           observed_live_owner=False, running_config_verified=False):
     live, candidate = _decode(live_raw), _decode(candidate_raw)
     pending = _decode(pending_raw) if pending_raw is not None else None
     old = _qualified(live)
@@ -82,7 +84,7 @@ def review(live_raw, candidate_raw, pending_raw=None, *, active_tag=None,
         return PoolReview(
             "REJECT_CANDIDATE", "EMPTY_QUALIFIED_POOL", False,
             pending is not None and pending == candidate if pending is not None else None,
-            tuple(sorted(old)), (), tuple(sorted(old)), (), (), False, BLOCKERS,
+            tuple(sorted(old)), (), tuple(sorted(old)), (), (), False, False, BLOCKERS,
         )
     fallback = [
         b.get("fallbackTag") for b in candidate.get("routing", {}).get("balancers", [])
@@ -92,7 +94,7 @@ def review(live_raw, candidate_raw, pending_raw=None, *, active_tag=None,
         return PoolReview(
             "REJECT_CANDIDATE", "FALLBACK_OUTSIDE_QUALIFIED_POOL", False,
             pending == candidate if pending is not None else None,
-            tuple(sorted(old)), tuple(sorted(new)), (), (), (), False, BLOCKERS,
+            tuple(sorted(old)), tuple(sorted(new)), (), (), (), False, False, BLOCKERS,
         )
     equal = live == candidate
     pending_equal = pending == candidate if pending is not None else None
@@ -101,9 +103,16 @@ def review(live_raw, candidate_raw, pending_raw=None, *, active_tag=None,
     reuse = tuple(sorted(tag for tag in set(old) & set(new) if old[tag] != new[tag]))
     active_known = bool(observed_live_owner and active_tag in old)
     if equal:
+        # A disk-only equality cannot prove the already-running process
+        # loaded those bytes: the first-generation production Xray is API-less.
+        # Do not restart on equality, but do not claim runtime is in sync.
+        verified = running_config_verified is True
         return PoolReview(
-            "SKIP_UNCHANGED", "CANDIDATE_EQUALS_LIVE", True, pending_equal,
-            tuple(sorted(old)), tuple(sorted(new)), (), (), (), active_known, (),
+            "SKIP_UNCHANGED" if verified else "DISK_UNCHANGED_RUNTIME_UNVERIFIED",
+            "CANDIDATE_EQUALS_VERIFIED_LIVE" if verified else "RUNTIME_CONFIG_READBACK_MISSING",
+            True, pending_equal,
+            tuple(sorted(old)), tuple(sorted(new)), (), (), (), active_known,
+            verified, () if verified else ("RUNTIME_CONFIG_READBACK_MISSING",),
         )
     if reuse:
         reason = "TAG_REUSED_FOR_DIFFERENT_ENDPOINT"
@@ -117,7 +126,7 @@ def review(live_raw, candidate_raw, pending_raw=None, *, active_tag=None,
     return PoolReview(
         "APPLY_REQUIRED_BUT_BLOCKED", reason, False, pending_equal,
         tuple(sorted(old)), tuple(sorted(new)), removed, added, reuse,
-        active_known, BLOCKERS,
+        active_known, running_config_verified is True, BLOCKERS,
     )
 
 
@@ -133,6 +142,7 @@ def sanitized_dict(result):
         "added_tags": list(result.added_tags),
         "identity_conflicts": list(result.identity_conflicts),
         "active_endpoint_known": result.active_endpoint_known,
+        "runtime_config_verified": result.runtime_config_verified,
         "release_blockers": list(result.release_blockers),
         "production_authorized": False,
         "router_commands": [],
