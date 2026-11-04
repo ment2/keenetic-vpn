@@ -1,0 +1,152 @@
+title: Keenetic VPN Monitoring
+views:
+  - title: VPN и OpenAI
+    path: vpn-openai
+    icon: mdi:shield-check
+    cards:
+      - type: markdown
+        title: Сводка по VPN
+        content: |
+          {% set nodes = ['vpn01','vpn02','vpn04','vpn05','vpn06','vpn07','vpn09'] %}
+          {% set ns = namespace(ok=0, failed=0, missing=0) %}
+          {% for node in nodes %}
+            {% set s = states('sensor.keenetic_vpn_' ~ node ~ '_' ~ node ~ '_vpn_status') %}
+            {% if s == 'ok' %}
+              {% set ns.ok = ns.ok + 1 %}
+            {% elif s in ['unknown','unavailable','none'] %}
+              {% set ns.missing = ns.missing + 1 %}
+            {% else %}
+              {% set ns.failed = ns.failed + 1 %}
+            {% endif %}
+          {% endfor %}
+          **Общий VLESS HTTP:** ✅ {{ ns.ok }}/7 · ❌ {{ ns.failed }} · ⚪ {{ ns.missing }}
+
+          | Узел | VLESS | Страна | IP выхода | Полная проверка |
+          |:--|:--|:--|:--|--:|
+          {% for node in nodes %}
+            {% set prefix = 'sensor.keenetic_vpn_' ~ node ~ '_' ~ node ~ '_' %}
+            {% set s = states(prefix ~ 'vpn_status') %}
+            {% set ms = states(prefix ~ 'full_probe_duration') %}
+          | **{{ node }}** | {{ s }} | {{ states(prefix ~ 'vpn_country') }} | {{ states(prefix ~ 'vpn_egress_ip') }} | {{ ms ~ ' мс' if ms not in ['unknown','unavailable','none'] else '—' }} |
+          {% endfor %}
+
+          *Общий VLESS HTTP не доказывает доступность OpenAI. Длительность проверки не является RTT. Неполученные или устаревшие данные не считать успешными.*
+      - type: markdown
+        title: Доступность OpenAI через каждый узел
+        content: |
+          {% set nodes = ['vpn01','vpn02','vpn04','vpn05','vpn06','vpn07','vpn09'] %}
+          | VPN | OpenAI | Время проверки | Длительность |
+          |:--|:--|:--|--:|
+          {% for node in nodes %}
+            {% set ns = namespace(status='нет датчика', stamp='—', duration='—') %}
+            {% for s in states.sensor %}
+              {% set nm = s.attributes.get('friendly_name', '') | lower %}
+              {% if node in nm and 'openai reachability' in nm %}
+                {% set ns.status = s.state %}
+              {% elif node in nm and 'openai checked at' in nm %}
+                {% set ns.stamp = s.state %}
+              {% elif node in nm and 'openai full test duration' in nm %}
+                {% set ns.duration = s.state %}
+              {% endif %}
+            {% endfor %}
+          | **{{ node }}** | {{ '✅ доступен' if ns.status == 'reachable' else ('⚪ нет данных' if ns.status in ['нет датчика','unknown','unavailable'] else '❌ ' ~ ns.status) }} | {{ ns.stamp }} | {{ ns.duration ~ ' мс' if ns.duration not in ['—','unknown','unavailable'] else '—' }} |
+          {% endfor %}
+
+          *Изолированный HTTP-запрос к OpenAI, а не проверка пользовательского трафика. MQTT OpenAI обновляется раз в 15 минут, expire_after=1800 секунд.*
+      - type: entities
+        title: Состояние VLESS
+        show_header_toggle: false
+        entities:
+          - entity: sensor.keenetic_vpn_vpn01_vpn01_vpn_status
+            name: vpn01
+          - entity: sensor.keenetic_vpn_vpn02_vpn02_vpn_status
+            name: vpn02
+          - entity: sensor.keenetic_vpn_vpn04_vpn04_vpn_status
+            name: vpn04
+          - entity: sensor.keenetic_vpn_vpn05_vpn05_vpn_status
+            name: vpn05
+          - entity: sensor.keenetic_vpn_vpn06_vpn06_vpn_status
+            name: vpn06
+          - entity: sensor.keenetic_vpn_vpn07_vpn07_vpn_status
+            name: vpn07
+          - entity: sensor.keenetic_vpn_vpn09_vpn09_vpn_status
+            name: vpn09
+      - type: history-graph
+        title: История статусов VLESS · 24 ч
+        hours_to_show: 24
+        entities:
+          - entity: sensor.keenetic_vpn_vpn01_vpn01_vpn_status
+            name: vpn01
+          - entity: sensor.keenetic_vpn_vpn02_vpn02_vpn_status
+            name: vpn02
+          - entity: sensor.keenetic_vpn_vpn04_vpn04_vpn_status
+            name: vpn04
+          - entity: sensor.keenetic_vpn_vpn05_vpn05_vpn_status
+            name: vpn05
+          - entity: sensor.keenetic_vpn_vpn06_vpn06_vpn_status
+            name: vpn06
+          - entity: sensor.keenetic_vpn_vpn07_vpn07_vpn_status
+            name: vpn07
+          - entity: sensor.keenetic_vpn_vpn09_vpn09_vpn_status
+            name: vpn09
+      - type: history-graph
+        title: История статусов VLESS · 7 дней
+        hours_to_show: 168
+        entities:
+          - entity: sensor.keenetic_vpn_vpn01_vpn01_vpn_status
+            name: vpn01
+          - entity: sensor.keenetic_vpn_vpn02_vpn02_vpn_status
+            name: vpn02
+          - entity: sensor.keenetic_vpn_vpn04_vpn04_vpn_status
+            name: vpn04
+          - entity: sensor.keenetic_vpn_vpn05_vpn05_vpn_status
+            name: vpn05
+          - entity: sensor.keenetic_vpn_vpn06_vpn06_vpn_status
+            name: vpn06
+          - entity: sensor.keenetic_vpn_vpn07_vpn07_vpn_status
+            name: vpn07
+          - entity: sensor.keenetic_vpn_vpn09_vpn09_vpn_status
+            name: vpn09
+      - type: entities
+        title: Длительность полной VLESS-пробы (не RTT)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.keenetic_vpn_vpn01_vpn01_full_probe_duration
+            name: vpn01
+          - entity: sensor.keenetic_vpn_vpn02_vpn02_full_probe_duration
+            name: vpn02
+          - entity: sensor.keenetic_vpn_vpn04_vpn04_full_probe_duration
+            name: vpn04
+          - entity: sensor.keenetic_vpn_vpn05_vpn05_full_probe_duration
+            name: vpn05
+          - entity: sensor.keenetic_vpn_vpn06_vpn06_full_probe_duration
+            name: vpn06
+          - entity: sensor.keenetic_vpn_vpn07_vpn07_full_probe_duration
+            name: vpn07
+          - entity: sensor.keenetic_vpn_vpn09_vpn09_full_probe_duration
+            name: vpn09
+      - type: history-graph
+        title: Полная длительность VLESS-пробы · 24 ч
+        hours_to_show: 24
+        entities:
+          - entity: sensor.keenetic_vpn_vpn01_vpn01_full_probe_duration
+            name: vpn01
+          - entity: sensor.keenetic_vpn_vpn02_vpn02_full_probe_duration
+            name: vpn02
+          - entity: sensor.keenetic_vpn_vpn04_vpn04_full_probe_duration
+            name: vpn04
+          - entity: sensor.keenetic_vpn_vpn05_vpn05_full_probe_duration
+            name: vpn05
+          - entity: sensor.keenetic_vpn_vpn06_vpn06_full_probe_duration
+            name: vpn06
+          - entity: sensor.keenetic_vpn_vpn07_vpn07_full_probe_duration
+            name: vpn07
+          - entity: sensor.keenetic_vpn_vpn09_vpn09_full_probe_duration
+            name: vpn09
+      - type: markdown
+        title: Ограничения интерпретации
+        content: |
+          - `vpn06` и `vpn07` ранее давали `network_error` для OpenAI при работавшем общем VLESS HTTP.
+          - Статусы отображают результат **изолированной проверки**, не фактический выбор узла балансировщиком.
+          - Счётчики интерфейсов `apclii0`, `br0`, `br1` нельзя суммировать и называть трафиком отдельных VLESS-серверов.
+          - Не путать подготовленный OpenAI-qualified пул из пяти узлов с реально применённой конфигурацией Xray.
