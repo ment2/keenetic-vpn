@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from monitoring.openai_node_probe import probe_one, load_probe
-from monitoring.openai_health_collector_loop import one_round, monitor
+from monitoring.openai_health_collector_loop import one_round, monitor, rotate_history
 
 def cfg():
     return {"outbounds":[{"tag":"vpn01","protocol":"vless",
@@ -83,6 +83,32 @@ class OpenAIProbeTests(unittest.TestCase):
         self.assertEqual(result,[("vpn01","error:OSError")])
         self.assertEqual(json.loads(sink.getvalue())["status"], "reachable")
         self.assertNotIn("secret", sink.getvalue())
+
+    def test_history_rotation_is_bounded(self):
+        with tempfile.TemporaryDirectory() as root:
+            p=Path(root)/"history.jsonl"
+            p.write_bytes(b"x" * 65536)
+            self.assertTrue(rotate_history(p, max_bytes=65536, backups=2))
+            self.assertFalse(p.exists())
+            self.assertEqual((Path(root)/"history.jsonl.1").stat().st_size,65536)
+            p.write_bytes(b"y" * 65536)
+            self.assertTrue(rotate_history(p,max_bytes=65536,backups=2))
+            self.assertEqual((Path(root)/"history.jsonl.1").read_bytes()[:1],b"y")
+            self.assertEqual((Path(root)/"history.jsonl.2").read_bytes()[:1],b"x")
+            p.write_bytes(b"z" * 65536)
+            self.assertTrue(rotate_history(p,max_bytes=65536,backups=2))
+            self.assertEqual((Path(root)/"history.jsonl.2").read_bytes()[:1],b"y")
+            self.assertFalse((Path(root)/"history.jsonl.3").exists())
+
+    def test_history_rotation_refuses_symlinks(self):
+        with tempfile.TemporaryDirectory() as root:
+            p=Path(root)/"history.jsonl"
+            secret=Path(root)/"outside"
+            secret.write_bytes(b"private")
+            p.symlink_to(secret)
+            with self.assertRaises(ValueError):
+                rotate_history(p,max_bytes=65536)
+            self.assertEqual(secret.read_bytes(),b"private")
 
     def test_invalid_interval_never_reads_config(self):
         with self.assertRaises(ValueError):
