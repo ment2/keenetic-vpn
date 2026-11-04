@@ -110,6 +110,14 @@ class OpenAIProbeTests(unittest.TestCase):
                 rotate_history(p,max_bytes=65536)
             self.assertEqual(secret.read_bytes(),b"private")
 
+    def test_busy_lock_returns_without_spawning_probe(self):
+        with tempfile.TemporaryDirectory() as root:
+            with patch("monitoring.openai_health_collector_loop.fcntl.flock",
+                       side_effect=BlockingIOError("already running")):
+                with patch("monitoring.openai_health_collector_loop.load_probe") as load:
+                    monitor(max_cycles=1,history_dir=root)
+                    load.assert_not_called()
+
     def test_invalid_interval_never_reads_config(self):
         with self.assertRaises(ValueError):
             monitor(interval_s=60,max_cycles=1,config_path="/does-not-exist")
