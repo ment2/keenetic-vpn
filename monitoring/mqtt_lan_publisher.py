@@ -36,7 +36,7 @@ def _recv_exact(sock, amount):
 def _packet(kind, payload):
     return bytes([kind]) + _remaining(len(payload)) + payload
 
-def publish_once(*, host, port, username, password, topic, payload, client_id="keenetic-traffic-monitor"):
+def publish_once(*, host, port, username, password, topic, payload, client_id="keenetic-traffic-monitor", retain=False):
     if not isinstance(topic, str) or not topic.startswith("keenetic/vpn-monitor/v1/") or any(c in topic for c in "+#\x00"):
         raise ValueError("topic not allowed")
     if not 1 <= port <= 65535:
@@ -46,14 +46,14 @@ def publish_once(*, host, port, username, password, topic, payload, client_id="k
         raise ValueError("payload too large")
     connect = (_field("MQTT") + b"\x04\xc2" + struct.pack("!H", 20)
                + _field(client_id) + _field(username) + _field(password))
-    # QoS1, non-retained, packet identifier 1
+    # QoS1, optional retain for Home Assistant discovery only, packet identifier 1
     message = _field(topic) + b"\x00\x01" + data
     with socket.create_connection((host, port), timeout=5) as sock:
         sock.settimeout(5)
         sock.sendall(_packet(0x10, connect))
         if _recv_exact(sock, 4) != b"\x20\x02\x00\x00":
             raise PermissionError("MQTT CONNECT rejected")
-        sock.sendall(_packet(0x32, message))
+        sock.sendall(_packet(0x33 if retain else 0x32, message))
         if _recv_exact(sock, 4) != b"\x40\x02\x00\x01":
             raise RuntimeError("MQTT PUBACK absent")
         sock.sendall(b"\xe0\x00")
