@@ -65,19 +65,31 @@ class RC37Tests(unittest.TestCase):
 
     def test_same_live_and_new_skip_even_without_pending(self):
         r = review(self.live, self.live)
-        self.assertEqual(r.decision, "SKIP_UNCHANGED")
+        self.assertEqual(r.decision, "DISK_UNCHANGED_RUNTIME_UNVERIFIED")
+        self.assertFalse(r.runtime_config_verified)
         self.assertTrue(r.candidate_equal_to_live)
         self.assertIsNone(r.candidate_equal_to_pending)
 
     def test_pending_differs_but_live_equal_still_skip(self):
         r = review(self.live, self.live, self.new)
-        self.assertEqual(r.decision, "SKIP_UNCHANGED")
+        self.assertEqual(r.decision, "DISK_UNCHANGED_RUNTIME_UNVERIFIED")
         self.assertFalse(r.candidate_equal_to_pending)
 
     def test_json_key_order_is_not_a_change(self):
         parsed = json.loads(self.live)
         reordered = json.dumps(parsed, sort_keys=True)
-        self.assertEqual(review(self.live, reordered).decision, "SKIP_UNCHANGED")
+        self.assertEqual(review(self.live, reordered).decision, "DISK_UNCHANGED_RUNTIME_UNVERIFIED")
+
+    def test_unchanged_with_fresh_runtime_witness_skips(self):
+        r = review(self.live, self.live, running_config_verified=True)
+        self.assertEqual(r.decision, "SKIP_UNCHANGED")
+        self.assertTrue(r.runtime_config_verified)
+        self.assertEqual(r.release_blockers, ())
+
+    def test_runtime_readback_is_not_claimed_by_pending_equality(self):
+        r = review(self.live, self.new, self.new)
+        self.assertFalse(r.runtime_config_verified)
+        self.assertIn("FRESH_PER_NODE_OPENAI_ATTESTATIONS_NOT_VERIFIED_BY_MODEL", r.release_blockers)
 
     def test_tag_reuse_for_new_endpoint_detected(self):
         c = json.loads(self.new)
