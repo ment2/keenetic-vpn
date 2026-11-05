@@ -51,3 +51,9 @@ After a real Keenetic reboot the production Xray, Telegram bot, Keenetic Agent, 
 Recovered collectors with BusyBox/Entware `start-stop-daemon` (router lacks `nohup`): interface traffic and general VLESS health restored, traffic `CYCLE_OK 3`, VLESS health `HEALTH_CYCLE 1` all seven `ok`. Installed `/opt/etc/init.d/S99zz-vpn-monitoring` from `monitoring/scripts/S99zz-vpn-monitoring` for subsequent boots. It is idempotent (one process of each) and only starts telemetry. The actual next-boot acceptance test is not yet performed.
 
 Remaining distinct issues: HA Agent Monitor dashboard `BLOCKED` / stale (HA-side, not Keenetic Agent); independently, OpenAI tests on vpn06/vpn07 report `network_error`; Cloudflare Sync has intermittent connection resets. Do not infer a broken VLESS pool from stale HA generic sensors. See `monitoring/diagnostics/2026-11-05-router-reboot-telemetry-recovery.md` for live witnesses, exact job IDs, checksum, and rollback.
+
+## Update 2026-11-05: HA dashboards visually verified installed
+
+The previous statement "HA dashboard YAML prepared, not yet installed/verified" is **historical and now superseded**. Owner screenshots from the Home Assistant mobile UI directly confirm that the `VPN и OpenAI` dashboard is installed and displays live sensor values and 24-hour/7-day history graphs, and that the separate `HA Agent Monitor` dashboard exists in `Мониторинг системы` and shows RUNNING, Cloudflare connected, and recent polling.
+
+At screenshot time generic VLESS HTTP = 6/7 OK, vpn06 failed; OpenAI checks = 5/7 reachable, vpn06/vpn07 network_error. vpn02 has an earlier failure interval visible in history. Full per-node data and evidence qualification are in `monitoring/diagnostics/2026-11-05-ha-dashboards-installed-visual-verification.md`. **Do not re-import/recreate either dashboard or sensors.** The screenshots do not independently prove exact registry entity counts or per-VLESS user traffic attribution.
