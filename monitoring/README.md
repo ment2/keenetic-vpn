@@ -43,3 +43,11 @@ The earlier planning sections above are historical, not the current deployment s
 The `write_file` update was initially blocked because a hardlinked backup made `st_nlink=2`, which agent_safety explicitly rejects. A separate independent backup was created; update succeeded with git blob `326ecbfb905377cbef740c72829d53a163bc2704` and SHA256 `a5e4d80dbc9709ad2cece194f2a4b07891022fa2489ec9ab56d81d3617b27236`; conflict test `LOCK_CONTENTION_TEST_OK` passed with no Xray/MQTT probes.
 
 See `monitoring/diagnostics/2026-11-04-monitor-writefile-lockfix-and-ha-dashboard.md` for job IDs, incident and verification. See `monitoring/homeassistant/keenetic_vpn_dashboard.yaml` for the complete native Lovelace dashboard YAML. The dashboard YAML has **not** been imported into HA in this interaction; a connected HA admin control or user-side import and entity-ID review is still required. Control-agent architecture is documented separately in `ment2/keenetic-control`, branch `feature/homeassistant-admin-agent-20261104`.
+
+## Update 2026-11-05: post-reboot telemetry recovery
+
+After a real Keenetic reboot the production Xray, Telegram bot, Keenetic Agent, Cloudflare Sync and watchdog were running; however both manually started telemetry collectors were absent, so HA showed all seven generic VLESS sensors `unavailable`. The 15-minute OpenAI cron monitor continued to run.
+
+Recovered collectors with BusyBox/Entware `start-stop-daemon` (router lacks `nohup`): interface traffic and general VLESS health restored, traffic `CYCLE_OK 3`, VLESS health `HEALTH_CYCLE 1` all seven `ok`. Installed `/opt/etc/init.d/S99zz-vpn-monitoring` from `monitoring/scripts/S99zz-vpn-monitoring` for subsequent boots. It is idempotent (one process of each) and only starts telemetry. The actual next-boot acceptance test is not yet performed.
+
+Remaining distinct issues: HA Agent Monitor dashboard `BLOCKED` / stale (HA-side, not Keenetic Agent); independently, OpenAI tests on vpn06/vpn07 report `network_error`; Cloudflare Sync has intermittent connection resets. Do not infer a broken VLESS pool from stale HA generic sensors. See `monitoring/diagnostics/2026-11-05-router-reboot-telemetry-recovery.md` for live witnesses, exact job IDs, checksum, and rollback.
