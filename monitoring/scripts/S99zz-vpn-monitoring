@@ -1,0 +1,42 @@
+#!/bin/sh
+# Keenetic VPN health and interface traffic telemetry only.
+# No Xray, routing, firewall, kill-switch or Telegram service changes.
+ENABLED=yes
+BASE=/opt/tmp/vpn-monitoring-lab
+PY=/opt/bin/python3
+SSD=/opt/sbin/start-stop-daemon
+RUN=/opt/var/run
+start_one() {
+  label="$1"; module="$2"; pidfile="$3"; log="$4"; interval="$5"
+  if ps w | grep -F "$module" | grep -v grep >/dev/null 2>&1; then
+    echo "$label already running"; return 0
+  fi
+  "$SSD" -S -b -d "$BASE" -p "$pidfile" -m -x "$PY" -O "$log" -- \
+    -u -B -m "$module" --interval "$interval" --publish
+}
+stop_one() {
+  label="$1"; module="$2"; pidfile="$3"
+  [ -f "$pidfile" ] || return 0
+  pid=$(cat "$pidfile") || return 1
+  case "$pid" in ''|*[!0-9]*) echo "$label invalid pid"; return 1;; esac
+  if [ -r "/proc/$pid/cmdline" ] && tr '\000' ' ' < "/proc/$pid/cmdline" | grep -F -q "$module"; then
+    kill -TERM "$pid" || return 1
+  fi
+  rm -f "$pidfile"
+}
+case "$1" in
+ start)
+   [ -d "$BASE/monitoring" ] && [ -x "$PY" ] && [ -x "$SSD" ] || exit 1
+   mkdir -p "$RUN"; umask 077
+   start_one traffic monitoring.traffic_collector_loop "$RUN/vpn-traffic-monitor.pid" "$BASE/collector.log" 60
+   start_one health monitoring.vpn_health_collector_loop "$RUN/vpn-vless-health.pid" "$BASE/vpn-health.log" 900
+   ;;
+ stop)
+   stop_one health monitoring.vpn_health_collector_loop "$RUN/vpn-vless-health.pid"
+   stop_one traffic monitoring.traffic_collector_loop "$RUN/vpn-traffic-monitor.pid"
+   ;;
+ status)
+   ps w | grep -E '[m]onitoring.traffic_collector_loop|[m]onitoring.vpn_health_collector_loop' || true
+   ;;
+ *) echo 'Usage: S99zz-vpn-monitoring {start|stop|status}'; exit 1 ;;
+esac
