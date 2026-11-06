@@ -74,7 +74,7 @@ def ident(s):
  assert cookie>0 and sock_inode>0,("RC40_HARD_NO_GO_SOCKET_INODE_COOKIE",sock_inode,cookie)
  return (s.getsockname()[0],s.getsockname()[1],sock_inode,cookie)
 def echo(s,label):
- payload=("RC40-UDP-"+label).encode()
+ payload=("RC30-UDP-"+label).encode()
  for attempt in range(3):
   s.sendto(payload,dst)
   try:

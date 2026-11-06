@@ -15,6 +15,7 @@ class RC40(unittest.TestCase):
   for s in ("SO_COOKIE","TWO_DISTINCT_LIVE_SOCKET_INODES_COOKIES","B_BOUND_BUT_NEVER_SENT","AT_SNAPSHOT_A_SILENT_AND_B_UNSENT","assert ident(old_a)==a and ident(unseen_b)==b"):
    self.assertIn(s,H if s!="SO_COOKIE" else H.replace("57,8","SO_COOKIE") if False else "SO_COOKIE" + H)
   self.assertIn("s.getsockopt(socket.SOL_SOCKET,57,8)",H)
+  self.assertIn('payload=("RC30-UDP-"+label).encode()',H)
   self.assertIn('echo(old_a,"A_AFTER_CONNTRACK_EXPIRY")',H)
   self.assertIn('echo(unseen_b,"B_FIRST_EVER_PACKET")',H)
  def test_real_kernel_expiry_and_true_xray_dispatch_differ(self):
@@ -23,7 +24,7 @@ class RC40(unittest.TestCase):
              "RC40_GUEST_LOG_OLD_REUSED_ONCE","RC40_GUEST_LOG_NEW_DISPATCH_ONCE",
              "RC40_GUEST_REAL_KERNEL_CONNTRACK_INSUFFICIENT_TO_INFER_PRIVATE_UDP_OWNER"):
    self.assertIn(s,G)
-  self.assertIn("guest_new",H.replace("m.group","guest_new") if False else "guest_new"+H)
+  self.assertIn('re.search(r"RC40_GUEST_LOG_NEW_DISPATCH_ONCE',H)
   self.assertIn("int(m.group(1))==b[1]",H)
   self.assertIn("int(old.group(1))==a[1]",H)
  def test_boot_pid_ticks_and_no_actual_cutover(self):
