@@ -1,0 +1,33 @@
+name: Xray v30 RC40 independent negative owner-map and atomic freeze release gate
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc40-owner-authority-no-go.yml'
+      - 'xray/lab/rc40_owner_observability_gate.py'
+      - 'tests/test_xray_v30_rc40_owner_observability_gate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-non-identifiable-owner-and-root-fence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independent root, PID, generation, kernel freeze and private owner negative gates
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc40_owner_observability_gate.py -v
+          python3 - <<'PY'
+          from xray.lab.rc40_owner_observability_gate import *
+          a=UdpFiveTuple('eth1','10.77.0.1',41271,'10.77.0.3',19301)
+          x=ExternalWitness('00000000-1111-2222-3333-444444444444',3,150,1050,220,1070,frozenset(),frozenset(),'a'*64)
+          w=non_identifiability_witness(World(x,frozenset({a})),World(x,frozenset()))
+          r=release_decision(x)
+          assert w['demonstrates_incomplete_inventory']
+          assert r['decision']=='HARD_NO_GO_PRODUCTION' and not r['production_authorized']
+          print('RC40_OWNER_NEGATIVE: KERNEL_PACKET_SNAPSHOT_CANNOT_RECOVER_PRIVATE_XRAY_UDP_MAP')
+          print('RC40_OWNER_NEGATIVE: NO_ATOMIC_FREEZE_ROOT_FENCING_OR_PHYSICAL_RESCUE')
+          PY
