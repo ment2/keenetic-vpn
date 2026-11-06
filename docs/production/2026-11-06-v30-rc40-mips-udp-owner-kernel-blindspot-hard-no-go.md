@@ -1,0 +1,20 @@
+# RC40 | Real MIPS49 silent-old-vs-never-used UDP: kernel inventory cannot reconstruct private Xray owner
+
+Date: 2026-11-06. Only branch: `feature/xray-v30-stable-tcp-ingress-lab-20261031`. Baseline RC36 proven; physical release remains **HARD_NO_GO_PRODUCTION**.
+
+## Negative experimental design
+Use only disposable SHA256-pinned QEMU MIPS32LE Linux4.9, real Xray 26.2.6 and original-destination TPROXY/independent backend, with SLIRP `restrict=on`. Two distinct Linux host UDP sockets (real `socket inode` and kernel `SO_COOKIE` readback):
+- A sends an exact UDP echo through legacy Xray, which logs a single initial UDP worker processing event. Then the socket remains open but idle until the kernel conntrack entry expires at the deliberately short **three-second lab-only timeout**.
+- B is bound to a dynamically chosen distinct source port, retains a stable inode/cookie, but sends no packet before the snapshot, hence has no old Xray activeConn.
+- The MIPS guest independently checks its `/proc/net/nf_conntrack` contains NO matching entries for either state, while the old Xray PID/start-ticks/boot UUID are unchanged and the original two TPROXY rules are still in place. Thus both A and B are invisible to this *kernel-conntrack and recent packet* inventory at that moment.
+- After snapshot the same A socket sends again, and B sends for the first time. Each exact UDP echo must return from independent backend. Real Xray legacy log must still show A's processing event **exactly once** (reused) and B's event **once** (created). Independently match MIPS source-port log witnesses against both actual host socket identities.
+
+This proves the **incompleteness of a conntrack-only / passive-recent-packet owner snapshot**, NOT the nonexistence of instrumentation. It must NOT claim a complete production Xray activeConn inventory. A and B have distinct host socket cookies, but the release controller has no complete attested association between private Xray activeConn and socket-cookie identities.
+
+## Freeze/commit, root descendant and disaster recovery
+No freeze or cutover is invoked; guest requires only original TPROXY rules. No atomic kernel ingress freeze + multi-owner commit/rollback receipt, boot-ID durable generation CAS, complete owner map, or independently kernel-enforced root descendant fencing exists. Versioned S97/S98/S99/watchdog/cron scripts and CI negative tests cannot physically prevent `killall xray` or an escaped root child. RC38 physical preflight: `/opt` and backup are USB-mounted, `/root` and `/etc` on read-only root, `/tmp` volatile; no independently proven off-USB cold-boot recovery. RC39 HA off-site SSH backup was designed but not a proven encrypted, authenticated off-device restore. No physical action is authorized here.
+
+## Result
+**UNVERIFIED until actual RC40 GitHub Actions finishes.** If any guest/host/packet/identity witness is absent or mismatched, record FAILURE and exact reason, never claim a proof. A passing negative proof still means `HARD_NO_GO_PRODUCTION`.
+
+Forbidden: Keenetic jobs, main, snapshot, Cloudflare, real production Xray/config/firewall/routes/cron, merge/deploy/live trial. No device commands, no secrets in artifacts.

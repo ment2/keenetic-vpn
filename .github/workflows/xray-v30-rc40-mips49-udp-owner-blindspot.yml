@@ -1,0 +1,49 @@
+name: Xray v30 RC40 disposable real MIPS49 silent Xray UDP vs conntrack-empty socket negative inventory
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc40-mips49-udp-owner-blindspot.yml'
+      - 'xray/lab/rc40_udp_inventory_blindspot_*'
+      - 'tests/test_xray_v30_rc40_udp_inventory_blindspot.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  two-real-udp-worlds-mips49:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolated real-packet negative controls
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc40_udp_inventory_blindspot.py -v
+          sh -n xray/lab/rc40_udp_inventory_blindspot_guest.sh
+          bash -n xray/lab/rc40_udp_inventory_blindspot_netns.sh
+          bash -n xray/lab/rc40_udp_inventory_blindspot_runner.sh
+      - name: Install disposable MIPS Linux4.9 QEMU dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-system-mips unzip gcc-mipsel-linux-gnu libc6-dev-mipsel-cross binutils-mipsel-linux-gnu cpio gzip curl kmod iproute2 util-linux
+      - name: Real Xray session vs conntrack-empty absent-session packet/socket witness
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc40_udp_inventory_blindspot_runner.sh | tee "$RUNNER_TEMP/rc40-result.log"
+          grep -Fq RC40_REAL_MIPS49_NEGATIVE_COMPLETE_KERNEL_UDP_INVENTORY_WITNESS_CONFIRMED "$RUNNER_TEMP/rc40-result.log"
+          grep -Fq RC40_HARD_NO_GO_PRODUCTION_NO_COMPLETE_XRAY_OWNER_MAP_OR_ATOMIC_FREEZE "$RUNNER_TEMP/rc40-result.log"
+      - name: Preserve exact packet and process witness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc40-disposable-mips49-udp-owner-kernel-blindspot-HARD-NO-GO
+          path: |
+            ${{ runner.temp }}/rc40-udp-inventory-blindspot/serial.log
+            ${{ runner.temp }}/rc40-udp-inventory-blindspot/qemu-errors.log
+            ${{ runner.temp }}/rc40-udp-inventory-blindspot/backend.log
+            ${{ runner.temp }}/rc40-result.log
+          if-no-files-found: warn
+          retention-days: 14
