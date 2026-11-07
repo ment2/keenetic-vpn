@@ -82,8 +82,9 @@ iptables -t mangle -D XRAY_WIFI -p tcp -j TPROXY --on-port 12345 --tproxy-mark 0
 iptables-save -t mangle >"$W/restored.rules"
 # iptables-save emits generation timestamps in # comments. Compare every
 # actual rule, chain declaration, policy and COMMIT line in exact order.
-grep -v "^#" "$W/before.rules" >"$W/before.rulelines"
-grep -v "^#" "$W/restored.rules" >"$W/restored.rulelines"
+# Built-in chain packet/byte counters have changed because we sent real packets.
+grep -v "^#" "$W/before.rules" | sed -E "s/\\[[0-9]+:[0-9]+\\]/[COUNTERS]/g" >"$W/before.rulelines"
+grep -v "^#" "$W/restored.rules" | sed -E "s/\\[[0-9]+:[0-9]+\\]/[COUNTERS]/g" >"$W/restored.rulelines"
 cmp "$W/before.rulelines" "$W/restored.rulelines"
 nsenter -t "$other" -n -- python3 -u xray/lab/rc44_tproxy_packet_witness.py rollback >"$W/client-rollback.log" 2>&1
 grep -Fq RC44_CLIENT_ROLLBACK_TCP_BLOCKED "$W/client-rollback.log"
