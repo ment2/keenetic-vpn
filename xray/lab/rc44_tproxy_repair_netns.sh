@@ -74,6 +74,7 @@ done
 grep -Fq 'RC44_REAL_TPROXY_TCP_PACKET RC44-REPAIR-TCP' "$W/sink.log"
 grep -Fq 'RC44_REAL_TPROXY_UDP_PACKET RC44-REPAIR-UDP' "$W/sink.log"
 iptables -t mangle -vxnL XRAY_WIFI >"$W/counters.txt"
+cat "$W/counters.txt"
 awk '($3=="TPROXY" && $4=="tcp" && $1+0>0){t=1} ($3=="TPROXY" && $4=="udp" && $1+0>0){u=1} END{exit (t&&u)?0:1}' "$W/counters.txt"
 echo RC44_REAL_NATIVE_KERNEL_TPROXY_TCP_UDP_PACKET_COUNTER_SOCKET_SUCCESS
 iptables -t mangle -D XRAY_WIFI -p udp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
