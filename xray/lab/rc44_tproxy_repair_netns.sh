@@ -80,7 +80,11 @@ echo RC44_REAL_NATIVE_KERNEL_TPROXY_TCP_UDP_PACKET_COUNTER_SOCKET_SUCCESS
 iptables -t mangle -D XRAY_WIFI -p udp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 iptables -t mangle -D XRAY_WIFI -p tcp -j TPROXY --on-port 12345 --tproxy-mark 0x40000000/0x40000000
 iptables-save -t mangle >"$W/restored.rules"
-cmp "$W/before.rules" "$W/restored.rules"
+# iptables-save emits generation timestamps in # comments. Compare every
+# actual rule, chain declaration, policy and COMMIT line in exact order.
+grep -v "^#" "$W/before.rules" >"$W/before.rulelines"
+grep -v "^#" "$W/restored.rules" >"$W/restored.rulelines"
+cmp "$W/before.rulelines" "$W/restored.rulelines"
 nsenter -t "$other" -n -- python3 -u xray/lab/rc44_tproxy_packet_witness.py rollback >"$W/client-rollback.log" 2>&1
 grep -Fq RC44_CLIENT_ROLLBACK_TCP_BLOCKED "$W/client-rollback.log"
 sleep .25
