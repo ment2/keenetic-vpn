@@ -1,0 +1,49 @@
+name: Xray v30 RC42 disposable independent root child nft rules override under flock HARD NO-GO
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc42-root-adversary-negative.yml'
+      - 'xray/lab/rc42_root_adversary_*'
+      - 'tests/test_xray_v30_rc42_root_adversary.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc42-real-root-child-advisory-lock-bypass-negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strict isolated root adversary source contract
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc42_root_adversary.py -v
+          python3 -m py_compile xray/lab/rc42_root_adversary_endpoint.py
+          bash -n xray/lab/rc42_root_adversary_netns.sh xray/lab/rc42_root_adversary_runner.sh
+      - name: Kernel nft tool preflight
+        run: |
+          set -euo pipefail
+          command -v nft;command -v ip;command -v flock;command -v unshare;command -v nsenter
+      - name: Real independent root process changes kernel rules despite controller lock
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc42_root_adversary_runner.sh | tee "$RUNNER_TEMP/rc42-root-result.log"
+          grep -Fq RC42_PASS_DISPOSABLE_ROOT_CHILD_BYPASSES_ADVISORY_FLOCK_NO_KERNEL_FENCE "$RUNNER_TEMP/rc42-root-result.log"
+      - name: Preserve actual packet and kernel receipt
+        if: always()
+        run: |
+          mkdir -p rc42-root-evidence
+          cp -f "$RUNNER_TEMP/rc42-root-result.log" rc42-root-evidence/ 2>/dev/null || true
+          if test -d "$RUNNER_TEMP/rc42-root-adversary";then
+            find "$RUNNER_TEMP/rc42-root-adversary" -maxdepth 1 -type f -exec cp -f {} rc42-root-evidence/ \;
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rc42-real-root-same-netns-fence-not-mandatory
+          path: rc42-root-evidence
+          if-no-files-found: warn
+          retention-days: 14
