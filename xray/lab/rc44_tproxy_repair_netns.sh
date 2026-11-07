@@ -19,6 +19,9 @@ nsenter -t "$other" -n -- ip link set v44c up
 nsenter -t "$other" -n -- ip route add 198.18.44.10/32 via 10.44.0.1 dev v44c
 test -z "$(ip -4 route show default)"
 test -z "$(nsenter -t "$other" -n -- ip -4 route show default)"
+if test "$(cat /proc/sys/net/ipv4/ip_forward)" != 0;then
+  sysctl -q -w net.ipv4.ip_forward=0
+fi
 test "$(cat /proc/sys/net/ipv4/ip_forward)" = 0
 iptables -P FORWARD DROP
 ip6tables -P FORWARD DROP
