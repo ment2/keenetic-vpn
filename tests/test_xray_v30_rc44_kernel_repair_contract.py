@@ -11,7 +11,7 @@ class Scope(unittest.TestCase):
   self.assertEqual(K.count("-A XRAY_WIFI -p udp -j TPROXY"),1)
   self.assertIn("iptables-restore --noflush",K)
  def test_exact_ruleset_rollback_and_kernel_fail_closed(self):
-  self.assertIn('cmp "$W/before.rules" "$W/restored.rules"',K)
+  self.assertIn('cmp "$W/before.rulelines" "$W/restored.rulelines"',K)
   self.assertIn("-D XRAY_WIFI -p tcp -j TPROXY",K)
   self.assertIn("-D XRAY_WIFI -p udp -j TPROXY",K)
   self.assertIn("iptables -P FORWARD DROP",K)
