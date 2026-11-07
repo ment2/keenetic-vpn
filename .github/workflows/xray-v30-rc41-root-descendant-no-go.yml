@@ -1,0 +1,30 @@
+name: Xray v30 RC41 independently fail seven privileged legacy actor receipts and physical fence
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc41-root-descendant-no-go.yml'
+      - 'xray/lab/rc41_privileged_legacy_action_gate.py'
+      - 'tests/test_xray_v30_rc41_privileged_legacy_action_gate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  seven-legacy-root-actor-source-and-claim-negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source SHA + per-actor kernel denial and boot PID start-ticks cookie mutants
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc41_privileged_legacy_action_gate.py -v
+          python3 - <<'PY'
+          from xray.lab.rc41_privileged_legacy_action_gate import audit
+          x=audit()
+          assert len(x["versioned_files_sha256"])==7
+          assert x["decision"]=="HARD_NO_GO_PRODUCTION"
+          assert x["router_actions"]==() and not x["privileged_root_fence_proven"]
+          print("RC41_NEGATIVE_SEVEN_ROOT_LEGACY_SNAPSHOTS_AND_NO_KERNEL_FENCE")
+          PY
