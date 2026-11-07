@@ -25,10 +25,15 @@ export GOMAXPROCS=2
 timeout --signal=TERM 500s go test -c -o "$W/rc41_inbound.test" ./app/proxyman/inbound
 test -s "$W/rc41_inbound.test"
 chmod 755 "$W/rc41_inbound.test"
+# Runner temp parents may be inaccessible to unprivileged UID65534.
+# Stage only the built, non-secret test executable under ephemeral /tmp.
+E="$(mktemp -d /tmp/rc41-private-exec.XXXXXXXX)"
+chmod 755 "$E"
+install -m 755 "$W/rc41_inbound.test" "$E/rc41_inbound.test"
 echo RC41_UPSTREAM_REAL_GO_PACKAGE_COMPILED_TEST_ONLY
 # Only the following execution path carries real socket packets. Isolate
 # network namespace; no route, external NIC, proxy, or physical router.
-sudo --preserve-env=RUNNER_TEMP unshare --net -- bash -c '
+sudo unshare --net -- bash -c '
  set -euo pipefail
  test -z "$(ip -4 route show default)"
  test "$(ip -o link show | wc -l)" -eq 1
@@ -36,8 +41,8 @@ sudo --preserve-env=RUNNER_TEMP unshare --net -- bash -c '
  test -z "$(ip -4 route show default)"
  echo RC41_ISOLATED_KERNEL_LOOPBACK_NO_DEFAULT_ROUTE
  exec setpriv --reuid=65534 --regid=65534 --clear-groups \
-   timeout --signal=TERM 150s "$RUNNER_TEMP/rc41-private-worker/rc41_inbound.test" -test.v -test.count=1 -test.run "^TestRC41"
-' | tee "$W/real-private-worker.log"
+   timeout --signal=TERM 150s "$1/rc41_inbound.test" -test.v -test.count=1 -test.run "^TestRC41"
+' rc41 "$E" | tee "$W/real-private-worker.log"
 grep -Fq RC41_REAL_XRAY_SOURCE_PRIVATE_ACTIVE_CONN_A_IDLE_REUSED_B_CREATED "$W/real-private-worker.log"
 grep -Fq RC41_REAL_LINUX_CLIENT_UDP_SOCKET_COOKIES_WITNESSED "$W/real-private-worker.log"
 grep -Fq RC41_PRIVATE_SNAPSHOT_RWLOCK_IS_NOT_KERNEL_INGRESS_FREEZE "$W/real-private-worker.log"
