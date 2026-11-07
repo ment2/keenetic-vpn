@@ -1,0 +1,30 @@
+name: Xray v30 RC43 pre-production first maintenance migration read-only canary pin
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc43-prod-maintenance-preflight.yml'
+      - 'xray/staging/v30_maintenance_preflight_readonly.py'
+      - 'tests/test_xray_v30_rc43_maintenance_preflight.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc43-staged-read-only-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check real archived installed canary pin, fresh process identity and outage-only gates
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc43_maintenance_preflight.py -v
+          python3 -m py_compile xray/staging/v30_maintenance_preflight_readonly.py
+          python3 - <<'PY'
+          from xray.staging.v30_maintenance_preflight_readonly import PENDING
+          assert len(PENDING)==6
+          print("RC43_FIRST_MIGRATION_PLANNED_OUTAGE_SESSION_RESET_ACCEPTED")
+          print("RC43_PINNED_EXISTING_CANARY_READ_ONLY_PREFLIGHT_NO_ROUTER_EXECUTION")
+          print("RC43_OFFSITE_RECOVERY_AND_DESCENDANT_QUIESCE_STILL_REQUIRED")
+          PY
