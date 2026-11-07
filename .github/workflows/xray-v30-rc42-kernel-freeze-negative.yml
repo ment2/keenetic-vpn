@@ -1,0 +1,60 @@
+name: Xray v30 RC42 disposable netns nft kernel packet DROP vs rollback negative
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc42-kernel-freeze-negative.yml'
+      - 'xray/lab/rc42_*'
+      - 'tests/test_xray_v30_rc42_*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc42-actual-kernel-drop-rollback-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Runner fsync CAS mutants and disposable netns source contracts
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_xray_v30_rc42_*.py' -v
+          python3 -m py_compile xray/lab/rc42_netns_udp_endpoint.py xray/lab/rc42_fsync_generation_cas.py
+          bash -n xray/lab/rc42_kernel_freeze_runner.sh xray/lab/rc42_kernel_freeze_netns.sh
+      - name: Ensure native nft and iproute exist on disposable runner
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          if ! command -v nft || ! command -v ip || ! command -v unshare || ! command -v nsenter; then
+            cat > "$RUNNER_TEMP/rc42-ubuntu.list" <<'APT'
+          deb http://archive.ubuntu.com/ubuntu noble main universe
+          deb http://archive.ubuntu.com/ubuntu noble-updates main universe
+          deb http://security.ubuntu.com/ubuntu noble-security main universe
+          APT
+            sudo timeout --signal=TERM 60s apt-get -o Dir::Etc::sourcelist="$RUNNER_TEMP/rc42-ubuntu.list" -o Dir::Etc::sourceparts="-" -o Acquire::Retries=0 -o Acquire::http::Timeout=20 update -qq
+            sudo DEBIAN_FRONTEND=noninteractive timeout --signal=TERM 135s apt-get -o Dir::Etc::sourcelist="$RUNNER_TEMP/rc42-ubuntu.list" -o Dir::Etc::sourceparts="-" -o Acquire::Retries=0 -o Acquire::http::Timeout=20 install -y --no-install-recommends nftables iproute2 util-linux
+          fi
+          command -v nft; command -v ip; command -v nsenter; command -v unshare
+      - name: Real kernel nft rule DROP, socket witnesses, exact rollback and runner CAS
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc42_kernel_freeze_runner.sh | tee "$RUNNER_TEMP/rc42-result.log"
+          grep -Fq RC42_PASS_REAL_DISPOSABLE_KERNEL_DROP_AND_EXACT_ROLLBACK "$RUNNER_TEMP/rc42-result.log"
+          grep -Fq RC42_HARD_NO_GO_NO_LEGACY_PRIVATE_MAP_ATOMIC_SESSION_FREEZE_OR_PHYSICAL_FENCE "$RUNNER_TEMP/rc42-result.log"
+      - name: Preserve real packet and negative evidence
+        if: always()
+        run: |
+          mkdir -p rc42-ci-artifacts
+          cp -f "$RUNNER_TEMP/rc42-result.log" rc42-ci-artifacts/ 2>/dev/null || true
+          if test -d "$RUNNER_TEMP/rc42-nft-kernel-freeze"; then
+            find "$RUNNER_TEMP/rc42-nft-kernel-freeze" -maxdepth 1 -type f -exec cp -f {} rc42-ci-artifacts/ \;
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rc42-nft-kernel-drop-does-not-freeze-xray-owner
+          path: rc42-ci-artifacts
+          if-no-files-found: warn
+          retention-days: 14
