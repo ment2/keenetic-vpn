@@ -1,0 +1,43 @@
+name: Xray v30 RC41 pinned instrumented upstream UDP private worker real loopback CI hard no-go
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc41-private-udp-owner.yml'
+      - 'xray/lab/rc41_pinned_xray_worker_instrumented_test.go'
+      - 'xray/lab/rc41_pinned_worker_source_runner.sh'
+      - 'tests/test_xray_v30_rc41_pinned_worker.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rc41-real-upstream-private-udp-worker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check pinned source and disposable network contracts
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_xray_v30_rc41_pinned_worker.py -v
+          bash -n xray/lab/rc41_pinned_worker_source_runner.sh
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.7'
+          cache: false
+      - name: Instrument test-only actual Xray v26.2.6 udpWorker and prove real UDP loopback identities
+        timeout-minutes: 14
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc41_pinned_worker_source_runner.sh | tee "$RUNNER_TEMP/rc41-result.log"
+      - name: Preserve evidence and failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc41-real-xray-private-map-instrumentation-no-production
+          path: |
+            ${{ runner.temp }}/rc41-result.log
+            ${{ runner.temp }}/rc41-private-worker/real-private-worker.log
+          if-no-files-found: warn
+          retention-days: 14
