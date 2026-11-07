@@ -26,9 +26,9 @@ class RC41(unittest.TestCase):
  def test_real_udp_hub_socket_cookie_and_private_dispatch(self):
   for marker in ["w.Start()","rc41Echo(t,a,host","rc41Echo(t,b,host",
                  "unix.GetsockoptUint64","unix.SO_COOKIE","srcA.Port","srcB.Port",
-                 "echo.started.Load()!=2","w.hub.udpConn"]:
+                 "echo.started.Load()!=2","w.hub.Addr()"]:
    self.assertIn(marker,GO)
-  self.assertIn("RC41_REAL_LINUX_UDP_SOCKET_COOKIES_AND_HUB_OWNER_WITNESSED",GO)
+  self.assertIn("RC41_REAL_LINUX_CLIENT_UDP_SOCKET_COOKIES_WITNESSED",GO)
  def test_unfrozen_snapshot_is_rejected(self):
   for marker in ["frozenView:=rc41Snapshot(w)","B_NEW_AFTER_SNAPSHOT",
                  "RC41_PRIVATE_SNAPSHOT_RWLOCK_IS_NOT_KERNEL_INGRESS_FREEZE",

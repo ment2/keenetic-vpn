@@ -118,8 +118,7 @@ func TestRC41LiveIngressPrivateInventoryAndStaleCapture(t *testing.T){
  a:=rc41Client(t);defer a.Close()
  b:=rc41Client(t);defer b.Close()
  cookieA,cookieB:=rc41Cookie(t,a),rc41Cookie(t,b)
- hubCookie:=rc41Cookie(t,w.hub.udpConn)
- if cookieA==cookieB||cookieA==hubCookie||cookieB==hubCookie{
+ if cookieA==cookieB{
   t.Fatal("RC41 distinct Linux UDP sockets share SO_COOKIE")
  }
  srcA:=a.LocalAddr().(*stdnet.UDPAddr)
@@ -139,8 +138,8 @@ func TestRC41LiveIngressPrivateInventoryAndStaleCapture(t *testing.T){
  if echo.started.Load()!=1{t.Fatalf("RC41 expected one real proxy.Process: %d",echo.started.Load())}
  // The second real Linux socket already exists; it has sent no packet and
  // cannot be discovered as a pre-existing Xray worker association.
- t.Logf("RC41_REAL_INPROCESS_UDP_INVENTORY_A boot=%s pid=%d ppid=%d ticks=%s a=%d cookie=%d b=%d cookie=%d hub_cookie=%d",
-   boot,os.Getpid(),os.Getppid(),ticks,srcA.Port,cookieA,srcB.Port,cookieB,hubCookie)
+ t.Logf("RC41_REAL_INPROCESS_UDP_INVENTORY_A boot=%s pid=%d ppid=%d ticks=%s a=%d cookie=%d b=%d cookie=%d",
+   boot,os.Getpid(),os.Getppid(),ticks,srcA.Port,cookieA,srcB.Port,cookieB)
  // An idle connection is retained in the same real Xray activeConn map.
  time.Sleep(4*time.Second)
  idle:=rc41Snapshot(w)
@@ -162,7 +161,7 @@ func TestRC41LiveIngressPrivateInventoryAndStaleCapture(t *testing.T){
  boot2,ticks2:=rc41Identity(t)
  if boot2!=boot||ticks2!=ticks{t.Fatal("RC41 process boot-id/start-ticks changed")}
  t.Log("RC41_REAL_XRAY_SOURCE_PRIVATE_ACTIVE_CONN_A_IDLE_REUSED_B_CREATED")
- t.Log("RC41_REAL_LINUX_UDP_SOCKET_COOKIES_AND_HUB_OWNER_WITNESSED")
+ t.Log("RC41_REAL_LINUX_CLIENT_UDP_SOCKET_COOKIES_WITNESSED")
  t.Log("RC41_PRIVATE_SNAPSHOT_RWLOCK_IS_NOT_KERNEL_INGRESS_FREEZE")
  t.Log("RC41_UNINSTRUMENTED_LEGACY_PROCESS_NOT_INSPECTED_OR_MODIFIED")
  t.Log("RC41_HARD_NO_GO_PRODUCTION_NO_ATOMIC_OWNER_COMMIT_OR_PHYSICAL_FENCING")

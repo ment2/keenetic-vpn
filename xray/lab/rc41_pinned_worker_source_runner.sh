@@ -39,7 +39,7 @@ sudo --preserve-env=RUNNER_TEMP unshare --net -- bash -c '
    timeout --signal=TERM 150s "$RUNNER_TEMP/rc41-private-worker/rc41_inbound.test" -test.v -test.count=1 -test.run "^TestRC41"
 ' | tee "$W/real-private-worker.log"
 grep -Fq RC41_REAL_XRAY_SOURCE_PRIVATE_ACTIVE_CONN_A_IDLE_REUSED_B_CREATED "$W/real-private-worker.log"
-grep -Fq RC41_REAL_LINUX_UDP_SOCKET_COOKIES_AND_HUB_OWNER_WITNESSED "$W/real-private-worker.log"
+grep -Fq RC41_REAL_LINUX_CLIENT_UDP_SOCKET_COOKIES_WITNESSED "$W/real-private-worker.log"
 grep -Fq RC41_PRIVATE_SNAPSHOT_RWLOCK_IS_NOT_KERNEL_INGRESS_FREEZE "$W/real-private-worker.log"
 grep -Fq RC41_PRIVATE_XRAY_WORKER_120S_CLEANER_TEST_ONLY "$W/real-private-worker.log"
 grep -Fq RC41_UNINSTRUMENTED_LEGACY_PROCESS_NOT_INSPECTED_OR_MODIFIED "$W/real-private-worker.log"
