@@ -1,0 +1,60 @@
+name: Xray v30 RC44 first-migration TPROXY two-rule repair real disposable TCP UDP fail-closed CI
+on:
+  push:
+    branches:
+      - feature/xray-v30-stable-tcp-ingress-lab-20261031
+    paths:
+      - '.github/workflows/xray-v30-rc44-tproxy-repair.yml'
+      - 'xray/lab/rc44_*'
+      - 'tests/test_xray_v30_rc44_*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-native-tproxy-and-swallowed-source-error:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pinned source failure injection and offline repair plan tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_xray_v30_rc44_*.py' -v
+          python3 -m xray.lab.rc44_wifi_rules_failure_injection
+          python3 -m py_compile xray/lab/rc44_tproxy_packet_witness.py
+          bash -n xray/lab/rc44_tproxy_repair_netns.sh xray/lab/rc44_tproxy_repair_runner.sh
+      - name: Ensure native isolated kernel network tooling
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          if ! command -v iptables || ! command -v iptables-restore || ! command -v iptables-save || ! command -v ip || ! command -v nsenter; then
+            cat > "$RUNNER_TEMP/rc44-ubuntu.list" <<'APT'
+          deb http://archive.ubuntu.com/ubuntu noble main universe
+          deb http://archive.ubuntu.com/ubuntu noble-updates main universe
+          deb http://security.ubuntu.com/ubuntu noble-security main universe
+          APT
+            sudo timeout --signal=TERM 65s apt-get -o Dir::Etc::sourcelist="$RUNNER_TEMP/rc44-ubuntu.list" -o Dir::Etc::sourceparts="-" -o Acquire::Retries=0 -o Acquire::http::Timeout=20 update -qq
+            sudo DEBIAN_FRONTEND=noninteractive timeout --signal=TERM 150s apt-get -o Dir::Etc::sourcelist="$RUNNER_TEMP/rc44-ubuntu.list" -o Dir::Etc::sourceparts="-" -o Acquire::Retries=0 -o Acquire::http::Timeout=20 install -y --no-install-recommends iptables iproute2 util-linux
+          fi
+          command -v iptables; command -v iptables-restore;command -v iptables-save;command -v ip;command -v nsenter
+      - name: Actual native TPROXY UDP TCP packets, original rules snapshot, precise rollback
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          bash xray/lab/rc44_tproxy_repair_runner.sh | tee "$RUNNER_TEMP/rc44-status.log"
+          grep -Fq RC44_DISPOSABLE_KERNEL_REPAIR_ROLLBACK_COMPLETE "$RUNNER_TEMP/rc44-status.log"
+      - name: Preserve actual packet/socket and fail-closed evidence
+        if: always()
+        run: |
+          mkdir -p rc44-evidence
+          cp -f "$RUNNER_TEMP/rc44-status.log" rc44-evidence/ 2>/dev/null || true
+          if test -d "$RUNNER_TEMP/rc44-native-tproxy";then
+            find "$RUNNER_TEMP/rc44-native-tproxy" -maxdepth 1 -type f -exec cp -f {} rc44-evidence/ \;
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rc44-native-tproxy-repair-packet-socket-kernel-no-production
+          path: rc44-evidence
+          if-no-files-found: warn
+          retention-days: 14
