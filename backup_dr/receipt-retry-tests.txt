@@ -1,0 +1,23 @@
+test_committed_result_lost_response_then_same_receipt (test_ha_receipt_retry.LoopbackReceipt.test_committed_result_lost_response_then_same_receipt) ... ok
+test_failed_claim_without_journal (test_ha_receipt_retry.MonitorCycle.test_failed_claim_without_journal) ... ok
+test_failed_tick_claimed_journal (test_ha_receipt_retry.MonitorCycle.test_failed_tick_claimed_journal) ... ok
+test_failed_tick_result_ready_no_reexecute (test_ha_receipt_retry.MonitorCycle.test_failed_tick_result_ready_no_reexecute) ... ok
+test_startup_ready_no_claim (test_ha_receipt_retry.MonitorCycle.test_startup_ready_no_claim) ... ok
+test_bad_ack (test_ha_receipt_retry.ReceiptRetry.test_bad_ack) ... ok
+test_changed_after_ack (test_ha_receipt_retry.ReceiptRetry.test_changed_after_ack) ... ok
+test_claimed_never_sent (test_ha_receipt_retry.ReceiptRetry.test_claimed_never_sent) ... ok
+test_exhaustion_preserves_restart (test_ha_receipt_retry.ReceiptRetry.test_exhaustion_preserves_restart) ... ok
+test_http_permanent (test_ha_receipt_retry.ReceiptRetry.test_http_permanent) ... ok
+test_http_temporary (test_ha_receipt_retry.ReceiptRetry.test_http_temporary) ... ok
+test_invalid_identity_and_output (test_ha_receipt_retry.ReceiptRetry.test_invalid_identity_and_output) ... ok
+test_lock (test_ha_receipt_retry.ReceiptRetry.test_lock) ... ok
+test_loss_then_ack (test_ha_receipt_retry.ReceiptRetry.test_loss_then_ack) ... ok
+test_malformed (test_ha_receipt_retry.ReceiptRetry.test_malformed) ... ok
+test_no_pending (test_ha_receipt_retry.ReceiptRetry.test_no_pending) ... ok
+test_symlink (test_ha_receipt_retry.ReceiptRetry.test_symlink) ... ok
+test_tls_failure (test_ha_receipt_retry.ReceiptRetry.test_tls_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.528s
+
+OK
