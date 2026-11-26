@@ -1,0 +1,20 @@
+test_authenticated_metadata_tamper (test_pending_envelope.EnvelopeTests.test_authenticated_metadata_tamper) ... ok
+test_complete_stage_recovered_after_interrupted_rename (test_pending_envelope.EnvelopeTests.test_complete_stage_recovered_after_interrupted_rename) ... ok
+test_directory_fsync_failure_recovers_committed_envelope (test_pending_envelope.EnvelopeTests.test_directory_fsync_failure_recovers_committed_envelope) ... ok
+test_envelope_and_state_mismatch_retained (test_pending_envelope.EnvelopeTests.test_envelope_and_state_mismatch_retained) ... ok
+test_legacy_and_envelope_conflict (test_pending_envelope.EnvelopeTests.test_legacy_and_envelope_conflict) ... ok
+test_legacy_pending_remains_deliverable (test_pending_envelope.EnvelopeTests.test_legacy_pending_remains_deliverable) ... ok
+test_partial_stage_not_replaced (test_pending_envelope.EnvelopeTests.test_partial_stage_not_replaced) ... ok
+test_two_envelope_names_fail_closed (test_pending_envelope.EnvelopeTests.test_two_envelope_names_fail_closed) ... ok
+test_wrong_config_key_rejected (test_pending_envelope.EnvelopeTests.test_wrong_config_key_rejected) ... ok
+test_busy_service_blocks_change (test_pending_envelope.GenerationTests.test_busy_service_blocks_change) ... ok
+test_historical_archive_retained_and_restorable_real_http (test_pending_envelope.GenerationTests.test_historical_archive_retained_and_restorable_real_http) ... ok
+test_pending_generation_blocks_change (test_pending_envelope.GenerationTests.test_pending_generation_blocks_change) ... ok
+test_registry_tamper_blocks_sender (test_pending_envelope.GenerationTests.test_registry_tamper_blocks_sender) ... ok
+test_unapproved_change_fails_both_roles (test_pending_envelope.GenerationTests.test_unapproved_change_fails_both_roles) ... ok
+test_unregistered_legacy_generation_rejected (test_pending_envelope.GenerationTests.test_unregistered_legacy_generation_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.121s
+
+OK
