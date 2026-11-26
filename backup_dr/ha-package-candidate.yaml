@@ -1,0 +1,15 @@
+# Do not install until receiver deployment and existing package configuration verified.
+command_line:
+  - sensor:
+      name: Keenetic Backup Receiver
+      unique_id: keenetic_backup_dr_receiver_v1
+      command: "cat /share/keenetic-backup-status.json"
+      scan_interval: 60
+      value_template: >-
+        {% if as_timestamp(now()) - (value_json.receiver_heartbeat | int(0)) > 180 %}stale{% else %}{{ value_json.status }}{% endif %}
+      json_attributes:
+        - receiver_heartbeat
+        - archive_count
+        - archive_bytes
+        - latest_archive_mtime
+        - free_bytes
