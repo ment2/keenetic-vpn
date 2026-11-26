@@ -1,0 +1,10 @@
+{
+  "ha_monitor_receipt_candidate.py": "9fdb271b3c53596bfe8a56898cd6070ce98a8bf622343f2bf5f676c9799dd02a",
+  "ha_receipt_retry.py": "fa36a9fa719d8b157b4e663651e0c31269454361f50845998950bd3cf9f3a949",
+  "test_ha_monitor_receipt_candidate.py": "efc0e471c46a55bafbe5a59ac152ac757c81622ce853fc736c35c1d160663a53",
+  "test_transport.py": "9148d75ea05cd2a26a713bffccd3625e0a9a979613f0722b3b72113377848547",
+  "test_acceptance_v35.py": "b6c0d9e0af3d07b26caaad32104d84aa7bd42ad2484daf03905720866d48774e",
+  "monitor-integration-tests.txt": "909a5c5a07ef32fca718add5c173f9fd4f16d15011883d35bc7667a0557cec7e",
+  "test-results-monitor-integration.txt": "e983d9dfd41073d7db93ca9d2dd5bae1d590373b8e7be742622d1b600af7da9d",
+  "2026-11-26-ha-monitor-integration-runbook.md": "36905d9d7d098ccc35dab13b26b9620358665d85d811425892139a8f5cc026b1"
+}
