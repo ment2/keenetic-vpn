@@ -7,6 +7,7 @@ from runtime import tick
 from transport import receiver
 from monitor import status
 from retention import prune
+from resource_guard import CIPHER_MAX
 
 TOTAL_BUDGET=2*1024**3
 RESERVE=5*1024**3
@@ -24,7 +25,7 @@ def make_receiver(root,master,config,quotas,allowed_ip,bind,*,total_budget=TOTAL
     for group,entries in config.items():
         folder=private_dir(root/group)
         routes['/v1/backup/'+group]=(folder,group_key(master,group),quotas[group],entries)
-    return receiver(root,master,allowed_ip,bind,routes=routes,reserve=reserve,global_budget=total_budget)
+    return receiver(root,master,allowed_ip,bind,routes=routes,reserve=reserve,global_budget=total_budget,body_limit=CIPHER_MAX)
 
 def run_tick(state_root,source_root,config,master,origin,*,now=None):
     config=validate(config); root=private_dir(state_root); results={}
