@@ -1,0 +1,24 @@
+{
+  "baseline": "33f8091631885c70b4a1ac5e4648322d63cb1f46",
+  "files": {
+    "crypto.py": "6805ddc174cc7f85319a620951739701d8af77e47c8953b8f5ebf04b5541c517",
+    "global_quota.py": "579235909b4d2d0c150e349dc2a110ed901158fdc41fab42f7976abbecbd4ea9",
+    "group_registry.py": "798a1c9f1c08bd6321a2be5f371d33af014859558d7ea92e48f8125453550b65",
+    "group_runtime.py": "01ba44912de58c3f6a44e2d49bda0ef6c0f3ec6585aeeb4efbc911ac80efe6fc",
+    "groups.py": "f9ac2311b12f198acf7d4f6b7f5f0a086c31b8bca84bda4e397392891f599df1",
+    "manifest.py": "93eadda3fdb5fe4d932a286c9260bd6ac3e9d4af878a16ca8e3a9cf70c0b53cb",
+    "monitor.py": "8b4cecb85001037f90ce80281f249a50bf8acafce865657726bb709dc213eb96",
+    "pending_envelope.py": "615c0f0affc43f2520f7a223d41501d4294c85cbcba278edbedee8949abc0b3e",
+    "quota.py": "ce4e630b3ce5a7981688ceb19c7ab37851f371c8151f4c2eca42182f1c32373c",
+    "resource_guard.py": "7f8dce58347e6a8acbd3cd85f429a2530cad71ffa5a073e560dca03d21dfdae1",
+    "retention.py": "01a4cd28c18d05b4d0d0e483452b31f99d511fa103fcf3c4ea50227b42080d51",
+    "runtime.py": "1fab56e0e4913bd9d9820c85d3b8c9b09503025bfd5fe2e7de3a5414b30cae06",
+    "scheduler.py": "ea4c25d04b399cb0ffa7af2dced7ec147d39e264cbc5c7cbc7b6bbe2a71f3d20",
+    "sender_monitor.py": "c70c85e9e5669ae70987d3197ac9f58439c908615eb73e07335132d37f41ded5",
+    "service_v35.py": "b7cd481eba2fc77c09c856e70c6f54a8b694575bc2a6b3d543a8bd0b080b538b",
+    "snapshot.py": "446142abd68a8fcc5f26e43c481f70d5968c3a13bf06357b03fd496eb0d24b1c",
+    "transport.py": "d07ae4ed7eec257d7ad04fe0b60ee563355d2fb4083ef6fbec13ba273d134b38"
+  },
+  "role": "inactive HA receiver staging",
+  "version": 1
+}
