@@ -47,7 +47,7 @@ def _store(root, blob, budget, reserve, global_root, global_budget):
     finally: os.unlink(tmp)
     return digest
 
-def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3, routes=None, global_budget=None, body_limit=LIMIT):
+def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3, routes=None, global_budget=None, body_limit=LIMIT, status_inbox=None):
     if type(body_limit) is not int or not 28 <= body_limit <= LIMIT: raise ValueError('invalid body limit')
     # Routes are trusted local configuration, not request-supplied paths.
     if routes is None:
@@ -58,6 +58,20 @@ def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1
         def setup(self):
             super().setup(); self.connection.settimeout(15)
         def do_POST(self):
+            if status_inbox is not None and self.path == '/v1/sender-status':
+                if self.client_address[0] != allowed_ip:
+                    self.send_error(403); return
+                if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[])) != 1:
+                    self.send_error(400); return
+                try:
+                    n=int(self.headers['Content-Length'])
+                    if not 28 <= n <= 8192: raise ValueError('status size')
+                    blob=self.rfile.read(n)
+                    if len(blob)!=n: raise ValueError('short status')
+                    result=status_inbox.accept(blob)
+                except (ValueError,OSError,EOFError,TypeError,KeyError,AttributeError):
+                    self.send_error(400); return
+                self.send_response(200); self.send_header('Content-Length',str(len(result))); self.end_headers(); self.wfile.write(result); return
             route=prepared.get(self.path)
             if self.client_address[0] != allowed_ip or route is None:
                 self.send_error(403); return
