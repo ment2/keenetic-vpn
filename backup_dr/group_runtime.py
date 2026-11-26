@@ -18,14 +18,14 @@ def private_dir(path):
     if path.is_symlink() or not path.is_dir() or path.stat().st_mode & 0o077: raise ValueError('insecure directory')
     return path
 
-def make_receiver(root,master,config,quotas,allowed_ip,bind,*,total_budget=TOTAL_BUDGET,reserve=RESERVE):
+def make_receiver(root,master,config,quotas,allowed_ip,bind,*,total_budget=TOTAL_BUDGET,reserve=RESERVE,status_inbox=None):
     config=validate(config)
     if set(quotas)!=set(config) or any(type(q) is not int or q<=0 for q in quotas.values()) or sum(quotas.values())>total_budget or not 0<total_budget<=TOTAL_BUDGET: raise ValueError('invalid group quotas')
     root=private_dir(root); routes={}
     for group,entries in config.items():
         folder=private_dir(root/group)
         routes['/v1/backup/'+group]=(folder,group_key(master,group),quotas[group],entries)
-    return receiver(root,master,allowed_ip,bind,routes=routes,reserve=reserve,global_budget=total_budget,body_limit=CIPHER_MAX)
+    return receiver(root,master,allowed_ip,bind,routes=routes,reserve=reserve,global_budget=total_budget,body_limit=CIPHER_MAX,status_inbox=status_inbox)
 
 def run_tick(state_root,source_root,config,master,origin,*,now=None):
     config=validate(config); root=private_dir(state_root); results={}
