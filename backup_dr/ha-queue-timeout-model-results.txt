@@ -1,0 +1,8 @@
+test_expiry_releases_next (test_ha_queue_timeout_model.QueueTimeoutModel.test_expiry_releases_next) ... ok
+test_ha_ingress_guard (test_ha_queue_timeout_model.QueueTimeoutModel.test_ha_ingress_guard) ... ok
+test_head_blocks_short_job (test_ha_queue_timeout_model.QueueTimeoutModel.test_head_blocks_short_job) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+OK
