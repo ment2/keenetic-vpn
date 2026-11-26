@@ -1,0 +1,34 @@
+# Candidate only; review existing packages and command_line integration before installation.
+command_line:
+  - sensor:
+      name: Keenetic Backup Receiver
+      unique_id: keenetic_backup_dr_receiver_v1
+      command: "cat /share/keenetic-backup-status.json"
+      scan_interval: 60
+      value_template: >-
+        {% if as_timestamp(now()) - (value_json.receiver_heartbeat | int(0)) > 180 %}stale{% elif value_json.retention_error | default(false) %}retention_error{% else %}{{ value_json.status }}{% endif %}
+      json_attributes:
+        - receiver_heartbeat
+        - archive_count
+        - archive_bytes
+        - latest_archive_mtime
+        - free_bytes
+        - global_used_bytes
+        - global_budget_bytes
+        - retention_error
+        - groups
+template:
+  - binary_sensor:
+      - name: Keenetic Backup Attention
+        unique_id: keenetic_backup_dr_attention_v1
+        device_class: problem
+        state: >-
+          {{ states('sensor.keenetic_backup_receiver') != 'ready' }}
+  - sensor:
+      - name: Keenetic Backup SSD Usage
+        unique_id: keenetic_backup_dr_usage_v1
+        unit_of_measurement: '%'
+        availability: >-
+          {{ state_attr('sensor.keenetic_backup_receiver','global_budget_bytes') | int(0) > 0 }}
+        state: >-
+          {{ (100 * (state_attr('sensor.keenetic_backup_receiver','global_used_bytes') | int(0)) / (state_attr('sensor.keenetic_backup_receiver','global_budget_bytes') | int(1))) | round(1) }}
