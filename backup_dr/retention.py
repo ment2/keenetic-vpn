@@ -3,7 +3,7 @@ import hashlib, os, pathlib, re, time
 from crypto import open_sealed
 from transport import keys, LIMIT
 
-def prune(root, master, now=None, days=30, keep=2, *, require_manifest=False):
+def prune(root, master, now=None, days=30, keep=2, *, require_manifest=False,expected=None):
     if days<1 or keep<2: raise ValueError('unsafe retention')
     now=time.time() if now is None else now
     root=pathlib.Path(root); candidates=[]
@@ -15,9 +15,9 @@ def prune(root, master, now=None, days=30, keep=2, *, require_manifest=False):
         if hashlib.sha256(blob).hexdigest()!=p.stem: continue
         try:
             data=open_sealed(keys(master)[0],blob)
-            if require_manifest:
+            if require_manifest or expected is not None:
                 from manifest import verify
-                verify(data)
+                verify(data,expected=expected)
         except (ValueError, OSError, EOFError, TypeError, KeyError, AttributeError, __import__('tarfile').TarError): continue
         candidates.append((st.st_mtime,p))
     candidates.sort(reverse=True)
