@@ -24,7 +24,7 @@ def make_receiver(root,master,config,quotas,allowed_ip,bind,*,total_budget=TOTAL
     for group,entries in config.items():
         folder=private_dir(root/group)
         routes['/v1/backup/'+group]=(folder,group_key(master,group),quotas[group],entries)
-    return receiver(root,master,allowed_ip,bind,routes=routes,reserve=reserve)
+    return receiver(root,master,allowed_ip,bind,routes=routes,reserve=reserve,global_budget=total_budget)
 
 def run_tick(state_root,source_root,config,master,origin,*,now=None):
     config=validate(config); root=private_dir(state_root); results={}
@@ -41,11 +41,15 @@ def run_tick(state_root,source_root,config,master,origin,*,now=None):
                 results[group]='retry_required'
     return results
 
-def group_status(root,config,*,now=None,reserve=RESERVE):
+def group_status(root,config,*,now=None,reserve=RESERVE,total_budget=TOTAL_BUDGET):
     config=validate(config); rows={g:status(pathlib.Path(root)/g,now=now,reserve=reserve) for g in config}
     first=next(iter(rows.values())); latest=[x['latest_archive_mtime'] for x in rows.values() if x['latest_archive_mtime'] is not None]
-    return {'version':1,'receiver_heartbeat':first['receiver_heartbeat'],'status':'low_space' if any(r['status']=='low_space' for r in rows.values()) else 'ready' if all(r['archive_count'] for r in rows.values()) else 'awaiting_first_backup','archive_count':sum(r['archive_count'] for r in rows.values()),'archive_bytes':sum(r['archive_bytes'] for r in rows.values()),'latest_archive_mtime':max(latest) if latest else None,'free_bytes':first['free_bytes'],'groups':rows}
+    from global_quota import usage,locked
+    with locked(root): used=usage(root)
+    return {'version':1,'receiver_heartbeat':first['receiver_heartbeat'],'global_used_bytes':used,'global_budget_bytes':total_budget,'status':'low_space' if any(r['status']=='low_space' for r in rows.values()) else 'quota_full' if used>=total_budget else 'ready' if all(r['archive_count'] for r in rows.values()) else 'awaiting_first_backup','archive_count':sum(r['archive_count'] for r in rows.values()),'archive_bytes':sum(r['archive_bytes'] for r in rows.values()),'latest_archive_mtime':max(latest) if latest else None,'free_bytes':first['free_bytes'],'groups':rows}
 
 def prune_groups(root,config,master,*,now=None):
     # Invoke only inside the receiver's single-threaded maintenance loop.
-    return {g:prune(pathlib.Path(root)/g,group_key(master,g),now=now) for g in validate(config)}
+    from global_quota import locked
+    with locked(root):
+        return {g:prune(pathlib.Path(root)/g,group_key(master,g),now=now) for g in validate(config)}
