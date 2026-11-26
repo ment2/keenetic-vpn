@@ -1,0 +1,11 @@
+test_isolation (test_groups.Groups.test_isolation) ... ok
+test_preflight (test_groups.Groups.test_preflight) ... ok
+test_validate (test_groups.Groups.test_validate) ... ok
+test_quota_plan (test_group_runtime.GroupRuntime.test_quota_plan) ... ok
+test_schedule_restore (test_group_runtime.GroupRuntime.test_schedule_restore) ... ok
+test_wrong_group (test_group_runtime.GroupRuntime.test_wrong_group) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.588s
+
+OK
