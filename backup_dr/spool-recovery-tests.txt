@@ -1,0 +1,14 @@
+test_corrupt_pending_spool_retained (test_spool_recovery.SpoolRecovery.test_corrupt_pending_spool_retained) ... ok
+test_crash_after_ack_state_no_duplicate (test_spool_recovery.SpoolRecovery.test_crash_after_ack_state_no_duplicate) ... ok
+test_group_lost_ack_missing_source_real_http (test_spool_recovery.SpoolRecovery.test_group_lost_ack_missing_source_real_http) ... ok
+test_missing_pending_spool_never_resnapshot (test_spool_recovery.SpoolRecovery.test_missing_pending_spool_never_resnapshot) ... ok
+test_missing_source_retry_does_not_preflight (test_spool_recovery.SpoolRecovery.test_missing_source_retry_does_not_preflight) ... ok
+test_oversize_source_retry_then_gate_fresh (test_spool_recovery.SpoolRecovery.test_oversize_source_retry_then_gate_fresh) ... ok
+test_receipt_mismatch_preserves_pending (test_spool_recovery.SpoolRecovery.test_receipt_mismatch_preserves_pending) ... ok
+test_symlink_pending_rejected (test_spool_recovery.SpoolRecovery.test_symlink_pending_rejected) ... ok
+test_untracked_spool_preserved_after_crash_before_state (test_spool_recovery.SpoolRecovery.test_untracked_spool_preserved_after_crash_before_state) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.626s
+
+OK
