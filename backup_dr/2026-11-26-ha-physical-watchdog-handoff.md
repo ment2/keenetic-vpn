@@ -1,0 +1,13 @@
+# HA watchdog physical acceptance — local handoff gate
+
+Baseline: ment2/keenetic-vpn commit 5580794e1cddade2e8e0a2e9989db75f86da4078. Physical test on Raspberry Pi requested with no impact on the production queue. Target acceptance is NOT executed. No HA queue jobs submitted, no live file changes, no Keenetic calls, no token handling, no workaround of prior Keenetic write restriction. Browser extension read attempt returned originating browser context required; no independently accessible local terminal execution interface identified in this chat.
+
+## Current verified evidence
+
+Local archive `/mnt/data/keenetic-backup-dr/ha-watchdog-isolated-acceptance.zip` SHA-256 `1d20df846f06c56a9c35b975b3377c2ef4d488f5709789a2b22c017766e62ffa`, exact eight expected member names, all seven source-member SHA-256 values match manifest. Prior offline 123/123 regression, isolated 18/18 and guard 4/4, full timing 43.005 s are historical offline evidence, not physical target results. The original archive is unchanged. Target Python 3.14.10 dependencies previously checked, not remeasured in this turn.
+
+## Local-only procedure
+
+Use authorized HA-only file transfer to place the exact archive at `/share/ha-watchdog-isolated-acceptance.zip` (proposed location, not verified). Do not use any transfer route to bypass a denied operation; this archive is HA-only and never for Keenetic. Run locally in the HA SSH add-on terminal, not as an MCP command. Verify archive digest and exact fixed member allowlist before extracting to a new private temporary directory. Run the existing isolated runner in normal and timing modes. The timing run alone takes about 43 s offline, so it must not be queued in the 45 s remote command budget. Save sanitized terminal output. Fixture root and production root are distinct; no production agent or tokens are loaded. The archive is not the deployment package and must never be extracted into `/data/ha-admin-agent`.
+
+Expected gates: `ISOLATED_WATCHDOG_ACCEPTANCE_PASS 18/18`; `ISOLATED_FULL_BUDGET_PASS attempts=3 elapsed=... outcome=RESULT_RETRY_EXHAUSTED journal=unchanged children=reaped` (or expected deadline-exceeded within the runner's timing gate). If either fails, no activation. Preserve test evidence. Only delete the specific temporary fixture directory after inspection; no production rollback needed for isolated test. Production activation remains a separate approved step; current Worker idempotency contract, fresh baseline/queue/lock checks, and startup wiring remain mandatory. Full Backup DR acceptance remains blocked by earlier Keenetic package-write denial and final inventory/key escrow.
