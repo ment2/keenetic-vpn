@@ -1,0 +1,1 @@
+{"allowlist_verified": false, "bundle_files_verified": 36, "configured_budget": 2147483648, "installation_authorized": false, "required_groups": ["entware-config", "ha-integration", "mcp-agents", "startup-cron", "telegram-code", "telegram-state", "xray-config"]}
