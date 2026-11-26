@@ -1,0 +1,10 @@
+test_claim_blocks (test_recover_ha_queue.RecoveryTests.test_claim_blocks) ... ok
+test_pending_blocks (test_recover_ha_queue.RecoveryTests.test_pending_blocks) ... ok
+test_post_error_no_retry (test_recover_ha_queue.RecoveryTests.test_post_error_no_retry) ... ok
+test_reset_once_preserves_policy (test_recover_ha_queue.RecoveryTests.test_reset_once_preserves_policy) ... ok
+test_result_resolves_claim (test_recover_ha_queue.RecoveryTests.test_result_resolves_claim) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.004s
+
+OK
