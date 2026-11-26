@@ -8,5 +8,5 @@ class Runtime(unittest.TestCase):
             def ok(url,key,blob): calls.append(blob); return hashlib.sha256(blob).hexdigest()
             self.assertEqual(tick(*args,now=100,send=ok),'idle'); self.assertEqual(tick(*args,now=3699,send=ok),'idle'); self.assertEqual(calls,[])
             with self.assertRaises(OSError): tick(*args,now=3700,send=fail)
-            self.assertTrue((work/'pending.gcm').exists()); self.assertEqual(tick(*args,now=3701,send=ok),'accepted'); self.assertEqual(calls[0],calls[1]); self.assertFalse((work/'pending.gcm').exists()); self.assertEqual(tick(*args,now=9999,send=ok),'idle'); self.assertEqual(len(calls),2)
+            self.assertTrue((work/'pending.envelope').exists()); self.assertEqual(tick(*args,now=3701,send=ok),'accepted'); self.assertEqual(calls[0],calls[1]); self.assertFalse((work/'pending.envelope').exists()); self.assertEqual(tick(*args,now=9999,send=ok),'idle'); self.assertEqual(len(calls),2)
             (root/'source').write_text('v2'); self.assertEqual(tick(*args,now=10000,send=ok),'idle'); self.assertEqual(tick(*args,now=13600,send=ok),'accepted'); self.assertEqual(len(calls),3)
