@@ -1,0 +1,29 @@
+test_nist (test_crypto.CryptoTests.test_nist) ... ok
+test_roundtrip (test_crypto.CryptoTests.test_roundtrip) ... ok
+test_tamper (test_crypto.CryptoTests.test_tamper) ... ok
+test_wrong_key (test_crypto.CryptoTests.test_wrong_key) ... ok
+test_http_strict (test_manifest_quota.ManifestQuota.test_http_strict) ... ok
+test_isolated_restore (test_manifest_quota.ManifestQuota.test_isolated_restore) ... ok
+test_manifest_mismatch (test_manifest_quota.ManifestQuota.test_manifest_mismatch) ... ok
+test_missing_manifest (test_manifest_quota.ManifestQuota.test_missing_manifest) ... ok
+test_quota_idempotence (test_manifest_quota.ManifestQuota.test_quota_idempotence) ... ok
+test_confirmation (test_provision_monitor.ProvisionMonitor.test_confirmation) ... ok
+test_monitor (test_provision_monitor.ProvisionMonitor.test_monitor) ... ok
+test_secret_permissions (test_provision_monitor.ProvisionMonitor.test_secret_permissions) ... ok
+test_wrapped_master (test_provision_monitor.ProvisionMonitor.test_wrapped_master) ... ok
+test_keep_two_and_unknown (test_retention.Retention.test_keep_two_and_unknown) ... ok
+test_persistent_delay_retry_same_ciphertext (test_runtime.Runtime.test_persistent_delay_retry_same_ciphertext) ... ok
+test_ack (test_scheduler.TestScheduler.test_ack) ... ok
+test_delay (test_scheduler.TestScheduler.test_delay) ... ok
+test_retry (test_scheduler.TestScheduler.test_retry) ... ok
+test_revert (test_scheduler.TestScheduler.test_revert) ... ok
+test_roundtrip_replay (test_transport.Tests.test_roundtrip_replay) ... ok
+test_sqlite_restore (test_transport.Tests.test_sqlite_restore) ... ok
+test_tamper (test_transport.Tests.test_tamper) ... ok
+test_traversal (test_transport.Tests.test_traversal) ... ok
+test_wrong_key (test_transport.Tests.test_wrong_key) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 3.306s
+
+OK
