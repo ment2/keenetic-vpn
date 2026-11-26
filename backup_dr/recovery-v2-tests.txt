@@ -1,0 +1,18 @@
+test_claim_blocks (test_recover_ha_queue.RecoveryTests.test_claim_blocks) ... ok
+test_pending_blocks (test_recover_ha_queue.RecoveryTests.test_pending_blocks) ... ok
+test_post_error_no_retry (test_recover_ha_queue.RecoveryTests.test_post_error_no_retry) ... ok
+test_reset_once_preserves_policy (test_recover_ha_queue.RecoveryTests.test_reset_once_preserves_policy) ... ok
+test_result_resolves_claim (test_recover_ha_queue.RecoveryTests.test_result_resolves_claim) ... ok
+test_exact_once (test_recover_ha_queue.UnknownTests.test_exact_once) ... ok
+test_forbidden_no_retry (test_recover_ha_queue.UnknownTests.test_forbidden_no_retry) ... ok
+test_live_lock (test_recover_ha_queue.UnknownTests.test_live_lock) ... ok
+test_multiple_unknown (test_recover_ha_queue.UnknownTests.test_multiple_unknown) ... ok
+test_not_unknown (test_recover_ha_queue.UnknownTests.test_not_unknown) ... ok
+test_other_block (test_recover_ha_queue.UnknownTests.test_other_block) ... ok
+test_pending (test_recover_ha_queue.UnknownTests.test_pending) ... ok
+test_ua_and_1010 (test_recover_ha_queue.UnknownTests.test_ua_and_1010) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.015s
+
+OK
