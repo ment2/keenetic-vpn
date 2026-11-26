@@ -14,8 +14,12 @@ def store(root, blob, budget=None, reserve=0):
     root = pathlib.Path(root)
     digest = hashlib.sha256(blob).hexdigest()
     target = root / (digest+'.gcm')
+    if target.is_symlink(): raise ValueError('storage conflict')
     if target.exists():
-        if target.is_symlink() or target.read_bytes()!=blob: raise ValueError('storage conflict')
+        if not target.is_file() or target.stat().st_size!=len(blob) or target.read_bytes()!=blob: raise ValueError('storage conflict')
+        dfd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(dfd)
+        finally: os.close(dfd)
         return digest
     if budget is not None:
         from quota import check
