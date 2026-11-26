@@ -13,7 +13,7 @@ def valid_name(name):
 def describe(info,data,kind):
     return dict(name=info.name,size=len(data),sha256=hashlib.sha256(data).hexdigest(),kind=kind,mode=info.mode,uid=info.uid,gid=info.gid,mtime=info.mtime)
 
-def verify(data):
+def verify(data, expected=None):
     found={}; total=0; raw=None
     with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as t:
         for member in t:
@@ -36,6 +36,8 @@ def verify(data):
         if not isinstance(e,dict) or e.get('kind') not in ('file','sqlite') or e.get('name') not in found or e['name'] in names: raise ValueError('manifest entry')
         names.add(e['name']); member,content=found[e['name']]
         if e!=describe(member,content,e['kind']): raise ValueError('manifest mismatch')
+    if expected is not None and {(e['name'],e['kind']) for e in m['entries']} != {tuple(e) for e in expected}:
+        raise ValueError('unexpected group members')
     for name in names:
         if any(str(p) in names for p in pathlib.PurePosixPath(name).parents): raise ValueError('path collision')
     return found
