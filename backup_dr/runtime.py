@@ -2,6 +2,8 @@
 import fcntl, hashlib, json, os, pathlib, tempfile, time
 from scheduler import observe, acknowledge
 from snapshot import archive
+from manifest import valid_name
+from resource_guard import check_memory, SOURCE_MAX, CIPHER_MAX
 from transport import encrypt_archive, upload
 
 def atomic(path, data):
@@ -18,7 +20,7 @@ def atomic(path, data):
 def fingerprint(root, entries):
     root=pathlib.Path(root).resolve(); h=hashlib.sha256()
     for name,kind in sorted(entries):
-        p=root/name
+        p=root/valid_name(name)
         if p.resolve()!=p or not p.is_file(): raise ValueError('invalid source')
         # Hash ordinary source contents, not atime. SQLite main/WAL metadata catches commits.
         for item in ([p,p.with_name(p.name+'-wal')] if kind=='sqlite' else [p]):
@@ -50,11 +52,15 @@ def tick(work, root, entries, master, url, now=None, send=upload):
             s,due=observe(s,digest,now)
             if s!=previous: save()
             if not due: return 'idle'
-            data=archive(root,entries)
+            check_memory()
+            data=archive(root,entries,limit=SOURCE_MAX)
+            if len(data)+28>CIPHER_MAX: raise ValueError('ciphertext budget')
             # A live SQLite database may keep changing. Acknowledge only the pre-snapshot
             # observation; the next tick detects later changes rather than starving backup.
             blob=encrypt_archive(master,data); atomic(spool,blob)
             s['pending']={'source':digest,'sha256':hashlib.sha256(blob).hexdigest()}; save()
+        check_memory()
+        if spool.is_symlink() or spool.stat().st_size>CIPHER_MAX: raise ValueError('spool size or path')
         blob=spool.read_bytes(); pending=s['pending']
         if hashlib.sha256(blob).hexdigest()!=pending['sha256']: raise ValueError('spool integrity')
         if send(url,master,blob)!=pending['sha256']: raise ValueError('receipt mismatch')
