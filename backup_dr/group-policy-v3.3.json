@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "source_root": "/opt",
+  "source_max_bytes_per_group": 4194304,
+  "total_archive_budget_bytes": 2147483648,
+  "minimum_ssd_free_bytes": 5368709120,
+  "retention_days": 30,
+  "minimum_verified_generations_per_group": 2,
+  "change_delay_seconds": 3600,
+  "groups": {
+    "telegram-code": {"quota_bytes": 268435456, "scope": "Reviewed Telegram AI code and required static configuration under telegram-ai; no logs or caches", "status": "exact_allowlist_required"},
+    "telegram-state": {"quota_bytes": 536870912, "scope": "Owner-approved application SQLite state; each SQLite DB backed up using SQLite online backup, not raw WAL copies", "status": "exact_allowlist_required"},
+    "xray-config": {"quota_bytes": 268435456, "scope": "Reviewed etc/xray configuration and custom scripts", "status": "exact_allowlist_required"},
+    "mcp-agents": {"quota_bytes": 268435456, "scope": "Reviewed local bridge and monitoring code; do not capture authentication material implicitly", "status": "exact_allowlist_required"},
+    "entware-config": {"quota_bytes": 268435456, "scope": "Reviewed Entware custom configuration and separately generated package manifest", "status": "exact_allowlist_required"},
+    "startup-cron": {"quota_bytes": 268435456, "scope": "Reviewed startup, watchdog, cron and custom networking scripts; no activation on restore", "status": "exact_allowlist_required"},
+    "ha-integration": {"quota_bytes": 268435456, "scope": "Reviewed HA integration source on Keenetic, if present; not HA OS or /config on Raspberry Pi", "status": "exact_allowlist_required"}
+  },
+  "exclude": ["logs", "cache", "temporary files", "existing archives", "backup runtime and spool", "virtualenvs", "package binaries", "symlinks", "sockets", "device files", "raw WAL and SHM sidecars"],
+  "notes": "Candidate policy only, not a deployable allowlist. Actual per-file list, sensitive-state authorization, package manifest and large-file recovery plan must be reviewed locally. Reinstall architecture-specific packages; do not run MIPS software on ARM. Never export secrets through chat, GitHub or library. No implicit inclusion of authentication files."
+}
