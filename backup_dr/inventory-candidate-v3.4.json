@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "inventory_job": "c3f27edf-b7e5-43b8-b60d-91fc60cc3aa6",
+  "installation_authorized": false,
+  "notes": "Exact observed candidate paths only; names and sizes, not content. Group assignment and sensitive state require local review. Not a complete deployment plan.",
+  "groups": {
+    "telegram-code": [["telegram-ai/ai_module.py",11249],["telegram-ai/assistant.py",23493],["telegram-ai/auto_modes.py",794],["telegram-ai/inspect_installed.py",1120],["telegram-ai/install_auto.py",4316],["telegram-ai/install_buttons.py",4981],["telegram-ai/login.py",651],["telegram-ai/login_debug.py",1330],["telegram-ai/login_qr.py",1625],["telegram-ai/memory_inbox_ui.py",5465],["telegram-ai/memory_store.py",4327],["telegram-ai/memory_ui.py",15252],["telegram-ai/setup_bot.py",2114],["telegram-ai/smart_guard.py",3914]],
+    "mcp-agents": [["telegram-ai/agent_safety.py",15039],["telegram-ai/bridge_client.py",4962],["telegram-ai/cloudflare_sync.py",6786],["telegram-ai/keenetic_agent.py",9454],["telegram-ai/keenetic_agent_batch_patch_v3.py",4907],["telegram-ai/memory_bridge.py",4232]],
+    "xray-config": [["etc/xray/config.json",5104]],
+    "startup-cron": [["etc/init.d/S10cron",232],["etc/init.d/S51dropbear",749],["etc/init.d/S96cloudflare-sync",1093],["etc/init.d/S96xray-killswitch",495],["etc/init.d/S97xray",698],["etc/init.d/S98memory-bridge",1193],["etc/init.d/S98ssh-access",615],["etc/init.d/S98xray-wifi",935],["etc/init.d/S99telegram-ai",1392],["etc/init.d/S99xray-watchdog",531],["etc/init.d/S99z-tproxy",1081],["etc/init.d/S99zz-vpn-monitoring",1659],["etc/init.d/rc.func",2842],["etc/init.d/rc.unslung",950],["var/spool/cron/crontabs/root",2362]],
+    "ha-integration": [["telegram-ai/installed_integration.py",4690],["telegram-ai/integration.py",1096]],
+    "telegram-state": [],
+    "entware-config": []
+  },
+  "remaining": ["Exact local SQLite/session allowlist and owner review; metadata-only aggregate confirms two session files totaling 2048000 bytes", "Exact Entware package manifest and custom non-package files", "Active Xray auxiliary scripts outside observed paths", "Verify HA integration role and dependencies locally", "Native router export outside /opt, separate review", "Review code/config for embedded secrets without exporting contents"]
+}
