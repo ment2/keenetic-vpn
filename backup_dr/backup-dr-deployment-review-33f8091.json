@@ -1,0 +1,465 @@
+{
+  "schema": "backup-dr-deployment-review-v1",
+  "baseline": "8b8db3e593beac6458161d74a503192540c75555",
+  "runtime_commit": "33f8091631885c70b4a1ac5e4648322d63cb1f46",
+  "source_inventory_git_blob": "a9fad5312142c6477588d2493275559d56f35fca",
+  "source_policy_git_blob": "c7241f7fccaea37b3a726aa7141e82a6bd63fe67",
+  "deployable": false,
+  "not_service_plan": true,
+  "source_root": "/opt",
+  "groups": {
+    "telegram-code": {
+      "quota_bytes": 268435456,
+      "entries": [
+        {
+          "path": "telegram-ai/ai_module.py",
+          "observed_bytes": 11249,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/assistant.py",
+          "observed_bytes": 23493,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/auto_modes.py",
+          "observed_bytes": 794,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/inspect_installed.py",
+          "observed_bytes": 1120,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/install_auto.py",
+          "observed_bytes": 4316,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/install_buttons.py",
+          "observed_bytes": 4981,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/login.py",
+          "observed_bytes": 651,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/login_debug.py",
+          "observed_bytes": 1330,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/login_qr.py",
+          "observed_bytes": 1625,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/memory_inbox_ui.py",
+          "observed_bytes": 5465,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/memory_store.py",
+          "observed_bytes": 4327,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/memory_ui.py",
+          "observed_bytes": 15252,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/setup_bot.py",
+          "observed_bytes": 2114,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/smart_guard.py",
+          "observed_bytes": 3914,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    "mcp-agents": {
+      "quota_bytes": 268435456,
+      "entries": [
+        {
+          "path": "telegram-ai/agent_safety.py",
+          "observed_bytes": 15039,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/bridge_client.py",
+          "observed_bytes": 4962,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/cloudflare_sync.py",
+          "observed_bytes": 6786,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/keenetic_agent.py",
+          "observed_bytes": 9454,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/keenetic_agent_batch_patch_v3.py",
+          "observed_bytes": 4907,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/memory_bridge.py",
+          "observed_bytes": 4232,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    "xray-config": {
+      "quota_bytes": 268435456,
+      "entries": [
+        {
+          "path": "etc/xray/config.json",
+          "observed_bytes": 5104,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-auto-update.sh",
+          "observed_bytes": 308,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-fc-cron-guard.sh",
+          "observed_bytes": 132,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-fc-recover.sh",
+          "observed_bytes": 643,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-killswitch-enable.sh",
+          "observed_bytes": 548,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-ks-home-watch.sh",
+          "observed_bytes": 126,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-ks-home.sh",
+          "observed_bytes": 908,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-ks-rollback.sh",
+          "observed_bytes": 287,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-safe-hourly.sh",
+          "observed_bytes": 3150,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-safe-v23.sh",
+          "observed_bytes": 1989,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-watchdog-v24.sh",
+          "observed_bytes": 868,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-watchdog-v25-safe-service.sh",
+          "observed_bytes": 1178,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-watchdog-v25-service.sh",
+          "observed_bytes": 950,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-watchdog-v25.sh",
+          "observed_bytes": 560,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-watchdog.sh",
+          "observed_bytes": 649,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        },
+        {
+          "path": "bin/xray-wifi-rules.sh",
+          "observed_bytes": 1128,
+          "kind_candidate": "file",
+          "decision": "ACTIVE_DEPENDENCY_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    "startup-cron": {
+      "quota_bytes": 268435456,
+      "entries": [
+        {
+          "path": "etc/init.d/S10cron",
+          "observed_bytes": 232,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S51dropbear",
+          "observed_bytes": 749,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S96cloudflare-sync",
+          "observed_bytes": 1093,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S96xray-killswitch",
+          "observed_bytes": 495,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S97xray",
+          "observed_bytes": 698,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S98memory-bridge",
+          "observed_bytes": 1193,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S98ssh-access",
+          "observed_bytes": 615,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S98xray-wifi",
+          "observed_bytes": 935,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S99telegram-ai",
+          "observed_bytes": 1392,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S99xray-watchdog",
+          "observed_bytes": 531,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S99z-tproxy",
+          "observed_bytes": 1081,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/S99zz-vpn-monitoring",
+          "observed_bytes": 1659,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/rc.func",
+          "observed_bytes": 2842,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "etc/init.d/rc.unslung",
+          "observed_bytes": 950,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "var/spool/cron/crontabs/root",
+          "observed_bytes": 2362,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    "ha-integration": {
+      "quota_bytes": 268435456,
+      "entries": [
+        {
+          "path": "telegram-ai/installed_integration.py",
+          "observed_bytes": 4690,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        },
+        {
+          "path": "telegram-ai/integration.py",
+          "observed_bytes": 1096,
+          "kind_candidate": "file",
+          "decision": "LOCAL_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    "telegram-state": {
+      "quota_bytes": 536870912,
+      "entries": [],
+      "unresolved_metadata": {
+        "files": 2,
+        "bytes": 2048000
+      },
+      "kind_required": "sqlite",
+      "note": "No path inferred or exported; local review required; WAL included by preflight estimate, not copied raw."
+    },
+    "entware-config": {
+      "quota_bytes": 268435456,
+      "entries": [
+        {
+          "path": "lib/opkg/status",
+          "observed_bytes": 16204,
+          "kind_candidate": "file",
+          "decision": "PACKAGE_METADATA_ONLY_REVIEW_REQUIRED"
+        }
+      ]
+    }
+  },
+  "excluded_review_candidates": [
+    {
+      "path": "bin/xray-failclosed-audit-v25.sh",
+      "observed_bytes": 902,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-failclosed-test.sh",
+      "observed_bytes": 1915,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-killswitch-test.sh",
+      "observed_bytes": 1156,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-killswitch-v2-test.sh",
+      "observed_bytes": 1037,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-preflight-v24.sh",
+      "observed_bytes": 737,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-rollback-selftest.sh",
+      "observed_bytes": 262,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-v25-migration-preflight.sh",
+      "observed_bytes": 831,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-v25-process-audit.sh",
+      "observed_bytes": 714,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-watchdog-migrate-v25.sh",
+      "observed_bytes": 7342,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    },
+    {
+      "path": "bin/xray-wifi-test.sh",
+      "observed_bytes": 878,
+      "decision": "EXCLUDE_BY_DEFAULT"
+    }
+  ],
+  "gates": {
+    "sender_installation": "BLOCKED_PREVIOUS_TRANSFER_RESTRICTION",
+    "local_content_and_dependency_review": "PENDING",
+    "exact_sqlite_paths": "PENDING_LOCAL_ONLY",
+    "master_key_provisioning": "NOT_STARTED",
+    "independent_escrow_restore": "NOT_RUN",
+    "persistent_receiver": "NOT_STARTED",
+    "real_backup_restore": "NOT_RUN"
+  },
+  "policy": {
+    "source_max_bytes_per_group": 4194304,
+    "total_archive_budget_bytes": 2147483648,
+    "minimum_ssd_free_bytes": 5368709120,
+    "retention_days": 30,
+    "minimum_verified_generations_per_group": 2,
+    "change_delay_seconds": 3600,
+    "exclude": [
+      "logs",
+      "cache",
+      "temporary files",
+      "existing archives",
+      "backup runtime and spool",
+      "virtualenvs",
+      "package binaries",
+      "symlinks",
+      "sockets",
+      "device files",
+      "raw WAL and SHM sidecars"
+    ]
+  },
+  "key_policy": {
+    "master_bytes": 32,
+    "generation": "cryptographically secure local owner-authorized workflow after supported installation path established",
+    "device_storage": "separate private regular file, owner only 0600; no key bytes in chat, repositories, library or logs",
+    "escrow": "RSA-OAEP-SHA256 with pinned recovery public fingerprint; recovery private key independently held offline; verify recovered master identity and restore before production acceptance",
+    "status": "NO_REAL_KEYS_CREATED_OR_TRANSFERRED"
+  }
+}
