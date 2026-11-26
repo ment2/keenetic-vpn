@@ -10,10 +10,16 @@ def keys(master):
 def receipt(key, digest):
     return hmac.digest(key, b'accepted:'+digest.encode('ascii'), 'sha256').hex()
 
-def store(root, blob):
+def store(root, blob, budget=None, reserve=0):
     root = pathlib.Path(root)
     digest = hashlib.sha256(blob).hexdigest()
     target = root / (digest+'.gcm')
+    if target.exists():
+        if target.is_symlink() or target.read_bytes()!=blob: raise ValueError('storage conflict')
+        return digest
+    if budget is not None:
+        from quota import check
+        check(root,len(blob),budget,reserve)
     fd, tmp = tempfile.mkstemp(dir=root, prefix='.pending-')
     try:
         with os.fdopen(fd,'wb') as f:
@@ -27,7 +33,7 @@ def store(root, blob):
     finally: os.unlink(tmp)
     return digest
 
-def receiver(root, master, allowed_ip, bind):
+def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3):
     enc, ack = keys(master)
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self,*args): pass
@@ -43,9 +49,12 @@ def receiver(root, master, allowed_ip, bind):
                 if not 28 <= n <= LIMIT: raise ValueError('size')
                 blob=self.rfile.read(n)
                 if len(blob)!=n: raise ValueError('short body')
-                open_sealed(enc,blob)
-                digest=store(root,blob)
-            except (ValueError,OSError):
+                plaintext=open_sealed(enc,blob)
+                if verify_manifest:
+                    from manifest import verify
+                    verify(plaintext)
+                digest=store(root,blob,budget,reserve)
+            except (ValueError,OSError,EOFError,TypeError,KeyError,AttributeError, __import__('tarfile').TarError):
                 self.send_error(400); return
             result=receipt(ack,digest).encode('ascii')
             self.send_response(200); self.send_header('Content-Length',str(len(result))); self.end_headers(); self.wfile.write(result)
