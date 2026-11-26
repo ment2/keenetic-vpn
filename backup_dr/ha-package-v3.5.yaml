@@ -1,0 +1,44 @@
+# Candidate only; review existing packages and command_line integration before installation.
+command_line:
+  - sensor:
+      name: Keenetic Backup Receiver
+      unique_id: keenetic_backup_dr_receiver_v1
+      command: "cat /share/keenetic-backup-status.json"
+      scan_interval: 60
+      value_template: >-
+        {% if as_timestamp(now()) - (value_json.receiver_heartbeat | int(0)) > 180 %}stale{% elif value_json.retention_error | default(false) %}retention_error{% else %}{{ value_json.status }}{% endif %}
+      json_attributes:
+        - receiver_heartbeat
+        - archive_count
+        - archive_bytes
+        - latest_archive_mtime
+        - free_bytes
+        - global_used_bytes
+        - global_budget_bytes
+        - retention_error
+        - groups
+        - sender
+  - sensor:
+      name: Keenetic Backup Sender
+      unique_id: keenetic_backup_dr_sender_v1
+      command: "cat /share/keenetic-backup-status.json"
+      scan_interval: 60
+      value_template: >-
+        {% set r = value_json.receiver_heartbeat | int(0) %}{% set t = as_timestamp(now()) %}{% set s = value_json.sender | default({}) %}{% if t - r > 180 or r - t > 60 %}receiver_stale{% elif s.status | default('missing') in ['missing','invalid'] %}{{ s.status | default('missing') }}{% elif t - (s.heartbeat | int(0)) > 900 or (s.heartbeat | int(0)) - t > 60 %}stale{% else %}{{ s.status }}{% endif %}
+      json_attributes:
+        - sender
+template:
+  - binary_sensor:
+      - name: Keenetic Backup Attention
+        unique_id: keenetic_backup_dr_attention_v1
+        device_class: problem
+        state: >-
+          {{ states('sensor.keenetic_backup_receiver') != 'ready' or states('sensor.keenetic_backup_sender') != 'ok' }}
+  - sensor:
+      - name: Keenetic Backup SSD Usage
+        unique_id: keenetic_backup_dr_usage_v1
+        unit_of_measurement: '%'
+        availability: >-
+          {{ state_attr('sensor.keenetic_backup_receiver','global_budget_bytes') | int(0) > 0 }}
+        state: >-
+          {{ (100 * (state_attr('sensor.keenetic_backup_receiver','global_used_bytes') | int(0)) / (state_attr('sensor.keenetic_backup_receiver','global_budget_bytes') | int(1))) | round(1) }}
