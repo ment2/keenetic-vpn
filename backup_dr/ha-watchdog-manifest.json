@@ -1,0 +1,10 @@
+{
+  "ha_receipt_watchdog.py": "6618fe19220c841673292d6871bd380e2344489e642f93366de63b4a03daa57d",
+  "ha_monitor_watchdog_candidate.py": "22ba0f5d070d21b38dd47cadc2b35316fe39d81cd1ab2ea46adb00489bf12b08",
+  "test_ha_receipt_watchdog.py": "a3918502a7c3789a59363bee7b96ff3f8a1d22ee50d68dd6fa05fba073246a98",
+  "watchdog-tests.txt": "0b01f6482545ba17b614481ade1df72b459d45874d4fc69f09b44cc1b59b0333",
+  "watchdog-regression.txt": "c390fec8f7a78b1f8588820ba36b383e37a6b04020403601d5e0878d96de40b5",
+  "2026-11-26-ha-receipt-watchdog-runbook.md": "130ff74437080b527a044679dfc69b0c7282304bef99baadc7b76cb3aa99689c",
+  "ha_receipt_retry.py": "fa36a9fa719d8b157b4e663651e0c31269454361f50845998950bd3cf9f3a949",
+  "ha_monitor_receipt_candidate.py": "9fdb271b3c53596bfe8a56898cd6070ce98a8bf622343f2bf5f676c9799dd02a"
+}
