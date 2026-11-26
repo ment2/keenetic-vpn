@@ -31,3 +31,17 @@ class GroupRuntime(unittest.TestCase):
         self.assertEqual(list((self.dest/'beta').iterdir()),[])
     def test_quota_plan(self):
         with self.assertRaises(ValueError): make_receiver(self.root/'other',self.master,self.config,{'alpha':10,'beta':10},'127.0.0.1',('127.0.0.1',0),total_budget=19,reserve=0)
+
+    def test_retired_storage_http_gate(self):
+        retired=self.dest/'retired'; retired.mkdir(mode=0o700); (retired/'old').write_bytes(b'x'*200000)
+        self.assertEqual(group_status(self.dest,self.config,reserve=0,total_budget=200000)['status'],'quota_full')
+        self.assertEqual(group_status(self.dest,self.config,reserve=0)['global_used_bytes'],200000)
+        root=self.root/'limited'; root.mkdir(mode=0o700); retired=root/'retired'; retired.mkdir(mode=0o700); (retired/'old').write_bytes(b'x'*1000)
+        srv=make_receiver(root,self.master,self.config,{'alpha':500,'beta':500},'127.0.0.1',('127.0.0.1',0),total_budget=1000,reserve=0)
+        thread=threading.Thread(target=srv.serve_forever); thread.start()
+        try:
+            data=archive(self.source,[('a','file')]); key=group_key(self.master,'alpha')
+            with self.assertRaises(urllib.error.HTTPError): upload('http://127.0.0.1:%s/v1/backup/alpha'%srv.server_port,key,encrypt_archive(key,data))
+            self.assertEqual(list((root/'alpha').iterdir()),[])
+            self.assertEqual((retired/'old').stat().st_size,1000)
+        finally: srv.shutdown(); thread.join(); srv.server_close()
