@@ -17,7 +17,8 @@ def sqlite_snapshot(path, limit=MAX, timeout=30):
         return dest.serialize()
     finally: dest.close(); source.close()
 
-def archive(root, entries):
+def archive(root, entries, limit=MAX):
+    if not 0<limit<=MAX: raise ValueError('invalid source budget')
     root=pathlib.Path(root).resolve(); buf=io.BytesIO(); seen=set(); total=0; records=[]
     with tarfile.open(fileobj=buf,mode='w:gz') as tar:
         for name, kind in entries:
@@ -26,15 +27,15 @@ def archive(root, entries):
             seen.add(name); p=root/rel
             if p.resolve()!=p or not p.is_file(): raise ValueError('nonregular or symlink')
             before=p.stat()
-            if before.st_size>MAX-total: raise ValueError('size limit')
-            if kind=='sqlite': data=sqlite_snapshot(p,MAX-total)
+            if before.st_size>limit-total: raise ValueError('size limit')
+            if kind=='sqlite': data=sqlite_snapshot(p,limit-total)
             elif kind=='file':
-                with p.open('rb') as f: data=f.read(MAX-total+1)
+                with p.open('rb') as f: data=f.read(limit-total+1)
                 after=p.stat()
                 if (before.st_ino,before.st_size,before.st_mtime_ns)!=(after.st_ino,after.st_size,after.st_mtime_ns): raise ValueError('file changed')
             else: raise ValueError('unknown kind')
             total+=len(data)
-            if total>MAX: raise ValueError('size limit')
+            if total>limit: raise ValueError('size limit')
             info=tarfile.TarInfo(name); info.size=len(data); info.mode=stat.S_IMODE(before.st_mode); info.uid=before.st_uid; info.gid=before.st_gid; info.mtime=int(before.st_mtime)
             tar.addfile(info,io.BytesIO(data)); records.append(describe(info,data,kind))
         raw=json.dumps(dict(version=1,entries=records),sort_keys=True,separators=(',',':')).encode()
