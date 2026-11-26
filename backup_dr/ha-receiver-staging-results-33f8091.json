@@ -1,0 +1,113 @@
+{
+  "baseline": "33f8091631885c70b4a1ac5e4648322d63cb1f46",
+  "path": "/data/keenetic-backup-dr-staging-33f8091",
+  "mkdir_job": "f1021e71-b799-4caa-9a97-b58b52f86a14",
+  "mkdir_result": "done exit 0 mode 0700",
+  "monitor_job": "e6889b74-700e-44a9-9a9d-5018a0c71269",
+  "jobs": {
+    "crypto.py": {
+      "job_id": "dde140fc-f02b-44ad-a882-8978675b82f1",
+      "sha256": "6805ddc174cc7f85319a620951739701d8af77e47c8953b8f5ebf04b5541c517",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "global_quota.py": {
+      "job_id": "a6a995a0-c0d8-46b0-abe8-6afc3135a9d9",
+      "sha256": "579235909b4d2d0c150e349dc2a110ed901158fdc41fab42f7976abbecbd4ea9",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "group_registry.py": {
+      "job_id": "0b2ffc90-3a36-463d-a801-141bcdd5c8c7",
+      "sha256": "798a1c9f1c08bd6321a2be5f371d33af014859558d7ea92e48f8125453550b65",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "group_runtime.py": {
+      "job_id": "1a59e3ff-87fc-4d8f-888d-9ed001871cf1",
+      "sha256": "01ba44912de58c3f6a44e2d49bda0ef6c0f3ec6585aeeb4efbc911ac80efe6fc",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "groups.py": {
+      "job_id": "0afc44fa-06d1-4407-8b88-e9bc630fdbfe",
+      "sha256": "f9ac2311b12f198acf7d4f6b7f5f0a086c31b8bca84bda4e397392891f599df1",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "manifest.py": {
+      "job_id": "064554af-ad2c-47fc-915d-f4d41809bad9",
+      "sha256": "93eadda3fdb5fe4d932a286c9260bd6ac3e9d4af878a16ca8e3a9cf70c0b53cb",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "monitor.py": {
+      "job_id": "8c975b77-129b-4d95-af02-a9ac05499321",
+      "sha256": "8b4cecb85001037f90ce80281f249a50bf8acafce865657726bb709dc213eb96",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "pending_envelope.py": {
+      "job_id": "f903aad1-2296-4bc8-8ac4-ec7c468a366c",
+      "sha256": "615c0f0affc43f2520f7a223d41501d4294c85cbcba278edbedee8949abc0b3e",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "quota.py": {
+      "job_id": "d56f16da-428e-4fb1-b894-207de84129d7",
+      "sha256": "ce4e630b3ce5a7981688ceb19c7ab37851f371c8151f4c2eca42182f1c32373c",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "resource_guard.py": {
+      "job_id": "4b453997-eb9b-4930-8fe9-a405ac5ebb27",
+      "sha256": "7f8dce58347e6a8acbd3cd85f429a2530cad71ffa5a073e560dca03d21dfdae1",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "retention.py": {
+      "job_id": "40378390-3fe2-40a6-a3b9-01f0e344fa9d",
+      "sha256": "01a4cd28c18d05b4d0d0e483452b31f99d511fa103fcf3c4ea50227b42080d51",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "runtime.py": {
+      "job_id": "5a05e409-5e5f-4253-b6e6-9a79ef5631ec",
+      "sha256": "1fab56e0e4913bd9d9820c85d3b8c9b09503025bfd5fe2e7de3a5414b30cae06",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "scheduler.py": {
+      "job_id": "149062a3-3dff-40af-9c0e-0a9fcb81fa65",
+      "sha256": "ea4c25d04b399cb0ffa7af2dced7ec147d39e264cbc5c7cbc7b6bbe2a71f3d20",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "sender_monitor.py": {
+      "job_id": "76bf1533-4f69-46fa-9746-b4fedf19122c",
+      "sha256": "c70c85e9e5669ae70987d3197ac9f58439c908615eb73e07335132d37f41ded5",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "service_v35.py": {
+      "job_id": "2c639c62-5c97-421f-b5fa-b68c92113039",
+      "sha256": "b7cd481eba2fc77c09c856e70c6f54a8b694575bc2a6b3d543a8bd0b080b538b",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "snapshot.py": {
+      "job_id": "0bcf7748-cb17-4300-b67f-6ecb83895a28",
+      "sha256": "446142abd68a8fcc5f26e43c481f70d5968c3a13bf06357b03fd496eb0d24b1c",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    },
+    "transport.py": {
+      "job_id": "f2c6a495-fea6-4b20-9758-5118ccee417f",
+      "sha256": "d07ae4ed7eec257d7ad04fe0b60ee563355d2fb4083ef6fbec13ba273d134b38",
+      "last_confirmed_status": "done exit 0 FILE_WRITE_SHA256_VERIFIED"
+    }
+  },
+  "activation": false,
+  "verification_job": "899695da-2d80-4940-9fa1-ab57639ce8c6",
+  "verification_last_status": "done exit 0 HA_RECEIVER_STAGE_SHA256_PASS 17; HA_RECEIVER_IMPORT_PASS",
+  "verification_audit": {
+    "revision": 4,
+    "result_received": 1795727448385
+  },
+  "physical_synthetic_acceptance": {
+    "job_id": "1c4688ad-1390-491f-8999-235d4b97bb1a",
+    "timeout_seconds": 25,
+    "status": "done",
+    "exit_code": 0,
+    "tests_passed": 1,
+    "elapsed_seconds": 1.25,
+    "test_git_blob": "f466c4c70da1ed8483f8976fd0597d75f6640c23",
+    "audit_result_received": 1795727485592,
+    "revision": 4,
+    "scope": "HA loopback, synthetic files and SQLite, private temporary directory on /share; no real keys or router data"
+  }
+}
