@@ -1,7 +1,8 @@
 """One receiver port, separate authenticated groups, independent state and quotas.
 Candidate only. No installation, cron or key generation performed here.
 """
-import fcntl, pathlib, os
+import pathlib, os
+from group_registry import ensure, exclusive, read as read_registry
 from groups import validate, preflight, group_key, config_id
 from runtime import tick
 from transport import receiver
@@ -15,13 +16,15 @@ RESERVE=5*1024**3
 def private_dir(path):
     path=pathlib.Path(path)
     path.mkdir(mode=0o700,parents=False,exist_ok=True)
-    if path.is_symlink() or not path.is_dir() or path.stat().st_mode & 0o077: raise ValueError('insecure directory')
+    if path.is_symlink() or not path.is_dir() or path.stat().st_uid!=os.geteuid() or path.stat().st_mode & 0o077: raise ValueError('insecure directory')
     return path
 
 def make_receiver(root,master,config,quotas,allowed_ip,bind,*,total_budget=TOTAL_BUDGET,reserve=RESERVE,status_inbox=None):
     config=validate(config)
     if set(quotas)!=set(config) or any(type(q) is not int or q<=0 for q in quotas.values()) or sum(quotas.values())>total_budget or not 0<total_budget<=TOTAL_BUDGET: raise ValueError('invalid group quotas')
     root=private_dir(root); routes={}
+    from global_quota import locked
+    with locked(root): ensure(root,master,'receiver',config)
     for group,entries in config.items():
         folder=private_dir(root/group)
         routes['/v1/backup/'+group]=(folder,group_key(master,group),quotas[group],entries)
@@ -29,8 +32,9 @@ def make_receiver(root,master,config,quotas,allowed_ip,bind,*,total_budget=TOTAL
 
 def run_tick(state_root,source_root,config,master,origin,*,now=None):
     config=validate(config); root=private_dir(state_root); results={}
-    with (root/'groups.lock').open('a') as lock:
-        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    with exclusive(root/'groups.lock'):
+        try: ensure(root,master,'sender',config)
+        except (OSError,ValueError): return {g:'retry_required' for g in config}
         for group,entries in sorted(config.items()):
             try:
                 folder=private_dir(root/group); state=private_dir(folder/config_id(entries))
@@ -47,7 +51,12 @@ def group_status(root,config,*,now=None,reserve=RESERVE,total_budget=TOTAL_BUDGE
     return {'version':1,'receiver_heartbeat':first['receiver_heartbeat'],'global_used_bytes':used,'global_budget_bytes':total_budget,'status':'low_space' if any(r['status']=='low_space' for r in rows.values()) else 'quota_full' if used>=total_budget else 'ready' if all(r['archive_count'] for r in rows.values()) else 'awaiting_first_backup','archive_count':sum(r['archive_count'] for r in rows.values()),'archive_bytes':sum(r['archive_bytes'] for r in rows.values()),'latest_archive_mtime':max(latest) if latest else None,'free_bytes':first['free_bytes'],'groups':rows}
 
 def prune_groups(root,config,master,*,now=None):
-    # Invoke only inside the receiver's single-threaded maintenance loop.
+    # Invoke only inside receiver maintenance. Never remove non-current or
+    # previously retired membership (even if subsequently reactivated).
     from global_quota import locked
+    config=validate(config)
     with locked(root):
-        return {g:prune(pathlib.Path(root)/g,group_key(master,g),now=now) for g in validate(config)}
+        registry=read_registry(root,master,'receiver')
+        if registry is not None and registry['active']!={g:config_id(e) for g,e in config.items()}: raise ValueError('retention configuration mismatch')
+        retired={} if registry is None else registry['retired']
+        return {g:[] if config_id(e) in retired.get(g,[]) else prune(pathlib.Path(root)/g,group_key(master,g),now=now,require_manifest=True,expected=e) for g,e in config.items()}
