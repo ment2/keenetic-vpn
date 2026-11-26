@@ -1,0 +1,78 @@
+test_lost_ack_restart_exact_ciphertext_sqlite_restore (test_acceptance_v35.Acceptance.test_lost_ack_restart_exact_ciphertext_sqlite_restore) ... ok
+test_nist (test_crypto.CryptoTests.test_nist) ... ok
+test_roundtrip (test_crypto.CryptoTests.test_roundtrip) ... ok
+test_tamper (test_crypto.CryptoTests.test_tamper) ... ok
+test_wrong_key (test_crypto.CryptoTests.test_wrong_key) ... ok
+test_offline_restore (test_escrow.Escrow.test_offline_restore) ... ok
+test_tamper (test_escrow.Escrow.test_tamper) ... ok
+test_wrong_recipient (test_escrow.Escrow.test_wrong_recipient) ... ok
+test_duplicate_at_capacity (test_global_quota.GlobalQuota.test_duplicate_at_capacity) ... ok
+test_parallel_global_admission (test_global_quota.GlobalQuota.test_parallel_global_admission) ... ok
+test_reserve_and_symlink (test_global_quota.GlobalQuota.test_reserve_and_symlink) ... ok
+test_retired_and_pending_count (test_global_quota.GlobalQuota.test_retired_and_pending_count) ... ok
+test_quota_plan (test_group_runtime.GroupRuntime.test_quota_plan) ... ok
+test_retired_storage_http_gate (test_group_runtime.GroupRuntime.test_retired_storage_http_gate) ... ok
+test_schedule_restore (test_group_runtime.GroupRuntime.test_schedule_restore) ... ok
+test_wrong_group (test_group_runtime.GroupRuntime.test_wrong_group) ... ok
+test_isolation (test_groups.Groups.test_isolation) ... ok
+test_preflight (test_groups.Groups.test_preflight) ... ok
+test_validate (test_groups.Groups.test_validate) ... ok
+test_expiry_releases_next (test_ha_queue_timeout_model.QueueTimeoutModel.test_expiry_releases_next) ... ok
+test_ha_ingress_guard (test_ha_queue_timeout_model.QueueTimeoutModel.test_ha_ingress_guard) ... ok
+test_head_blocks_short_job (test_ha_queue_timeout_model.QueueTimeoutModel.test_head_blocks_short_job) ... ok
+test_digest (test_install_gate.InstallGate.test_digest) ... ok
+test_policy_not_authorization (test_install_gate.InstallGate.test_policy_not_authorization) ... ok
+test_http_strict (test_manifest_quota.ManifestQuota.test_http_strict) ... ok
+test_isolated_restore (test_manifest_quota.ManifestQuota.test_isolated_restore) ... ok
+test_manifest_mismatch (test_manifest_quota.ManifestQuota.test_manifest_mismatch) ... ok
+test_missing_manifest (test_manifest_quota.ManifestQuota.test_missing_manifest) ... ok
+test_quota_idempotence (test_manifest_quota.ManifestQuota.test_quota_idempotence) ... ok
+test_confirmation (test_provision_monitor.ProvisionMonitor.test_confirmation) ... ok
+test_monitor (test_provision_monitor.ProvisionMonitor.test_monitor) ... ok
+test_secret_permissions (test_provision_monitor.ProvisionMonitor.test_secret_permissions) ... ok
+test_wrapped_master (test_provision_monitor.ProvisionMonitor.test_wrapped_master) ... ok
+test_claim_blocks (test_recover_ha_queue.RecoveryTests.test_claim_blocks) ... ok
+test_pending_blocks (test_recover_ha_queue.RecoveryTests.test_pending_blocks) ... ok
+test_post_error_no_retry (test_recover_ha_queue.RecoveryTests.test_post_error_no_retry) ... ok
+test_reset_once_preserves_policy (test_recover_ha_queue.RecoveryTests.test_reset_once_preserves_policy) ... ok
+test_result_resolves_claim (test_recover_ha_queue.RecoveryTests.test_result_resolves_claim) ... ok
+test_exact_once (test_recover_ha_queue.UnknownTests.test_exact_once) ... ok
+test_forbidden_no_retry (test_recover_ha_queue.UnknownTests.test_forbidden_no_retry) ... ok
+test_live_lock (test_recover_ha_queue.UnknownTests.test_live_lock) ... ok
+test_multiple_unknown (test_recover_ha_queue.UnknownTests.test_multiple_unknown) ... ok
+test_not_unknown (test_recover_ha_queue.UnknownTests.test_not_unknown) ... ok
+test_other_block (test_recover_ha_queue.UnknownTests.test_other_block) ... ok
+test_pending (test_recover_ha_queue.UnknownTests.test_pending) ... ok
+test_ua_and_1010 (test_recover_ha_queue.UnknownTests.test_ua_and_1010) ... ok
+test_low_memory (test_resource_guard.ResourceGuard.test_low_memory) ... ok
+test_source_budget (test_resource_guard.ResourceGuard.test_source_budget) ... ok
+test_keep_two_and_unknown (test_retention.Retention.test_keep_two_and_unknown) ... ok
+test_persistent_delay_retry_same_ciphertext (test_runtime.Runtime.test_persistent_delay_retry_same_ciphertext) ... ok
+test_ack (test_scheduler.TestScheduler.test_ack) ... ok
+test_delay (test_scheduler.TestScheduler.test_delay) ... ok
+test_retry (test_scheduler.TestScheduler.test_retry) ... ok
+test_revert (test_scheduler.TestScheduler.test_revert) ... ok
+test_bad_key_and_clock (test_sender_monitor.SenderMonitor.test_bad_key_and_clock) ... ok
+test_end_to_end_and_failure (test_sender_monitor.SenderMonitor.test_end_to_end_and_failure) ... ok
+test_group_and_schema (test_sender_monitor.SenderMonitor.test_group_and_schema) ... /usr/lib/python3.13/http/client.py:1342: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f6021784b80>
+  header_names = frozenset(k.lower() for k in headers)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_missing_healthy_stale (test_sender_monitor.SenderMonitor.test_missing_healthy_stale) ... ok
+test_replay_survives_restart (test_sender_monitor.SenderMonitor.test_replay_survives_restart) ... ok
+test_state_outside_archive_and_private (test_sender_monitor.SenderMonitor.test_state_outside_archive_and_private) ... ok
+test_group_body_limit (test_service_v34.Service.test_group_body_limit) ... ok
+test_heartbeat_shutdown (test_service_v34.Service.test_heartbeat_shutdown) ... ok
+test_lock (test_service_v34.Service.test_lock) ... ok
+test_plan_and_key (test_service_v34.Service.test_plan_and_key) ... ok
+test_retention_rejects_nonmanifest (test_service_v34.Service.test_retention_rejects_nonmanifest) ... ok
+test_roundtrip_replay (test_transport.Tests.test_roundtrip_replay) ... ok
+test_sqlite_restore (test_transport.Tests.test_sqlite_restore) ... ok
+test_tamper (test_transport.Tests.test_tamper) ... ok
+test_traversal (test_transport.Tests.test_traversal) ... ok
+test_wrong_key (test_transport.Tests.test_wrong_key) ... ok
+
+----------------------------------------------------------------------
+Ran 70 tests in 11.001s
+
+OK
