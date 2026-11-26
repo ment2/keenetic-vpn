@@ -10,7 +10,14 @@ def keys(master):
 def receipt(key, digest):
     return hmac.digest(key, b'accepted:'+digest.encode('ascii'), 'sha256').hex()
 
-def store(root, blob, budget=None, reserve=0):
+def store(root, blob, budget=None, reserve=0, *, global_root=None, global_budget=None):
+    if global_root is not None:
+        from global_quota import locked
+        with locked(global_root):
+            return _store(root,blob,budget,reserve,global_root,global_budget)
+    return _store(root,blob,budget,reserve,None,None)
+
+def _store(root, blob, budget, reserve, global_root, global_budget):
     root = pathlib.Path(root)
     digest = hashlib.sha256(blob).hexdigest()
     target = root / (digest+'.gcm')
@@ -21,6 +28,9 @@ def store(root, blob, budget=None, reserve=0):
         try: os.fsync(dfd)
         finally: os.close(dfd)
         return digest
+    if global_root is not None:
+        from global_quota import check as global_check
+        global_check(global_root,root,len(blob),global_budget,reserve)
     if budget is not None:
         from quota import check
         check(root,len(blob),budget,reserve)
@@ -37,7 +47,7 @@ def store(root, blob, budget=None, reserve=0):
     finally: os.unlink(tmp)
     return digest
 
-def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3, routes=None):
+def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3, routes=None, global_budget=None):
     # Routes are trusted local configuration, not request-supplied paths.
     if routes is None:
         routes={'/v1/backup':(root,master,budget,None)}
@@ -62,7 +72,7 @@ def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1
                 if verify_manifest or expected is not None:
                     from manifest import verify
                     verify(plaintext,expected=expected)
-                digest=store(directory,blob,quota,reserve)
+                digest=store(directory,blob,quota,reserve,global_root=root if global_budget is not None else None,global_budget=global_budget)
             except (ValueError,OSError,EOFError,TypeError,KeyError,AttributeError, __import__('tarfile').TarError):
                 self.send_error(400); return
             result=receipt(ack,digest).encode('ascii')
