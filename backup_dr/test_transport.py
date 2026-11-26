@@ -4,7 +4,7 @@ from crypto import open_sealed
 from snapshot import archive
 class Tests(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory(); self.root=pathlib.Path(self.tmp.name); self.key=bytes(range(32)); self.s=receiver(self.root,self.key,'127.0.0.1',('127.0.0.1',0)); self.t=threading.Thread(target=self.s.serve_forever); self.t.start(); self.url='http://127.0.0.1:%d/v1/backup'%self.s.server_port
+        self.tmp=tempfile.TemporaryDirectory(); self.root=pathlib.Path(self.tmp.name); self.key=bytes(range(32)); self.s=receiver(self.root,self.key,'127.0.0.1',('127.0.0.1',0),verify_manifest=False,reserve=0); self.t=threading.Thread(target=self.s.serve_forever); self.t.start(); self.url='http://127.0.0.1:%d/v1/backup'%self.s.server_port
     def tearDown(self): self.s.shutdown(); self.t.join(); self.s.server_close(); self.tmp.cleanup()
     def test_roundtrip_replay(self):
         b=encrypt_archive(self.key,b'example'); d=upload(self.url,self.key,b); self.assertEqual(upload(self.url,self.key,b),d); self.assertEqual(len(list(self.root.iterdir())),1); self.assertEqual(open_sealed(keys(self.key)[0],(self.root/(d+'.gcm')).read_bytes()),b'example')
