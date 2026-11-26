@@ -1,0 +1,24 @@
+test_ack (test_ha_receipt_watchdog.WatchdogTests.test_ack) ... ok
+test_bad_ack_and_reject (test_ha_receipt_watchdog.WatchdogTests.test_bad_ack_and_reject) ... ok
+test_budget_and_preflight (test_ha_receipt_watchdog.WatchdogTests.test_budget_and_preflight) ... ok
+test_changed_after_ack (test_ha_receipt_watchdog.WatchdogTests.test_changed_after_ack) ... ok
+test_child_contract (test_ha_receipt_watchdog.WatchdogTests.test_child_contract) ... ok
+test_claimed_never_sent_even_on_stop (test_ha_receipt_watchdog.WatchdogTests.test_claimed_never_sent_even_on_stop) ... ok
+test_http_lost_ack_real_child (test_ha_receipt_watchdog.WatchdogTests.test_http_lost_ack_real_child) ... ok
+test_monitor_ordinary_stop_cooperative (test_ha_receipt_watchdog.WatchdogTests.test_monitor_ordinary_stop_cooperative) ... ok
+test_monitor_ready_no_tick (test_ha_receipt_watchdog.WatchdogTests.test_monitor_ready_no_tick) ... ok
+test_monitor_stop_pending (test_ha_receipt_watchdog.WatchdogTests.test_monitor_stop_pending) ... ok
+test_monitor_unknown_failure (test_ha_receipt_watchdog.WatchdogTests.test_monitor_unknown_failure) ... ok
+test_stop_active_worker (test_ha_receipt_watchdog.WatchdogTests.test_stop_active_worker) ... ok
+test_stop_before_attempt (test_ha_receipt_watchdog.WatchdogTests.test_stop_before_attempt) ... ok
+test_stop_during_backoff (test_ha_receipt_watchdog.WatchdogTests.test_stop_during_backoff) ... ok
+test_timeout_preserves_and_reaps (test_ha_receipt_watchdog.WatchdogTests.test_timeout_preserves_and_reaps) ... ok
+test_total_deadline (test_ha_receipt_watchdog.WatchdogTests.test_total_deadline) ... ok
+test_worker_exact_payload_and_no_unlink (test_ha_receipt_watchdog.WatchdogTests.test_worker_exact_payload_and_no_unlink) ... ok
+test_worker_transient_classification (test_ha_receipt_watchdog.WatchdogTests.test_worker_transient_classification) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 4.179s
+
+OK
+ISOLATED_WATCHDOG_ACCEPTANCE_PASS 18/18
