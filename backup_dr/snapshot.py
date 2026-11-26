@@ -1,12 +1,17 @@
 """Explicit allowlist only. SQLite snapshots remain in memory."""
-import io, os, pathlib, sqlite3, tarfile, stat
+import io, os, pathlib, sqlite3, tarfile, stat, time
 MAX = 48*1024*1024
 
-def sqlite_snapshot(path):
+def sqlite_snapshot(path, limit=MAX, timeout=30):
     source=sqlite3.connect(pathlib.Path(path).resolve().as_uri()+'?mode=ro',uri=True,timeout=5)
     dest=sqlite3.connect(':memory:')
     try:
-        source.backup(dest)
+        deadline=time.monotonic()+timeout
+        page_size=source.execute('PRAGMA page_size').fetchone()[0]
+        def progress(status,remaining,total):
+            if total*page_size>limit: raise ValueError('SQLite size limit')
+            if time.monotonic()>deadline: raise TimeoutError('SQLite backup deadline')
+        source.backup(dest,pages=64,progress=progress,sleep=0.05)
         if dest.execute('PRAGMA quick_check').fetchone()!=('ok',): raise ValueError('SQLite integrity')
         return dest.serialize()
     finally: dest.close(); source.close()
@@ -21,7 +26,7 @@ def archive(root, entries):
             if p.resolve()!=p or not p.is_file(): raise ValueError('nonregular or symlink')
             before=p.stat()
             if before.st_size>MAX-total: raise ValueError('size limit')
-            if kind=='sqlite': data=sqlite_snapshot(p)
+            if kind=='sqlite': data=sqlite_snapshot(p,MAX-total)
             elif kind=='file':
                 with p.open('rb') as f: data=f.read(MAX-total+1)
                 after=p.stat()
