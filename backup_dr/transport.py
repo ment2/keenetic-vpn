@@ -47,7 +47,8 @@ def _store(root, blob, budget, reserve, global_root, global_budget):
     finally: os.unlink(tmp)
     return digest
 
-def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3, routes=None, global_budget=None):
+def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1024**3, reserve=5*1024**3, routes=None, global_budget=None, body_limit=LIMIT):
+    if type(body_limit) is not int or not 28 <= body_limit <= LIMIT: raise ValueError('invalid body limit')
     # Routes are trusted local configuration, not request-supplied paths.
     if routes is None:
         routes={'/v1/backup':(root,master,budget,None)}
@@ -65,7 +66,7 @@ def receiver(root, master, allowed_ip, bind, *, verify_manifest=True, budget=2*1
                 self.send_error(400); return
             try:
                 n=int(self.headers['Content-Length'])
-                if not 28 <= n <= LIMIT: raise ValueError('size')
+                if not 28 <= n <= body_limit: raise ValueError('size')
                 blob=self.rfile.read(n)
                 if len(blob)!=n: raise ValueError('short body')
                 plaintext=open_sealed(enc,blob)
