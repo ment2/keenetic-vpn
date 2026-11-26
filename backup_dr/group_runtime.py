@@ -31,13 +31,10 @@ def run_tick(state_root,source_root,config,master,origin,*,now=None):
     config=validate(config); root=private_dir(state_root); results={}
     with (root/'groups.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        ready=preflight(source_root,config)
         for group,entries in sorted(config.items()):
-            if not ready[group]['ready']:
-                results[group]='preflight_failed'; continue
-            folder=private_dir(root/group); state=private_dir(folder/config_id(entries))
             try:
-                results[group]=tick(state,source_root,entries,group_key(master,group),origin.rstrip('/')+'/v1/backup/'+group,now=now)
+                folder=private_dir(root/group); state=private_dir(folder/config_id(entries))
+                results[group]=tick(state,source_root,entries,group_key(master,group),origin.rstrip('/')+'/v1/backup/'+group,now=now,source_ready=lambda:preflight(source_root,{group:entries})[group]['ready'])
             except (OSError,ValueError,MemoryError,TimeoutError):
                 results[group]='retry_required'
     return results
