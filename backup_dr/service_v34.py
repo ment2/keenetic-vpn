@@ -1,7 +1,7 @@
 """Foreground receiver and single scheduler tick; no install or auto-start."""
 import argparse, contextlib, fcntl, json, os, pathlib, signal, stat, sys, time
 from groups import validate, preflight
-from group_runtime import make_receiver, run_tick, group_status, private_dir, TOTAL_BUDGET, RESERVE
+from group_runtime import make_receiver, run_tick, group_status, private_dir, TOTAL_BUDGET, RESERVE, prune_groups
 from monitor import publish
 from retention import prune
 from groups import group_key
@@ -43,9 +43,7 @@ def exclusive(path):
     finally: os.close(fd)
 
 def maintenance(root, config, master, now=None):
-    # Historical group membership can change; verify internal manifests, not current allowlist.
-    with locked(root):
-        return {g:len(prune(pathlib.Path(root)/g,group_key(master,g),now=now,require_manifest=True)) for g in validate(config)}
+    return {g:len(v) for g,v in prune_groups(root,config,master,now=now).items()}
 
 def run_receiver(server, root, config, master, status_path, *, stop=lambda:False, clock=time.monotonic, interval=30, retention_interval=3600, reserve=RESERVE):
     server.timeout=min(interval,5)
