@@ -1,0 +1,13 @@
+# HA owner-local recovery v2 — 2026-11-26
+Base Backup DR f7ff670fca7746d82f5ac592dfc240fcde993272. Actual incident: write job 4d3a785f-b37a-4fe3-aaf9-3b30cce9becd claimed, lease expired, UNKNOWN. Owner-local inspection showed monitor NOT_RUNNING/BLOCKED TimeoutError, pending.json absent, synthetic fixture absent. Reconciliation POST initially returned 403 text/plain Cloudflare 1010; explicit existing application User-Agent ha-control-agent/0.1-candidate succeeded without changing Cloudflare protection. Audit manually_reconciled at 1795721690045; status failed; revision 4 unchanged; owner started monitor PID 1770, idle. Subsequent HA job 2fada6a8-986b-403f-a60f-b79b08726c78 done exit 0, monitor RUNNING, port 8765 refused (no receiver installed). PENDING_JOURNAL True inside that running job is expected, not evidence of an unresolved job. No old job re-executed.
+
+## Owner-local commands (do not run mutations through HA queue)
+
+Read-only: `python3 /data/ha-admin-agent/recover_ha_queue.py`
+
+For QUEUED: first stop the monitor cooperatively (`python3 /data/ha-admin-agent/ha_monitor.py stop`), verify NOT_RUNNING and no pending journal; then `python3 /data/ha-admin-agent/recover_ha_queue.py --reset-queued`. Confirm RESET <revision>. Cancels ALL queued jobs, preserves rights, increments revision. Never use for UNKNOWN. After verified success start monitor using its existing start command.
+
+For UNKNOWN: inspect exact job and local effects first, monitor must be stopped, no pending journal. `python3 /data/ha-admin-agent/recover_ha_queue.py --reconcile-unknown JOB_ID`. Confirm RECONCILE <job-id>. Only one unresolved matching job accepted; no re-execution, no revision change, verifies failed status and zero unresolved blocks. If a journal exists, preserve it and use supported receipt/recovery review; do not delete it. After success explicitly start monitor. Acknowledgment does not prove that the historical action never ran. Do not retry on uncertain HTTP outcome; inspect server state. No live reset/reconcile for tests. Lock files are held for owner operation; remote policy changes still require coordination with other administrators. Server source historical, runtime read-only endpoints must be verified before deployment. Tests use synthetic data only.
+
+## Physical gate
+HA read-only connectivity restored, old synthetic fixture transmission PASS only. Full v3.5 physical archive acceptance remains blocked by earlier Keenetic package write rejection; do not bypass by alternate tools/encoding/chunking. Production keys, archives, schedules, and receiver unchanged. Owner-local trusted installation/acceptance requires independent authorization and actual verification.
