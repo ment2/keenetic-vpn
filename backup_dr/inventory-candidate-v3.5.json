@@ -1,0 +1,298 @@
+{
+  "version": 2,
+  "inventory_job": "c3f27edf-b7e5-43b8-b60d-91fc60cc3aa6",
+  "installation_authorized": false,
+  "notes": "Exact observed candidate paths only; names and sizes, not content. Group assignment and sensitive state require local review. Not a complete deployment plan.",
+  "groups": {
+    "telegram-code": [
+      [
+        "telegram-ai/ai_module.py",
+        11249
+      ],
+      [
+        "telegram-ai/assistant.py",
+        23493
+      ],
+      [
+        "telegram-ai/auto_modes.py",
+        794
+      ],
+      [
+        "telegram-ai/inspect_installed.py",
+        1120
+      ],
+      [
+        "telegram-ai/install_auto.py",
+        4316
+      ],
+      [
+        "telegram-ai/install_buttons.py",
+        4981
+      ],
+      [
+        "telegram-ai/login.py",
+        651
+      ],
+      [
+        "telegram-ai/login_debug.py",
+        1330
+      ],
+      [
+        "telegram-ai/login_qr.py",
+        1625
+      ],
+      [
+        "telegram-ai/memory_inbox_ui.py",
+        5465
+      ],
+      [
+        "telegram-ai/memory_store.py",
+        4327
+      ],
+      [
+        "telegram-ai/memory_ui.py",
+        15252
+      ],
+      [
+        "telegram-ai/setup_bot.py",
+        2114
+      ],
+      [
+        "telegram-ai/smart_guard.py",
+        3914
+      ]
+    ],
+    "mcp-agents": [
+      [
+        "telegram-ai/agent_safety.py",
+        15039
+      ],
+      [
+        "telegram-ai/bridge_client.py",
+        4962
+      ],
+      [
+        "telegram-ai/cloudflare_sync.py",
+        6786
+      ],
+      [
+        "telegram-ai/keenetic_agent.py",
+        9454
+      ],
+      [
+        "telegram-ai/keenetic_agent_batch_patch_v3.py",
+        4907
+      ],
+      [
+        "telegram-ai/memory_bridge.py",
+        4232
+      ]
+    ],
+    "xray-config": [
+      [
+        "etc/xray/config.json",
+        5104
+      ]
+    ],
+    "startup-cron": [
+      [
+        "etc/init.d/S10cron",
+        232
+      ],
+      [
+        "etc/init.d/S51dropbear",
+        749
+      ],
+      [
+        "etc/init.d/S96cloudflare-sync",
+        1093
+      ],
+      [
+        "etc/init.d/S96xray-killswitch",
+        495
+      ],
+      [
+        "etc/init.d/S97xray",
+        698
+      ],
+      [
+        "etc/init.d/S98memory-bridge",
+        1193
+      ],
+      [
+        "etc/init.d/S98ssh-access",
+        615
+      ],
+      [
+        "etc/init.d/S98xray-wifi",
+        935
+      ],
+      [
+        "etc/init.d/S99telegram-ai",
+        1392
+      ],
+      [
+        "etc/init.d/S99xray-watchdog",
+        531
+      ],
+      [
+        "etc/init.d/S99z-tproxy",
+        1081
+      ],
+      [
+        "etc/init.d/S99zz-vpn-monitoring",
+        1659
+      ],
+      [
+        "etc/init.d/rc.func",
+        2842
+      ],
+      [
+        "etc/init.d/rc.unslung",
+        950
+      ],
+      [
+        "var/spool/cron/crontabs/root",
+        2362
+      ]
+    ],
+    "ha-integration": [
+      [
+        "telegram-ai/installed_integration.py",
+        4690
+      ],
+      [
+        "telegram-ai/integration.py",
+        1096
+      ]
+    ],
+    "telegram-state": [],
+    "entware-config": []
+  },
+  "remaining": [
+    "Local exact owner-approved SQLite paths and kind=sqlite; do not export session names or contents through MCP",
+    "Review Xray script dependencies and active versus historical scripts, including excluded audit/test/migration paths",
+    "Validate package manifest and custom non-package files; package database is a candidate, not an architecture-independent restore image",
+    "Review locally code/config for embedded secrets and decide required sensitive config paths; no implicit selection",
+    "Native router export outside /opt and HA-owned config separate scope; not covered by this inventory",
+    "Physical acceptance and owner escrow"
+  ],
+  "additional_inventory_job": "d4590218-f56c-441e-80d1-b08635cbbe43",
+  "additional_inventory_exit_code": 0,
+  "additional_candidates": {
+    "xray_scripts_review_required": [
+      [
+        "bin/xray-auto-update.sh",
+        308
+      ],
+      [
+        "bin/xray-fc-cron-guard.sh",
+        132
+      ],
+      [
+        "bin/xray-fc-recover.sh",
+        643
+      ],
+      [
+        "bin/xray-killswitch-enable.sh",
+        548
+      ],
+      [
+        "bin/xray-ks-home-watch.sh",
+        126
+      ],
+      [
+        "bin/xray-ks-home.sh",
+        908
+      ],
+      [
+        "bin/xray-ks-rollback.sh",
+        287
+      ],
+      [
+        "bin/xray-safe-hourly.sh",
+        3150
+      ],
+      [
+        "bin/xray-safe-v23.sh",
+        1989
+      ],
+      [
+        "bin/xray-watchdog-v24.sh",
+        868
+      ],
+      [
+        "bin/xray-watchdog-v25-safe-service.sh",
+        1178
+      ],
+      [
+        "bin/xray-watchdog-v25-service.sh",
+        950
+      ],
+      [
+        "bin/xray-watchdog-v25.sh",
+        560
+      ],
+      [
+        "bin/xray-watchdog.sh",
+        649
+      ],
+      [
+        "bin/xray-wifi-rules.sh",
+        1128
+      ]
+    ],
+    "xray_scripts_test_audit_migration_review_excluded_by_default": [
+      [
+        "bin/xray-failclosed-audit-v25.sh",
+        902
+      ],
+      [
+        "bin/xray-failclosed-test.sh",
+        1915
+      ],
+      [
+        "bin/xray-killswitch-test.sh",
+        1156
+      ],
+      [
+        "bin/xray-killswitch-v2-test.sh",
+        1037
+      ],
+      [
+        "bin/xray-preflight-v24.sh",
+        737
+      ],
+      [
+        "bin/xray-rollback-selftest.sh",
+        262
+      ],
+      [
+        "bin/xray-v25-migration-preflight.sh",
+        831
+      ],
+      [
+        "bin/xray-v25-process-audit.sh",
+        714
+      ],
+      [
+        "bin/xray-watchdog-migrate-v25.sh",
+        7342
+      ],
+      [
+        "bin/xray-wifi-test.sh",
+        878
+      ]
+    ],
+    "entware_package_database": [
+      [
+        "lib/opkg/status",
+        16204
+      ]
+    ],
+    "telegram_sqlite_metadata_only": {
+      "files": 2,
+      "bytes": 2048000
+    }
+  }
+}
