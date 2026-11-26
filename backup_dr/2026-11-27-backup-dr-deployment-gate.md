@@ -1,0 +1,21 @@
+# Backup DR — deployment readiness and remaining installation gates
+
+Baseline documentation: ment2/keenetic-vpn commit 8b8db3e593beac6458161d74a503192540c75555. Frozen runtime: 33f8091631885c70b4a1ac5e4648322d63cb1f46. Prior HA receiver staging 17/17 hashes and import PASS; actual HA synthetic HTTP/SQLite restore PASS. Not repeated. HA runtime remains staged, not a persistent operational receiver.
+
+## Work performed
+
+Read exact GitHub inventory and policy; local Git blob hashes match a9fad5312142c6477588d2493275559d56f35fca and c7241f7fccaea37b3a726aa7141e82a6bd63fe67. Reviewed frozen groups.py and escrow interfaces. Current Keenetic Worker permission metadata: revision 2, remote/admin enabled, scopes diagnostic/exec/read_file/write_file. This is permission metadata, not authorization to circumvent prior tool rejection. No router job, write, transfer, key generation, listener start or HA modification was performed. No completed physical checks repeated.
+
+Created backup-dr-deployment-review-33f8091.json, a deliberately non-deployable review ledger. It records exact existing metadata, not file contents, and never guesses SQLite names. 38 previously observed paths (153728 bytes), 15 additional Xray script candidates (13424 bytes), one package database candidate (16204 bytes), and ten excluded-by-default test/audit/migration candidates. Total 54 review candidates, 183356 observed bytes, excluding the two unidentified SQLite files (2048000 bytes total). These are historical sizes, not a fresh preflight or evidence of complete dependencies. Every candidate remains pending local content/dependency review; package database alone does not recreate Entware. No implicit inclusion of authentication files. Do not feed this ledger to service_v35 as an operational plan.
+
+## Fixed deployment policy
+
+Seven groups, 4 MiB estimated source limit per group, aggregate archive cap 2 GiB, SSD reserve 5 GiB, 30 days retention with at least two verified generations, first-change delay 3600 seconds. Historical/retired archives are protected and consume quota; frozen retention is not a guarantee of deletion exactly at day 30. No raw SQLite WAL/SHM copies, logs, caches, temporary files, backups, binaries or symlinks. Native router settings export and architecture-specific reinstall are separate recovery items, not included in the observed paths. No full restore claim.
+
+## Key and restore gates
+
+Operational 32-byte master must be created with a CSPRNG in an approved local provisioning workflow, stored separately from source/runtime and archives with owner-only access. Frozen service expects private owner-owned regular 32-byte key files; 0600 is the deployment choice. The escrow implementation binds the RSA-OAEP-SHA256 envelope to a pinned public-key fingerprint and master identity. Recovery private key must be retained independently offline; a recovered master must be verified and used for an isolated restore before acceptance. No key material in chat/GitHub/Library/logs. No real master or escrow generated now, because an approved sender installation and secure provisioning path have not been established. Do not use the test key in production.
+
+## Real blocker and sequence
+
+The prior Keenetic package-transfer rejection remains binding. Do not retry it, change transport, split or encode the payload, use another host or provide a manual equivalent to circumvent it. Only proceed on a genuinely permitted installation path, independently established without bypassing the restriction. Then complete owner-local exact allowlist review, including sensitive state and actual dependencies; agree identical plan on both sides; preflight actual source files; establish secure shared key and independent escrow; start authenticated receiver and approved sender/schedule; verify first changed-data archive, authenticated receipt, no repeat for unchanged data, and isolated recovery with SQLite integrity checks. Any restore to production is separate, not automatic. Frozen HTTP deadline/decompression and historical retention limitations remain explicitly open; no new engineering here. Production sender/receiver activation is NO-GO at this checkpoint. The user need not repeat HA checks. No change to existing production services or policies.
