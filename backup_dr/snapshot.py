@@ -1,6 +1,7 @@
 """Explicit allowlist only. SQLite snapshots remain in memory."""
 import io, os, pathlib, sqlite3, tarfile, stat, time
-MAX = 48*1024*1024
+from manifest import MAX, MAX_FILES, MANIFEST, valid_name, describe
+import json
 
 def sqlite_snapshot(path, limit=MAX, timeout=30):
     source=sqlite3.connect(pathlib.Path(path).resolve().as_uri()+'?mode=ro',uri=True,timeout=5)
@@ -17,11 +18,11 @@ def sqlite_snapshot(path, limit=MAX, timeout=30):
     finally: dest.close(); source.close()
 
 def archive(root, entries):
-    root=pathlib.Path(root).resolve(); buf=io.BytesIO(); seen=set(); total=0
+    root=pathlib.Path(root).resolve(); buf=io.BytesIO(); seen=set(); total=0; records=[]
     with tarfile.open(fileobj=buf,mode='w:gz') as tar:
         for name, kind in entries:
-            rel=pathlib.PurePosixPath(name)
-            if rel.is_absolute() or '..' in rel.parts or name in seen: raise ValueError('invalid path')
+            rel=valid_name(name)
+            if name in seen or len(seen)>=MAX_FILES: raise ValueError('invalid path')
             seen.add(name); p=root/rel
             if p.resolve()!=p or not p.is_file(): raise ValueError('nonregular or symlink')
             before=p.stat()
@@ -35,5 +36,8 @@ def archive(root, entries):
             total+=len(data)
             if total>MAX: raise ValueError('size limit')
             info=tarfile.TarInfo(name); info.size=len(data); info.mode=stat.S_IMODE(before.st_mode); info.uid=before.st_uid; info.gid=before.st_gid; info.mtime=int(before.st_mtime)
-            tar.addfile(info,io.BytesIO(data))
+            tar.addfile(info,io.BytesIO(data)); records.append(describe(info,data,kind))
+        raw=json.dumps(dict(version=1,entries=records),sort_keys=True,separators=(',',':')).encode()
+        if len(raw)>1024*1024: raise ValueError('manifest limit')
+        info=tarfile.TarInfo(MANIFEST); info.size=len(raw); info.mode=0o600; tar.addfile(info,io.BytesIO(raw))
     return buf.getvalue()
