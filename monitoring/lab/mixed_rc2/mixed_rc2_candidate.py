@@ -44,19 +44,22 @@ def hy2(uri, tag):
     u = urlsplit(uri)
     h = host(u.hostname)
     try:
-        port = u.port or 443
+        port = 443 if u.port is None else u.port
     except ValueError:
         raise Unsupported('port hopping not accepted in candidate') from None
     if not 1 <= port <= 65535 or u.path not in ('', '/'):
         raise Unsupported('unsupported endpoint syntax')
-    auth = unquote(u.netloc.rsplit('@', 1)[0]) if '@' in u.netloc else ''
-    pairs = parse_qsl(u.query, keep_blank_values=True, strict_parsing=True, max_num_fields=32)
+    raw_auth = u.netloc.rsplit('@', 1)[0] if '@' in u.netloc else ''
+    if re.search(r'%(?![0-9a-fA-F]{2})', raw_auth + u.query):
+        raise Unsupported('invalid percent encoding')
+    auth = unquote(raw_auth, errors='strict')
+    pairs = parse_qsl(u.query, keep_blank_values=True, strict_parsing=True, max_num_fields=32, errors='strict')
     q = dict(pairs)
     if len(q) != len(pairs) or set(q) - {'sni', 'insecure', 'obfs', 'obfs-password'}:
         raise Unsupported('unknown or duplicate URI options')
     if q.get('insecure', '0') != '0':
         raise Unsupported('insecure TLS not accepted')
-    if not auth or len(auth) > 4096 or any(ord(c) < 32 for c in auth):
+    if not auth or len(auth) > 4096 or any(ord(c) < 32 or ord(c) == 127 for c in auth):
         raise Unsupported('invalid auth')
     sni = host(q.get('sni') or h)
     stream = {'network': 'hysteria', 'security': 'tls', 'tlsSettings': {'serverName': sni, 'alpn': ['h3']}, 'hysteriaSettings': {'version': 2, 'auth': auth}}
@@ -94,7 +97,7 @@ def build(body, vless_converter, vless_inventory):
             protocol, status = 'hysteria2', 'ready'
             h = host(u.hostname)
             try:
-                p = u.port or 443
+                p = 443 if u.port is None else u.port
             except ValueError:
                 p = None
             node = 'hy2_' + digest([protocol, h, p])[:20]
@@ -106,6 +109,10 @@ def build(body, vless_converter, vless_inventory):
             raise ValueError('unrecognized subscription scheme')
         if any(r['id'] == node for r in records):
             raise ValueError('duplicate identity')
+        if protocol == 'vless' and (type(p) is not int or not 1 <= p <= 65535):
+            raise ValueError('invalid VLESS port')
+        if protocol == 'hysteria2' and (type(p) is not int or not 1 <= p <= 65535):
+            p = None
         records.append({'id': node, 'tag': tag, 'protocol': protocol, 'host': h, 'port': p, 'support': status, 'outbound': o, 'generation': generation(o) if o else None})
     return records
 
@@ -118,7 +125,7 @@ def observation(raw, kind, now):
         return {'status': 'stale', 'at': at, 'ms': None}
     ms = raw.get('duration_ms')
     status = raw.get('status')
-    if status not in ('ok', 'timeout', 'network_error', 'http_error', 'invalid_response', 'geo_unavailable', 'unknown') or (status == 'ok' and raw.get('route_verified') is not True):
+    if not isinstance(status, str) or status not in ('ok', 'timeout', 'network_error', 'http_error', 'invalid_response', 'geo_unavailable', 'unknown') or (status == 'ok' and raw.get('route_verified') is not True):
         status = 'unknown'
     result = {'status': status, 'at': at, 'ms': ms if type(ms) is int and 0 <= ms <= 120000 else None}
     if status == 'ok' and kind in ('exit_ip', 'geo'):
@@ -135,29 +142,36 @@ def observation(raw, kind, now):
                 result['status'] = 'geo_unavailable'
             else:
                 result['country'] = country
+                city = raw.get('city')
+                if isinstance(city, str) and 1 <= len(city.strip()) <= 64 and all(c.isalnum() or c in " -.'’" for c in city.strip()):
+                    result['city'] = city.strip()
     return result
 
-def rows(records, cache, active, now):
+def rows(records, cache, active, now, pending=None):
     """Sanitized RC2-like rows; active is a read-only id -> generation mapping."""
     output = []
     for r in records:
         c = cache.get(r['id'], {})
-        raw = c.get('observations', {}) if c.get('generation') == r['generation'] and r['outbound'] else {}
+        raw = c.get('observations', {}) if isinstance(c, dict) and c.get('generation') == r['generation'] and r['outbound'] else {}
+        if not isinstance(raw, dict):
+            raw = {}
         obs = {k: observation(raw.get(k), k, now) for k in KINDS}
         if r['support'] != 'ready':
             obs = {k: {'status': 'unsupported', 'at': None, 'ms': None} for k in KINDS}
         ip, geo = obs['exit_ip'], obs['geo']
-        verified_geo = ip['status'] == geo['status'] == 'ok' and ip.get('ip') == geo.get('ip')
+        verified_geo = ip['status'] == geo['status'] == 'ok' and ip.get('ip') == geo.get('ip') and abs(ip['at'] - geo['at']) <= 55
         decision = 'UNVERIFIED'
         if verified_geo:
             country = geo['country']
             decision = 'EXCLUDED_' + country if country in ('RU', 'BY') else 'ALLOWED'
         elif ip['status'] == geo['status'] == 'ok':
-            obs['geo'] = {'status': 'ip_mismatch', 'at': geo['at'], 'ms': geo['ms']}
+            obs['geo'] = {'status': 'ip_mismatch' if ip.get('ip') != geo.get('ip') else 'unverified_time', 'at': geo['at'], 'ms': geo['ms']}
         positive = [v['at'] for v in obs.values() if v['status'] == 'ok']
         attempted = [v['at'] for v in obs.values() if v['at'] is not None and v['status'] != 'stale']
         member = None if active is None else r['id'] in active
-        output.append(dict({k: r[k] for k in ('id', 'tag', 'protocol', 'host', 'port', 'support')}, active=member, active_config_matches=(active[r['id']] == r['generation'] if member else None), vpn={'status': 'ok' if positive else 'not_confirmed' if attempted else r['support'] if r['support'] != 'ready' else 'missing', 'at': max(positive or attempted, default=None)}, internet=obs['internet'], openai=obs['openai'], exit_ip=ip.get('ip') if ip['status'] == 'ok' else None, exit_ip_at=ip['at'] if ip['status'] == 'ok' else None, geo=obs['geo'], geo_policy=decision, eligible=decision == 'ALLOWED' and obs['internet']['status'] == obs['openai']['status'] == 'ok'))
+        pending_member = None if pending is None else r['id'] in pending
+        coherent = all(v['at'] is not None and v['status'] == 'ok' for v in obs.values()) and max(v['at'] for v in obs.values()) - min(v['at'] for v in obs.values()) <= 55
+        output.append(dict({k: r[k] for k in ('id', 'tag', 'protocol', 'host', 'port', 'support')}, active=member, pending=pending_member, pending_config_matches=(pending[r['id']] == r['generation'] if pending_member else None), active_config_matches=(active[r['id']] == r['generation'] if member else None), vpn={'status': 'ok' if positive else 'not_confirmed' if attempted else r['support'] if r['support'] != 'ready' else 'missing', 'at': max(positive or attempted, default=None)}, internet=obs['internet'], openai=obs['openai'], exit_ip=ip.get('ip') if ip['status'] == 'ok' else None, exit_ip_at=ip['at'] if ip['status'] == 'ok' else None, exit_ip_source='exit_ip' if ip['status'] == 'ok' else None, exit_ip_probe=ip, geo=obs['geo'], last_geo=None, geo_policy=decision, eligible=decision == 'ALLOWED' and coherent))
     return output
 
 def collect(records, probe, deadline, monotonic, cleanup_error):
@@ -172,9 +186,24 @@ def collect(records, probe, deadline, monotonic, cleanup_error):
             break
         try:
             obs = probe(r['outbound'])
+            if not isinstance(obs, dict):
+                obs = {}
         except cleanup_error:
             raise
         except Exception:
             obs = {}
         cache[r['id']] = {'generation': r['generation'], 'observations': obs}
     return cache
+
+
+def payload(records, cache, active, now, subscription_at, pending=None):
+    if type(subscription_at) is not int or not 0 <= now - subscription_at <= FRESH:
+        return {'schema': 2, 'inventory_status': 'unavailable', 'count': 0, 'rows': []}
+    data = rows(records, cache, active, now, pending)
+    ids = {r['id'] for r in data}
+    counts = {p: sum(r['protocol'] == p for r in data) for p in ('vless', 'hysteria2')}
+    complete = sum(all(r[k]['at'] is not None and r[k]['status'] != 'stale' for k in ('internet', 'openai', 'geo', 'exit_ip_probe')) for r in data)
+    result = {'schema': 2, 'checked_at': now, 'subscription_at': subscription_at, 'inventory_status': 'ok', 'count': len(data), 'protocol_counts': counts, 'rows': data, 'probe_complete': complete, 'unsupported_count': sum(r['support'] != 'ready' for r in data), 'active_unmatched': None if active is None else len(set(active)-ids), 'pending_unmatched': None if pending is None else len(set(pending)-ids)}
+    if len(json.dumps(result, separators=(',', ':'), ensure_ascii=True).encode()) > 32768:
+        raise ValueError('RC2 payload capacity exceeded')
+    return result
