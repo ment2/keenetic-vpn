@@ -218,7 +218,8 @@ def main():
         atomic_cache(a.cache,cache)
         if a.publish:
             from monitoring.rc2_history import publish_history
-            publish_history(snapshot(cfg,entries,None,None,cache,now,subscription_at)["rows"])
+            sent=publish_history(snapshot(cfg,entries,None,None,cache,now,subscription_at)["rows"])
+            print("RC2_HISTORY",sent,len(entries),flush=True)
         print("RC2_PROBE",len(results),len(entries))
         return
     now=time.time()
