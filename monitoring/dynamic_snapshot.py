@@ -46,7 +46,7 @@ def pool_ids(path, optional=False):
     except FileNotFoundError:
         if optional:
             return set()
-    except (ValueError, KeyError, TypeError, OSError):
+    except (ValueError, KeyError, TypeError, OSError, AttributeError):
         pass
     return None
 
@@ -142,7 +142,7 @@ def run_probes(config, entries, health_probe, openai_probe, deadline=None):
 
 def discovery():
     return {"name": "Keenetic dynamic VPN inventory", "unique_id": "keenetic6059_dynamic_snapshot",
-            "object_id": "keenetic_dynamic_vpn_inventory", "state_topic": TOPIC,
+            "default_entity_id": "sensor.keenetic_dynamic_vpn_inventory", "state_topic": TOPIC,
             "value_template": "{{ value_json.inventory_status }}",
             "json_attributes_topic": TOPIC, "expire_after": 150}
 
@@ -166,6 +166,10 @@ def main():
             config, entries = read_config(full, time.time())
             result = collect(config, entries, deadline=time.monotonic()+480)
             atomic_cache(args.cache, result)
+            if args.publish:
+                from monitoring.dynamic_history import publish_history
+                rows = snapshot(entries, None, None, result, time.time())["rows"]
+                publish_history(rows)
         print("PROBE_CYCLE", len(result))
         return
     now = time.time()
@@ -181,7 +185,7 @@ def main():
         except (OSError, ValueError):
             obs = {}
         result = snapshot(entries, pool_ids(args.active), pool_ids(args.pending, optional=True), obs, now)
-    except (ValueError, OSError, KeyError, TypeError):
+    except (ValueError, OSError, KeyError, TypeError, AttributeError):
         result = {"schema": 1, "checked_at": int(now), "inventory_status": "unavailable", "count": 0, "rows": []}
     if args.publish:
         from monitoring.mqtt_lan_publisher import load_password, publish_once
