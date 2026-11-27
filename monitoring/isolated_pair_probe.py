@@ -108,14 +108,21 @@ def query_owned(proc, port, url, body=False):
     return result if live_owner(proc,port) else None
 
 
+class CleanupError(RuntimeError):
+    pass
+
+
 def stop_child(proc):
-    if proc.poll() is None:
-        proc.terminate()
-        try:
-            proc.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=2)
+    try:
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=2)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise CleanupError("isolated child cleanup failed") from exc
 
 
 def probe_pair(config, tag):
@@ -160,6 +167,8 @@ def collect(config, entries, *, deadline, probe=probe_pair):
             break
         try:
             results[e["node_id"]]=probe(config,e["tag"])
+        except CleanupError:
+            raise
         except Exception:
             results[e["node_id"]]={}
     return results
