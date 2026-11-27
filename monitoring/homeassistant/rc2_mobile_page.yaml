@@ -82,3 +82,40 @@
     Графики активных серверов строятся по реальным измерениям за 6 часов. Новая HTTP-проба выполняется каждые 15 минут; публикация сводки — каждую минуту.
 
     Время пробы включает соединение и HTTP-ответ (или ожидание ошибки). Это не ICMP ping. Интернет — HTTP 204, OpenAI — HTTP 401 без авторизации. Гео определяется по выходному IP.
+
+- type: markdown
+  title: Подробности серверов
+  content: |-
+    {%- set eid = 'sensor.keenetic_dynamic_vpn_rc2' -%}
+    {%- set rows = state_attr(eid,'rows') or [] -%}
+    {%- set ts = as_timestamp(now()) -%}
+    {%- set age = ts - (state_attr(eid,'checked_at') | int(0)) -%}
+    {%- macro fresh(o) -%}{{ o.status if o.at is not none and 0 <= ts - o.at <= 1800 else 'stale' }}{%- endmacro -%}
+    {%- macro icon(s) -%}{{ '🟢' if s == 'ok' else ('⚪' if s in ['missing','stale','unknown','not_confirmed'] else '🔴') }}{%- endmacro -%}
+    {%- macro label(s) -%}{{ {'ok':'OK','missing':'нет данных','stale':'устарело','unknown':'неизвестно','not_confirmed':'не подтверждён','network_error':'сбой сети','timeout':'тайм-аут','http_error':'ответ HTTP','invalid_response':'ошибка ответа','geo_unavailable':'нет геоданных','ip_mismatch':'IP не совпали'}.get(s,'ошибка') }}{%- endmacro -%}
+    {%- macro when(t,full=false) -%}{{ as_local(as_datetime(t)).strftime('%d.%m %H:%M:%S' if full else '%H:%M:%S') if t is not none else '—' }}{%- endmacro -%}
+    {%- macro flag(r) -%}{{ '◆' if r.active == true else ('◇' if r.active == false else '?') }}{{ '↻' if r.pending == true else '' }}{%- endmacro -%}
+    {%- if states(eid) != 'ok' or age < 0 or age > 150 %}
+    ⚪ **Нет актуальной подписки**
+
+    Ожидается обновление мониторинга.
+    {%- else %}
+    {% for r in rows %}
+    **{{ r.tag }}** · {{ 'в пуле' if r.active == true else ('вне пула' if r.active == false else 'пул неизвестен') }}{% if r.pending == true %} · кандидат{% endif %} · {{ r.geo.country ~ ' / ' if fresh(r.geo) == 'ok' and r.geo.country else '' }}{{ r.geo.city or '—' if fresh(r.geo) == 'ok' else 'геоданные недоступны' }}  
+    Вход: `{{ '[' ~ r.host ~ ']' if ':' in r.host else r.host }}:{{ r.port }}`  
+    Выход: {{ r.exit_ip if r.exit_ip and r.exit_ip_at is not none and 0 <= ts - r.exit_ip_at <= 1800 else '—' }} · {{ when(r.exit_ip_at) }}  
+    {{ icon(fresh(r.vpn)) }} VPN: {{ label(fresh(r.vpn)) }} · {{ when(r.vpn.at) }}  
+    {{ icon(fresh(r.internet)) }} Сеть: {{ label(fresh(r.internet)) }} · {{ r.internet.ms ~ ' мс' if r.internet.ms is not none else '—' }} · {{ when(r.internet.at) }}  
+    {{ icon(fresh(r.openai)) }} AI: {{ label(fresh(r.openai)) }} · {{ r.openai.ms ~ ' мс' if r.openai.ms is not none else '—' }} · {{ when(r.openai.at) }}  
+    {{ icon(fresh(r.geo)) }} GEO: {{ label(fresh(r.geo)) }} · {{ when(r.geo.at) }}
+    {% if r.active_config_matches == false or r.pending_config_matches == false %}
+    ⚠️ Настройки пула отличаются от подписки.
+    {% endif -%}
+    {% if r.last_geo and r.last_geo.at is not none and 0 <= ts - r.last_geo.at <= 86400 %}
+    Последняя известная (устарела): {{ r.last_geo.country or '—' }} / {{ r.last_geo.city or '—' }} · {{ r.last_geo.ip }} · {{ when(r.last_geo.at,true) }}
+    {% endif %}
+
+    ---
+    {% endfor %}
+    *Сеть = HTTP 204, AI = HTTP 401 без авторизации. VPN подтверждён хотя бы одной успешной пробой. GEO приблизительная. Время HA, длительность HTTP-пробы, не RTT.*
+    {% endif %}
