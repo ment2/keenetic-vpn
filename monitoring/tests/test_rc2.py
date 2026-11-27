@@ -121,3 +121,24 @@ class SnapshotTests(unittest.TestCase):
         with patch.object(c.rc1,"run_module",return_value=0) as runner:
             c.run_module("monitoring.dynamic_snapshot",["publish"])
             runner.assert_called_once_with("monitoring.rc2_snapshot",["publish"])
+
+    def test_subscription_and_probe_coverage(self):
+        cfg=config(outbound(),outbound("vpn02","two.example.invalid"))
+        es=inventory(cfg); cache=s.update_cache(cfg,es,{es[0]["node_id"]:sample()}, {},NOW)
+        result=s.snapshot(cfg,es,{}, {},cache,NOW,NOW-100)
+        self.assertEqual(result["subscription_at"],NOW-100)
+        self.assertEqual(result["probe_complete"],1)
+    def test_history_does_not_resurrect_stale_positive(self):
+        r,_=row(config(outbound()),sample())
+        payload,expiry=h.fresh_state(r,NOW+1801)
+        self.assertEqual(payload["internet"],"stale")
+        self.assertEqual(payload["openai"],"stale")
+        self.assertIsNone(payload["internet_ms"])
+        self.assertEqual(expiry["internet"],1)
+    def test_history_remaining_ttl(self):
+        r,_=row(config(outbound()),sample())
+        payload,expiry=h.fresh_state(r,NOW+600)
+        self.assertEqual(payload["internet"],"ok")
+        self.assertEqual(expiry["internet"],1200)
+        msg=list(h.messages(r["id"],r["tag"],expiry))
+        self.assertTrue(all(x[1]["expire_after"]==1200 for x in msg))
