@@ -46,25 +46,41 @@ def fresh_state(row,now):
     return payload,expiry
 
 
-def publish_history(rows,*,publisher=publish_once,password_reader=load_password,clock=time.time,monotonic=time.monotonic):
+# Retained discovery is asynchronous at the subscriber. Publish state only
+# after all discovery messages have been acknowledged and a settle window.
+# This is a bounded mitigation, not proof of subscriber registration.
+DISCOVERY_SETTLE_S=5
+HISTORY_BUDGET_S=120
+EXPIRY_GUARD_S=180
+
+
+def publish_history(rows,*,publisher=publish_once,password_reader=load_password,
+                    clock=time.time,monotonic=time.monotonic,sleep=time.sleep):
     password=password_reader("/opt/etc/vpn-monitor/mqtt-password")
     kw=dict(host="192.168.0.169",port=1883,username="keenetic_monitor",
             password=password,client_id="keenetic-vpn-rc2-history")
-    deadline=monotonic()+120
-    sent=0
+    deadline=monotonic()+HISTORY_BUDGET_S
+    discovered=[]
     for row in rows:
-        if monotonic()>=deadline:
+        if monotonic()+DISCOVERY_SETTLE_S>=deadline:
             break
         node,tag=row["id"],row["tag"]
-        state,expiry=fresh_state(row,clock())
-        expiry={k:max(1,v-30) for k,v in expiry.items()}
+        _,expiry=fresh_state(row,clock())
+        expiry={k:max(1,v-EXPIRY_GUARD_S) for k,v in expiry.items()}
         for topic,payload in messages(node,tag,expiry):
-            if monotonic()>=deadline:
-                return sent
+            if monotonic()+DISCOVERY_SETTLE_S>=deadline:
+                return 0
             publisher(**kw,topic=topic,payload=payload,retain=True)
+        discovered.append(row)
+    if not discovered or monotonic()+DISCOVERY_SETTLE_S>=deadline:
+        return 0
+    sleep(DISCOVERY_SETTLE_S)
+    sent=0
+    for row in discovered:
         if monotonic()>=deadline:
             break
         state,_=fresh_state(row,clock())
+        node=row["id"]
         publisher(**kw,topic=f"keenetic/vpn-monitor/v1/{node}/rc2_history",
                   payload=state,retain=False)
         sent+=1
