@@ -1,0 +1,84 @@
+# Mobile RC2 page, native markdown and existing auto-entities integration.
+- type: markdown
+  title: Сводка RC2
+  content: |-
+    {% set eid = 'sensor.keenetic_dynamic_vpn_rc2' %}
+    {% set rows = state_attr(eid,'rows') or [] %}
+    {% set ts = as_timestamp(now()) %}
+    {% set age = ts - (state_attr(eid,'checked_at') | int(0)) %}
+    {% macro fresh(o) %}{{ o.status if o.at is not none and 0 <= ts - o.at <= 1800 else 'missing' if o.at is none else 'stale' }}{% endmacro %}
+    {% if states(eid) != 'ok' or not 0 <= age <= 150 %}
+    ⚪ **Нет актуальных данных мониторинга**
+    {% else %}
+    {% set n = namespace(active=0,vpn=0,net=0,ai=0,geo=0) %}
+    {% for r in rows %}
+    {% if r.active == true %}{% set n.active = n.active + 1 %}{% endif %}
+    {% if fresh(r.vpn) == 'ok' %}{% set n.vpn = n.vpn + 1 %}{% endif %}
+    {% if fresh(r.internet) == 'ok' %}{% set n.net = n.net + 1 %}{% endif %}
+    {% if fresh(r.openai) == 'ok' %}{% set n.ai = n.ai + 1 %}{% endif %}
+    {% if fresh(r.geo) == 'ok' %}{% set n.geo = n.geo + 1 %}{% endif %}
+    {% endfor %}
+    **Серверов: {{ rows | count }} · В пуле: {{ n.active if state_attr(eid,'active_unmatched') is not none else '?' }}**
+
+    **Проверено: {{ state_attr(eid,'probe_complete') | int(0) }}/{{ rows | count }} · 🟢 Сводка {{ as_local(as_datetime(state_attr(eid,'checked_at'))).strftime('%H:%M:%S') }}**
+
+    VPN {{ n.vpn }}/{{ rows | count }} · Интернет {{ n.net }}/{{ rows | count }} · OpenAI {{ n.ai }}/{{ rows | count }} · Гео {{ n.geo }}/{{ rows | count }}
+
+    Подписка: {{ as_local(as_datetime(state_attr(eid,'subscription_at'))).strftime('%d.%m %H:%M:%S') if state_attr(eid,'subscription_at') is not none else '—' }}.
+    {% if state_attr(eid,'subscription_at') is none or ts - state_attr(eid,'subscription_at') > 1000 %}
+    ⚠️ Подписка не обновилась в ожидаемый срок.
+    {% endif %}
+    {% if state_attr(eid,'active_unmatched') is none or state_attr(eid,'pending_unmatched') is none %}
+    ⚠️ Состав одного из пулов неизвестен.
+    {% elif state_attr(eid,'active_unmatched') or state_attr(eid,'pending_unmatched') %}
+    ⚠️ Есть узлы пула вне актуальной подписки.
+    {% endif %}
+    {% endif %}
+- type: markdown
+  title: Серверы VPN
+  content: |-
+    {%- set eid = 'sensor.keenetic_dynamic_vpn_rc2' -%}
+    {%- set rows = state_attr(eid,'rows') or [] -%}
+    {%- set ts = as_timestamp(now()) -%}
+    {%- set age = ts - (state_attr(eid,'checked_at') | int(0)) -%}
+    {%- macro fresh(o) -%}{{ o.status if o.at is not none and 0 <= ts - o.at <= 1800 else 'missing' if o.at is none else 'stale' }}{%- endmacro -%}
+    {%- macro icon(s) -%}{{ '🟢' if s == 'ok' else ('⚪' if s in ['missing','stale','unknown','not_confirmed'] else '🔴') }}{%- endmacro -%}
+    {%- macro cell(s) -%}{{ icon(s) }}{{ {'timeout':' Т','network_error':' С','http_error':' HTTP','not_confirmed':' ?','missing':' —','stale':' —'}.get(s,'') }}{%- endmacro -%}
+    {%- macro geo(r) -%}
+      {%- if fresh(r.geo) == 'ok' -%}{{ r.geo.country or '—' }} {{ r.geo.city or '' }}
+      {%- elif r.last_geo and r.last_geo.at is not none and 0 <= ts - r.last_geo.at <= 86400 -%}{{ r.last_geo.country or '—' }} {{ r.last_geo.city or '' }}*
+      {%- else -%}—{%- endif -%}
+    {%- endmacro -%}
+    {%- if states(eid) != 'ok' or not 0 <= age <= 150 -%}
+    ⚪ Ожидается обновление мониторинга.
+    {%- else -%}
+    {{ '| Сервер | VPN | Сеть, мс | AI | Гео |\n| :--- | :---: | :---: | :---: | :--- |\n' }}
+    {%- for r in rows -%}
+    {{ '| ' ~ ('◆' if r.active == true else '◇' if r.active == false else '?') ~ ('↻' if r.pending == true else '') ~ ' ' ~ r.tag ~ ' | ' ~ cell(fresh(r.vpn)) ~ ' | ' ~ cell(fresh(r.internet)) ~ (' ' ~ r.internet.ms if fresh(r.internet) == 'ok' and r.internet.ms is not none else '') ~ ' | ' ~ cell(fresh(r.openai)) ~ ' | ' ~ (geo(r) | replace('|','/') | replace('\n',' ')) ~ ' |\n' }}
+    {%- endfor -%}
+    {{ '\n◆ в пуле · ◇ вне пула · ↻ кандидат\n\n🟢 OK · ⚪ нет подтверждения / свежих данных · 🔴 ошибка\n\nТ — тайм-аут, С — сбой сети, HTTP — неожиданный ответ. * — последняя известная геопозиция.\n' }}
+    {%- endif %}
+- type: custom:auto-entities
+  card:
+    type: vertical-stack
+  card_param: cards
+  show_empty: false
+  filter:
+    template: |-
+      {% set eid = 'sensor.keenetic_dynamic_vpn_rc2' %}
+      {% set age = as_timestamp(now()) - (state_attr(eid,'checked_at') | int(0)) %}
+      {% set ns = namespace(cards=[]) %}
+      {% if states(eid) == 'ok' and 0 <= age <= 150 %}
+        {% for r in state_attr(eid,'rows') or [] if r.active == true %}
+          {% for s in states.sensor if s.entity_id.startswith('sensor.keenetic_rc2_') and s.attributes.get('node_id') == r.id and s.attributes.get('metric') == 'internet_ms' %}
+            {% set ns.cards = ns.cards + [{'type':'history-graph','title':r.tag ~ ' · время HTTP-пробы, мс · 6 ч','hours_to_show':6,'entities':[{'entity':s.entity_id,'name':r.tag}]}] %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+      {{ ns.cards | to_json }}
+- type: markdown
+  title: Как читать графики
+  content: |-
+    Графики активных серверов строятся по реальным измерениям за 6 часов. Новая HTTP-проба выполняется каждые 15 минут; публикация сводки — каждую минуту.
+
+    Время пробы включает соединение и HTTP-ответ (или ожидание ошибки). Это не ICMP ping. Интернет — HTTP 204, OpenAI — HTTP 401 без авторизации. Гео определяется по выходному IP.
