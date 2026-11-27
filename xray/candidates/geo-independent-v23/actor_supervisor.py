@@ -93,8 +93,14 @@ class OwnedChild:
         self.owner=os.getpid()
     def stop(self,timeout=2):
         require(os.getpid()==self.owner and not self.reaped,"not owned child")
-        require(signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL,"reaper changed")
-        # No poll/waitpid before signal: PID is still reserved to child.
+        import threading
+        require(threading.active_count()==1 and signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL,"reaper changed")
+        # Establish direct-child ownership with waitpid. If the child is
+        # already dead, reap it and never signal. If it is not dead, the
+        # exclusive parent retains the PID until it reaps it.
+        pid,_=os.waitpid(self.pid,os.WNOHANG)
+        if pid:
+            self.reaped=True;return
         os.kill(self.pid,signal.SIGTERM)
         end=time.monotonic()+timeout
         while time.monotonic()<end:
@@ -104,7 +110,13 @@ class OwnedChild:
             time.sleep(.02)
         # Last WNOHANG returned 0; child remains ours even if now zombie.
         os.kill(self.pid,signal.SIGKILL)
-        os.waitpid(self.pid,0);self.reaped=True
+        end=time.monotonic()+timeout
+        while time.monotonic()<end:
+            pid,_=os.waitpid(self.pid,os.WNOHANG)
+            if pid:
+                self.reaped=True;return
+            time.sleep(.02)
+        raise Blocked("child termination not observed")
 
 class Actors:
     """S97, watchdog, S98, cron and RC2 review contracts.
@@ -136,3 +148,57 @@ class Actors:
         return self.m.run("S98",tick,gate=self.r)
     def cron(self):return self.m.release(self.r,"cron")
     def rc2(self):return self.m.release(self.r,"monitor",runner=self.monitor)
+
+class Lifecycle:
+    """Persistent supervisor receipt experiment, restricted to fixture root.
+
+    A running service is expected to outlive a gate operation. Its lifetime
+    receipt is separate from transaction receipts and cannot be auto-cleared
+    by a successor supervisor. All operations must run in the same exclusive
+    parent. The fixture accepts an argv for a synthetic service only.
+    """
+    def __init__(self,migration,argv,ready):
+        from lock_migration import Migration
+        require(isinstance(migration,Migration),"fixture required")
+        self.m=migration
+        self.argv=tuple(argv);self.ready=ready
+        self.path=migration.protected/"supervisor.json"
+        self.owner=identity(os.getpid())
+        self.child=None
+    def _record(self,phase,child=None):
+        from release_gate import atomic,encode
+        atomic(self.path,encode({"phase":phase,"boot":self.owner.boot,
+              "owner_pid":self.owner.pid,"owner_start":self.owner.start,
+              "child_pid":None if child is None else child.pid,
+              "child_start":None if child is None else child.start}),0o600)
+    def start(self,timeout=2):
+        require(identity(os.getpid())==self.owner,"supervisor identity changed")
+        require(self.child is None and not os.path.lexists(self.path),"unresolved lifecycle; no adoption")
+        self._record("starting")
+        self.child=OwnedChild(self.argv)
+        end=time.monotonic()+timeout
+        while time.monotonic()<end:
+            try:
+                i=identity(self.child.pid)
+                if i.ppid==self.owner.pid and i.boot==self.owner.boot and i.argv==tuple(os.fsencode(x) for x in self.argv) and self.ready(i.pid):
+                    self.child_identity=i;self._record("running",i);return 0
+            except (OSError,ValueError,Blocked):pass
+            time.sleep(.02)
+        # Keep the receipt on a failed or uncertain startup; no silent adoption.
+        self.child.stop();raise Blocked("service readiness unproven")
+    def healthy(self):
+        try:return self.child is not None and not self.child.reaped and identity(self.child.pid)==self.child_identity and self.ready(self.child.pid)
+        except (OSError,ValueError,AttributeError,Blocked):return False
+    def stop(self):
+        from release_gate import sync_dir
+        require(identity(os.getpid())==self.owner and self.child is not None,"no owned child")
+        require(not self.child.reaped,"unresolved child lifetime")
+        self._record("stopping",self.child_identity)
+        self.child.stop()
+        require(self.child.reaped,"child termination unproven")
+        self.child=None
+        self.path.unlink();sync_dir(self.path.parent)
+        return 0
+    def restart(self):
+        if self.child is not None:self.stop()
+        return self.start()
