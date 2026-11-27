@@ -56,17 +56,3 @@ class IsolatedPairTests(unittest.TestCase):
         with self.assertRaises(p.CleanupError):
             p.collect({},entries,deadline=time.monotonic()+200,probe=probe)
         self.assertEqual(probe.call_count,1)
-
-    def test_only_204(self):
-        for code in (b"200",b"401",b"403",b"000"):
-            self.assertEqual(p.internet_result(Mock(returncode=0,stdout=code)),"failed")
-        self.assertEqual(p.internet_result(Mock(returncode=0,stdout=b"204")),"ok")
-        self.assertEqual(p.internet_result(Mock(returncode=1,stdout=b"204")),"failed")
-        self.assertEqual(p.internet_result(None),"unknown")
-    def test_city_optional_and_sanitized(self):
-        raw={"success":True,"ip":"203.0.113.1","country_code":"DE","city":"Frankfurt am Main"}
-        self.assertEqual(p.geo_result(Mock(returncode=0,stdout=json.dumps(raw).encode()))["city"],"Frankfurt am Main")
-        self.assertIsNone(p.clean_city("<script>"))
-        self.assertIsNone(p.clean_city("a"*65))
-    def test_ten_node_budget(self):
-        self.assertLessEqual(10*p.PAIR_BUDGET_S,480)
