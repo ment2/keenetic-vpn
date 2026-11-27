@@ -1,0 +1,31 @@
+name: RC2 official Hysteria2 MIPSLE soft-float client lab
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths:
+      - 'monitoring/lab/mixed_rc2/official_hy2_client_lab.py'
+      - '.github/workflows/rc2-official-hy2-client.yml'
+permissions:
+  contents: read
+jobs:
+  official-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qemu-user iproute2
+      - name: Fetch pinned public binaries
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/official-hy2"; cd "$RUNNER_TEMP/official-hy2"
+          curl -q --fail --location --silent --show-error --max-time 120 -o client https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.0/hysteria-linux-mipsle-sf
+          curl -q --fail --location --silent --show-error --max-time 120 -o server https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.0/hysteria-linux-amd64
+          printf '%s  client\n' df667889840c3976e73abd29880d4a672bb62a88b73bfb7b6c6b4d5406a6907c | sha256sum -c -
+          printf '%s  server\n' 2b0c8b49e4158822752f206fe714753797e0771163114cf39387f1a7d265e288 | sha256sum -c -
+          chmod 755 client server
+      - name: Test real official client in loopback-only namespace
+        run: |
+          set -euo pipefail
+          sudo unshare --net -- bash -c 'set -e; ip link set lo up; export PYTHONPATH="$1"; exec python3 -B "$1/monitoring/lab/mixed_rc2/official_hy2_client_lab.py" --qemu /usr/bin/qemu-mipsel --client "$2/client" --server "$2/server"' lab "$GITHUB_WORKSPACE" "$RUNNER_TEMP/official-hy2"
