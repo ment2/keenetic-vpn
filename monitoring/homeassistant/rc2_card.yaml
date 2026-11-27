@@ -1,0 +1,53 @@
+# RC2 candidate; replace entity ID only after actual discovery acceptance.
+type: markdown
+title: VPN · вся подписка
+content: |-
+  {% set eid = 'sensor.keenetic_dynamic_vpn_rc2' %}
+  {% set rows = state_attr(eid,'rows') or [] %}
+  {% set age = as_timestamp(now()) - (state_attr(eid,'checked_at') | int(0)) %}
+  {% macro mark(s) %}{{ '✅ OK' if s == 'ok' else ('⚪ ' ~ s if s in ['missing','stale','unknown','not_confirmed'] else '❌ ' ~ s) }}{% endmacro %}
+  {% macro when(ts) %}{{ as_local(as_datetime(ts)).strftime('%d.%m %H:%M:%S') if ts is not none else '—' }}{% endmacro %}
+  {% macro fresh(obs) %}{{ obs.status if obs.at is not none and 0 <= as_timestamp(now()) - obs.at <= 1800 else 'stale' }}{% endmacro %}
+  {% if states(eid) != 'ok' or age < 0 or age > 150 %}
+  ⚪ **Нет актуальной подписки**
+  {% else %}
+  {% set n = namespace(active=0,pending=0,vpn=0,internet=0,openai=0) %}
+  {% for r in rows %}
+    {% if r.active == true %}{% set n.active = n.active + 1 %}{% endif %}
+    {% if r.pending == true %}{% set n.pending = n.pending + 1 %}{% endif %}
+    {% if fresh(r.vpn) == 'ok' %}{% set n.vpn = n.vpn + 1 %}{% endif %}
+    {% if fresh(r.internet) == 'ok' %}{% set n.internet = n.internet + 1 %}{% endif %}
+    {% if fresh(r.openai) == 'ok' %}{% set n.openai = n.openai + 1 %}{% endif %}
+  {% endfor %}
+  **Подписка: {{ rows | count }}** · активный пул: {{ n.active if state_attr(eid,'active_unmatched') is not none else '?' }} · pending: {{ n.pending if state_attr(eid,'pending_unmatched') is not none else '?' }}
+
+  VPN: {{ n.vpn }}/{{ rows | count }} · Интернет: {{ n.internet }}/{{ rows | count }} · OpenAI: {{ n.openai }}/{{ rows | count }}
+  {% if state_attr(eid,'active_unmatched') or state_attr(eid,'pending_unmatched') %}
+  ⚠️ Есть узлы пула вне актуальной подписки.
+  {% endif %}
+  {% for r in rows %}
+  **{{ r.tag }}** · {{ 'активный' if r.active == true else ('не используется' if r.active == false else 'пул неизвестен') }}{% if r.pending == true %} · pending{% endif %}
+
+  {% if r.active_config_matches == false or r.pending_config_matches == false %}
+  ⚠️ Настройки пула отличаются от текущей подписки.
+  {% endif %}
+  Подключение: `{{ '[' ~ r.host ~ ']' if ':' in r.host else r.host }}:{{ r.port }}`
+
+  IP выхода: {{ r.exit_ip if r.exit_ip and r.exit_ip_at is not none and 0 <= as_timestamp(now()) - r.exit_ip_at <= 1800 else 'нет свежих данных' }} · {{ when(r.exit_ip_at) }}
+
+  VPN: {{ mark(fresh(r.vpn)) }} · {{ when(r.vpn.at) }}
+
+  Интернет HTTP 204: {{ mark(fresh(r.internet)) }} · {{ when(r.internet.at) }} · {{ r.internet.ms ~ ' мс' if r.internet.ms is not none else '—' }}
+
+  OpenAI HTTP 401: {{ mark(fresh(r.openai)) }} · {{ when(r.openai.at) }} · {{ r.openai.ms ~ ' мс' if r.openai.ms is not none else '—' }}
+
+  Геолокация: {{ mark(fresh(r.geo)) }}{% if fresh(r.geo) == 'ok' %} · {{ r.geo.country or '—' }} · {{ r.geo.city or '—' }}{% endif %} · {{ when(r.geo.at) }}
+  {% if r.last_geo and r.last_geo.at is not none and 0 <= as_timestamp(now()) - r.last_geo.at <= 86400 %}
+
+  Последняя известная (не текущая): {{ r.last_geo.country or '—' }} · {{ r.last_geo.city or '—' }} · {{ r.last_geo.ip }} · {{ when(r.last_geo.at) }}
+  {% endif %}
+
+  ---
+  {% endfor %}
+  {% endif %}
+  *VPN = подтверждён хотя бы одной независимой пробой. Геолокация приблизительная, длительность не RTT. Время HA. OpenAI — доступность без авторизации.*
