@@ -1,5 +1,5 @@
 """Monitor-only cutover, Keenetic RC2. Never modifies VPN service or updater."""
-import os,sys,time,stat,signal,hashlib,subprocess,tempfile,pathlib,fcntl,json
+import os,sys,time,stat,signal,hashlib,subprocess,tempfile,pathlib,fcntl,json,collections
 P=pathlib.Path
 BASE=P("/opt/var/lib/vpn-monitor")
 STAGE=BASE/"rc2-stage"
@@ -22,10 +22,15 @@ def atomic(p,b,mode):
         os.replace(n,p)
     finally:
         if os.path.exists(n):os.unlink(n)
+def cron_equivalent(actual,expected):
+    a=actual.decode().splitlines();b=expected.decode().splitlines()
+    extra=collections.Counter(a)-collections.Counter(b)
+    missing=collections.Counter(b)-collections.Counter(a)
+    return not missing and all(l.startswith("#") for l in extra) and [l for l in a if not l.startswith("#")]==[l for l in b if not l.startswith("#")]
 def install_cron(b,d):
     p=d/"cron.install";atomic(p,b,0o600)
     subprocess.run(["crontab",str(p)],check=True,timeout=10)
-    require(cron()==b,"cron readback")
+    require(cron_equivalent(cron(),b),"cron readback")
 def processes():
     rows={}
     for p in P("/proc").glob("[0-9]*"):
@@ -109,8 +114,8 @@ def main():
         print("CUTOVER_OK","old_health_stopped",True,"traffic_unchanged",True,"cron_sha",digest(nc),"init_sha",digest(ni),flush=True)
     except BaseException:
         if cron_changed:
-            current=cron();require(current in (c,nc),"rollback cron conflict")
-            if current!=c:install_cron(c,d)
+            current=cron();require(cron_equivalent(current,c) or cron_equivalent(current,nc),"rollback cron conflict")
+            if not cron_equivalent(current,c):install_cron(c,d)
         if init_changed:
             require(INIT.read_bytes() in (i,ni),"rollback init conflict")
             if INIT.read_bytes()!=i:atomic(INIT,i,mode)
