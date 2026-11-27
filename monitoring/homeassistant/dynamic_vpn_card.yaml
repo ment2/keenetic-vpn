@@ -10,7 +10,16 @@ content: |-
   {% if states(eid) != 'ok' or age < 0 or age > 150 %}
   ⚪ **Нет актуального списка подписки**
   {% else %}
-  **Всего: {{ rows | count }}** · активных: {{ rows | selectattr('2','eq',true) | list | count }}
+  {% set counts = namespace(active=0,pending=0,health=0,openai=0) %}
+  {% for r in rows %}
+    {% if r[2] == true %}{% set counts.active = counts.active + 1 %}{% endif %}
+    {% if r[3] == true %}{% set counts.pending = counts.pending + 1 %}{% endif %}
+    {% if r[4] == 'ok' and r[5] is not none and 0 <= as_timestamp(now()) - r[5] <= 1800 %}{% set counts.health = counts.health + 1 %}{% endif %}
+    {% if r[9] == 'reachable' and r[10] is not none and 0 <= as_timestamp(now()) - r[10] <= 1800 %}{% set counts.openai = counts.openai + 1 %}{% endif %}
+  {% endfor %}
+  **Всего: {{ rows | count }}** · активных: {{ counts.active if state_attr(eid,'active_unmatched') is not none else '?' }} · pending: {{ counts.pending if state_attr(eid,'pending_unmatched') is not none else '?' }}
+
+  VLESS: {{ counts.health }}/{{ rows | count }} · OpenAI: {{ counts.openai }}/{{ rows | count }}
   {% if state_attr(eid,'active_unmatched') is none or state_attr(eid,'pending_unmatched') is none %}
   ⚠️ Данные одного из пулов недоступны.
   {% elif state_attr(eid,'active_unmatched') or state_attr(eid,'pending_unmatched') %}
@@ -21,7 +30,7 @@ content: |-
   {% set o = r[9] if r[10] is not none and 0 <= as_timestamp(now()) - r[10] <= 1800 else 'нет свежих данных' %}
   **{{ r[1] }}** · {{ 'активный' if r[2] == true else ('вне активного' if r[2] == false else 'активный: ?') }} · {{ 'pending' if r[3] == true else ('не pending' if r[3] == false else 'pending: ?') }}
 
-  VLESS: {{ '✅ OK' if h == 'ok' else ('⚪ ' ~ h if h in ['missing','stale','unknown','нет свежих данных'] else '❌ ' ~ h) }} · {{ r[8] or '—' if h == 'ok' else '—' }} · {{ r[7] or '—' if h == 'ok' else '—' }}
+  VLESS: {{ '✅ OK' if h == 'ok' else ('⚪ ' ~ h if h in ['missing','stale','unknown','нет свежих данных'] else '❌ ' ~ h) }} · {{ (r[8] or '—') if h == 'ok' else '—' }} · {{ (r[7] or '—') if h == 'ok' else '—' }}
 
   OpenAI: {{ '✅ доступен' if o == 'reachable' else ('⚪ ' ~ o if o in ['missing','stale','unknown','нет свежих данных'] else '❌ ' ~ o) }}
 
