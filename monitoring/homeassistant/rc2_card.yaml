@@ -22,6 +22,12 @@ content: |-
   **Подписка: {{ rows | count }}** · активный пул: {{ n.active if state_attr(eid,'active_unmatched') is not none else '?' }} · pending: {{ n.pending if state_attr(eid,'pending_unmatched') is not none else '?' }}
 
   VPN: {{ n.vpn }}/{{ rows | count }} · Интернет: {{ n.internet }}/{{ rows | count }} · OpenAI: {{ n.openai }}/{{ rows | count }}
+
+  Подписка получена: {{ when(state_attr(eid,'subscription_at')) }} · полный набор результатов: {{ state_attr(eid,'probe_complete') if state_attr(eid,'probe_complete') is not none else '?' }}/{{ rows | count }}
+  {% set sub_at = state_attr(eid,'subscription_at') %}
+  {% if sub_at is not none and as_timestamp(now()) - sub_at > 1000 %}
+  ⚠️ Подписка не обновилась в ожидаемый срок.
+  {% endif %}
   {% if state_attr(eid,'active_unmatched') or state_attr(eid,'pending_unmatched') %}
   ⚠️ Есть узлы пула вне актуальной подписки.
   {% endif %}
