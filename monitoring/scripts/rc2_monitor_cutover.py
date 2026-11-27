@@ -66,7 +66,7 @@ def main():
     ni=b"".join(l for l in i.splitlines(keepends=True) if not l.lstrip().startswith((b"start_one health ",b"stop_one health ")))
     require(ni!=i and len(i.splitlines())-len(ni.splitlines())==2,"init diff")
     require(b"start_one traffic " in ni and b"stop_one traffic " in ni,"traffic changed")
-    subprocess.run(["/bin/sh","-n"],input=ni,check=True,timeout=5)
+    subprocess.run(["/opt/bin/sh","-n"],input=ni,check=True,timeout=5)
     # Avoid old OpenAI cron boundary and the RC2 probe start minute.
     require(4<=time.localtime().tm_min%15<=11,"outside monitor switch window")
     rows=processes();old=module(rows,"monitoring.vpn_health_collector_loop");traffic=module(rows,"monitoring.traffic_collector_loop")
