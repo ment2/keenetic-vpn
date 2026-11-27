@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from jinja2 import Environment, StrictUndefined
 from mixed_rc2_candidate import build, generation
-from mixed_rc2_integration import (Store, Busy, Deadline, probe_cycle, render, publication, history, aggregate, identity, METRICS, EXTRA, SHADOW, SHADOW_UID, SHADOW_EID, ShadowMQTT, publish_shadow, safe_pool, pool_from_config, sha, encoded, fetch_full, PROBE_BUDGET, FETCH_BUDGET, HISTORY_BUDGET, CYCLE_BUDGET, PER_NODE)
+from mixed_rc2_integration import (Store, Busy, Deadline, probe_cycle, scheduled_shadow, render, publication, history, aggregate, identity, METRICS, EXTRA, SHADOW, SHADOW_UID, SHADOW_EID, ShadowMQTT, publish_shadow, safe_pool, pool_from_config, sha, encoded, fetch_full, PROBE_BUDGET, FETCH_BUDGET, HISTORY_BUDGET, CYCLE_BUDGET, PER_NODE)
 from mixed_rc2_cards import overview, graphs, view, plan_dashboard, rollback_dashboard
 
 try:
@@ -116,6 +116,17 @@ class Tests(unittest.TestCase):
         self.assertGreaterEqual(PROBE_BUDGET,12*PER_NODE);self.assertLessEqual(FETCH_BUDGET+PROBE_BUDGET+HISTORY_BUDGET,CYCLE_BUDGET);self.assertLess(CYCLE_BUDGET,900)
         def slow(o):self.mono+=PER_NODE;return obs()
         self.cycle(probe=slow);self.assertEqual(self.snapshot()['probe_complete'],12)
+    def test_scheduled_slot(self):
+        self.now=1080; broker=FakeBroker()
+        args=dict(fetch=self.fetch,converter=convert,inventory=inventory,probe=lambda o:obs(self.now),cleanup_error=Cleanup,verify=lambda:None,idle=lambda:True,active_reader=lambda:{'outbounds':[]},pending_reader=lambda:{'outbounds':[]},broker_port=broker.port,clock=lambda:self.now,mono=lambda:self.mono,sleep=lambda _:None,minute=18)
+        token,count=scheduled_shadow(self.store,**args);broker.done();self.assertEqual(count,12);self.assertEqual(sha(self.store.read_raw()),token)
+        self.assertRaises(Busy,scheduled_shadow,self.store,**args)
+        self.now=1995;self.assertRaises(Busy,scheduled_shadow,self.store,**args)
+        self.assertEqual(self.fetches,1)
+    def test_rollback_publication_lock(self):
+        a=self.cycle();self.now=1900;b=self.cycle()
+        with self.store.lock('publish'):self.assertRaises(Busy,self.store.rollback,b,a)
+        self.assertEqual(sha(self.store.read_raw()),b)
     def test_budget_partial_no_inherited_success(self):
         self.cycle();self.now=1900
         def slow(o):self.mono+=100;return obs(self.now)

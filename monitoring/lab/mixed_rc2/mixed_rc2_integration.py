@@ -124,7 +124,7 @@ class Store:
         self.current=self.path/'current.json';self.previous=self.path/'previous.json'
     @contextlib.contextmanager
     def lock(self, name='cycle'):
-        if name not in ('cycle','publish'): raise ValueError('invalid lock name')
+        if name not in ('cycle','publish','schedule'): raise ValueError('invalid lock name')
         fd=os.open(self.path/(name+'.lock'),os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW|os.O_NONBLOCK,0o600)
         with os.fdopen(fd,'rb') as f:
             s=os.fstat(f.fileno())
@@ -150,7 +150,7 @@ class Store:
         if self.read_raw()!=b: raise RuntimeError('state readback failed')
         return sha(b)
     def rollback(self,expected_current,expected_previous):
-        with self.lock():
+        with self.lock('schedule'), self.lock(), self.lock('publish'):
             old=self.read_raw(); prev=regular_read(self.previous)
             if old is None or sha(old)!=expected_current or sha(prev)!=expected_previous: raise Busy('rollback compare-and-swap failed')
             # rollback to verified previous state; preserve displaced state separately
@@ -333,10 +333,19 @@ def scheduled_shadow(store, *, fetch, converter, inventory, probe, cleanup_error
     """Combined scheduled probe + history run, capped before next 15-minute slot.
     Publication can fail independently without corrupting the committed generation.
     """
-    end=mono()+CYCLE_BUDGET
-    token=probe_cycle(store,fetch=fetch,converter=converter,inventory=inventory,probe=probe,cleanup_error=cleanup_error,verify=verify,idle=idle,clock=clock,mono=mono,minute=minute)
-    count=publish_shadow(store,active_reader=active_reader,pending_reader=pending_reader,inventory=inventory,broker_port=broker_port,include_history=True,clock=clock,mono=mono,sleep=sleep,deadline=end)
-    return token,count
+    # :03/:18/:33/:48 slot, with 15 s reserved before the next slot.
+    # Reject a late start rather than start work that can cross the boundary.
+    wall=clock();slot=int((wall-180)//900)*900+180
+    remaining=slot+900-15-wall
+    if not 0<=wall-slot<=CYCLE_BUDGET-(FETCH_BUDGET+PROBE_BUDGET+HISTORY_BUDGET) or remaining<FETCH_BUDGET+PROBE_BUDGET+HISTORY_BUDGET:
+        raise Busy('late scheduled start')
+    end=mono()+min(CYCLE_BUDGET,remaining)
+    with store.lock('schedule'):
+        current=store.read()
+        if current and current.get('subscription_at',0)>=slot: raise Busy('slot already committed')
+        token=probe_cycle(store,fetch=fetch,converter=converter,inventory=inventory,probe=probe,cleanup_error=cleanup_error,verify=verify,idle=idle,clock=clock,mono=mono,minute=minute)
+        count=publish_shadow(store,active_reader=active_reader,pending_reader=pending_reader,inventory=inventory,broker_port=broker_port,include_history=True,clock=clock,mono=mono,sleep=sleep,deadline=end)
+        return token,count
 
 
 @contextlib.contextmanager

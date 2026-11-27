@@ -18,7 +18,10 @@ jobs:
           persist-credentials: false
       - run: python3 -m pip install Jinja2==3.1.6 PyYAML==6.0.2
       - run: python3 -B -m unittest discover -s monitoring/lab/mixed_rc2 -p 'test_*.py' -v
-      - run: python3 -B -m unittest discover -s monitoring/tests -p 'test_*.py' -v
+      - name: Full baseline regression (child process test import path)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/monitoring/tests:${{ github.workspace }}
+        run: python3 -B -m unittest discover -s monitoring/tests -p 'test_*.py' -v
   mqtt:
     runs-on: ubuntu-latest
     timeout-minutes: 5

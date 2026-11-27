@@ -16,13 +16,14 @@ def main():
     with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
     with tempfile.TemporaryDirectory(prefix='rc2-broker-') as td:
         d=Path(td);p=d/'rc2-mixed-shadow';p.mkdir(mode=0o700);store=Store(p)
-        conf=d/'mosquitto.conf';conf.write_text(f'listener {port} 127.0.0.1\nallow_anonymous true\npersistence false\n')
-        broker=subprocess.Popen(['mosquitto','-c',str(conf)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        # Default Mosquitto local-only mode; no config file outside private state.
+        # The namespace guard above also prohibits all non-loopback interfaces.
+        broker=subprocess.Popen(['mosquitto','-p',str(port)],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
         sub=None
         try:
             end=time.monotonic()+5
             while time.monotonic()<end:
-                if broker.poll() is not None:raise RuntimeError('broker exited')
+                if broker.poll() is not None:raise RuntimeError('synthetic broker exited: '+broker.stderr.read(2048).decode(errors='replace'))
                 try:
                     with socket.create_connection(('127.0.0.1',port),timeout=.2):break
                 except OSError:time.sleep(.1)
