@@ -1,0 +1,37 @@
+test_atomic_record (__main__.Tests.test_atomic_record) ... ok
+test_bad_module_no_insmod (__main__.Tests.test_bad_module_no_insmod) ... ok
+test_canonical (__main__.Tests.test_canonical) ... ok
+test_check_read_only (__main__.Tests.test_check_read_only) ... ok
+test_complete (__main__.Tests.test_complete) ... ok
+test_duplicate (__main__.Tests.test_duplicate) ... ok
+test_empty (__main__.Tests.test_empty) ... ok
+test_foreign (__main__.Tests.test_foreign) ... ok
+test_guard_fail_no_mutation (__main__.Tests.test_guard_fail_no_mutation) ... ok
+test_guard_order (__main__.Tests.test_guard_order) ... ok
+test_identity (__main__.Tests.test_identity) ... ok
+test_jump_plan (__main__.Tests.test_jump_plan) ... ok
+test_legacy (__main__.Tests.test_legacy) ... ok
+test_lifetime_lock (__main__.Tests.test_lifetime_lock) ... ok
+test_missing_table_read_only (__main__.Tests.test_missing_table_read_only) ... ok
+test_module_already_loaded (__main__.Tests.test_module_already_loaded) ... ok
+test_module_registration_failure (__main__.Tests.test_module_registration_failure) ... ok
+test_native_chain (__main__.Tests.test_native_chain) ... ok
+test_native_routes (__main__.Tests.test_native_routes) ... ok
+test_no_mutating_iptables_when_healthy (__main__.Tests.test_no_mutating_iptables_when_healthy) ... ok
+test_partial (__main__.Tests.test_partial) ... ok
+test_policy_conflict (__main__.Tests.test_policy_conflict) ... ok
+test_policy_exact (__main__.Tests.test_policy_exact) ... ok
+test_preflight_chain_conflict (__main__.Tests.test_preflight_chain_conflict) ... ok
+test_readiness_record (__main__.Tests.test_readiness_record) ... ok
+test_real_lock_handoff (__main__.Tests.test_real_lock_handoff) ... ok
+test_reorder (__main__.Tests.test_reorder) ... ok
+test_role_rc2 (__main__.Tests.test_role_rc2) ... ok
+test_stop_bound_to_identity (__main__.Tests.test_stop_bound_to_identity) ... ok
+test_table_conflict (__main__.Tests.test_table_conflict) ... ok
+test_wrong_mark (__main__.Tests.test_wrong_mark) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 1.298s
+
+OK
+S98_CHECK_OK
