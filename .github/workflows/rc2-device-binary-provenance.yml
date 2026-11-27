@@ -1,0 +1,23 @@
+name: RC2 device binary provenance
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths: ['.github/workflows/rc2-device-binary-provenance.yml']
+permissions:
+  contents: read
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify official release archive and compare extracted binary
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -q --fail --location --silent --show-error --max-time 120 -o xray-mips.zip https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip
+          printf '%s  xray-mips.zip\n' 1590b2bcefe64fb0604f29c8c75219bfbe8f63daa3bc8e3956edfa6da97c5869 | sha256sum -c -
+          unzip -p xray-mips.zip xray > xray-reference
+          test -s xray-reference
+          actual=$(sha256sum xray-reference | cut -d' ' -f1)
+          printf 'REFERENCE_BINARY_SHA256 %s\n' "$actual"
+          if [ "$actual" = 680db07db2b5d53080bfecb8752bc830c6a890367aa3bc57d42d4660506591f2 ]; then echo DEVICE_BINARY_MATCH true; else echo DEVICE_BINARY_MATCH false; exit 1; fi
