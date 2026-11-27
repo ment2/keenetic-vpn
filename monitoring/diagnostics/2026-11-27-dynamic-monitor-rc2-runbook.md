@@ -96,3 +96,14 @@ or edit unrelated cron. No rollback has been needed for the isolated tests.
 
 Production monitoring cutover remains NO-GO until authenticated HA acceptance,
 MQTT state/expiry and repeat-cycle gates pass.
+
+## Staging and MQTT shadow test
+
+All 13 required source files staged in a private persistent monitor directory;
+exact Git blob checks and compilation passed, RC2 snapshot/history/cycle
+imports verified. New isolated discovery and an explicitly unavailable,
+non-retained test state both received MQTT QoS1 PUBACK. No live measurements
+were fabricated or published as current. The retained discovery is a new
+monitor-only entity; the old dashboard, schedules and traffic collector
+remain unchanged. Broker acknowledgement alone does not establish HA state
+or expiry acceptance. The actual registry identity is checked separately.
