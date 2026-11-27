@@ -55,6 +55,39 @@ class Tests(unittest.TestCase):
     def test_strict_tls_unchanged(self):
         o=hy2('hy2://pw@x.example?insecure=0&sni=x.example','hy01')
         self.assertNotIn('allowInsecure',o['streamSettings']['tlsSettings'])
+    def test_fm_legacy_bbr_and_timers(self):
+        from urllib.parse import quote
+        mask={'udp':[{'type':'salamander','settings':{'password':'masksecret'}}]}
+        for v in ({'congestion':'bbr'}, {'congestion':'bbr','keepAlivePeriod':15,'maxIdleTimeout':60}, {}):
+            fm=dict(mask,quicParams=v)
+            u=H[1]+'&fm='+quote(json.dumps(fm),safe='')
+            o=hy2(u,'hy02')['streamSettings']
+            self.assertEqual(o['hysteriaSettings'],dict(v,version=2,auth='s:pass'))
+            self.assertEqual(o['finalmask'],mask)
+            self.assertNotIn('allowInsecure',o['tlsSettings'])
+            self.assertNotIn('masksecret',json.dumps(rows(records(V+H[:1]+[u]),{}, {},1000)))
+    def test_fm_rejects_unreviewed_settings(self):
+        from urllib.parse import quote
+        mask={'udp':[{'type':'salamander','settings':{'password':'masksecret'}}]}
+        invalid=[dict(mask,quicParams={'udpHop':{}}),dict(mask,quicParams={'congestion':'brutal'}),
+                 dict(mask,quicParams={'maxIdleTimeout':121}),dict(mask,quicParams={'keepAlivePeriod':True}),
+                 dict(mask,quicParams={'keepAlivePeriod':1}),dict(mask,quicParams={'debug':False}),
+                 dict(mask,tcp=[]),{'udp':[{'type':'salamander','settings':{'password':'different'}}]},
+                 dict(mask,quicParams=[])]
+        for fm in invalid:
+            with self.subTest(fm=fm),self.assertRaises(Unsupported):
+                hy2(H[1]+'&fm='+quote(json.dumps(fm),safe=''),'hy02')
+        for raw in ('not-json','{"udp":[],"udp":[]}', '[]'):
+            with self.assertRaises(Unsupported):
+                hy2(H[1]+'&fm='+quote(raw,safe=''),'hy02')
+    def test_fm_cannot_override_auth_or_tls(self):
+        from urllib.parse import quote
+        fm={'udp':[{'type':'salamander','settings':{'password':'masksecret'}}],'quicParams':{'auth':'other'}}
+        with self.assertRaises(Unsupported):
+            hy2(H[1]+'&fm='+quote(json.dumps(fm),safe=''),'hy02')
+        fm['quicParams']={'congestion':'bbr'}
+        with self.assertRaises(Unsupported):
+            hy2(H[1]+'&insecure=1&fm='+quote(json.dumps(fm),safe=''),'hy02')
     def test_untrusted_reason_not_published(self):
         r=records(V+['hy2://pw@lt.example?other=FAKE_UNKNOWN_SECRET'])[-1]; r['support_reason']='FAKE_UNKNOWN_SECRET'
         self.assertEqual(render(r,observations())['support_reason'],'invalid_uri')

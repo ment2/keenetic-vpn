@@ -48,6 +48,33 @@ def decode(body):
         raise ValueError('invalid inventory size')
     return lines
 
+def fm_legacy(raw, mask):
+    """Translate only reviewed FinalMask shape to Xray 26.2.6. Never silently drop options."""
+    def unique(pairs):
+        obj = dict(pairs)
+        if len(obj) != len(pairs):
+            raise ValueError('duplicate JSON key')
+        return obj
+    if not isinstance(raw, str) or not 1 <= len(raw) <= 16384:
+        raise Unsupported('invalid FinalMask size', 'unsupported_option')
+    try:
+        fm = json.loads(raw, object_pairs_hook=unique)
+    except (ValueError, RecursionError):
+        raise Unsupported('invalid FinalMask JSON', 'unsupported_option') from None
+    if (not isinstance(fm, dict) or set(fm) - {'udp', 'quicParams'}
+            or mask is None or fm.get('udp') != mask.get('udp')):
+        raise Unsupported('unreviewed or inconsistent FinalMask', 'unsupported_option')
+    quic = fm.get('quicParams', {})
+    if not isinstance(quic, dict) or set(quic) - {'congestion', 'keepAlivePeriod', 'maxIdleTimeout'}:
+        raise Unsupported('unreviewed QUIC options', 'unsupported_option')
+    if 'congestion' in quic and quic['congestion'] != 'bbr':
+        raise Unsupported('unreviewed congestion mode', 'unsupported_option')
+    for key, lo, hi in (('keepAlivePeriod', 2, 60), ('maxIdleTimeout', 4, 120)):
+        if key in quic and (type(quic[key]) is not int or not (quic[key] == 0 or lo <= quic[key] <= hi)):
+            raise Unsupported('invalid QUIC timing', 'unsupported_option')
+    return dict(quic)
+
+
 def hy2(uri, tag):
     u = urlsplit(uri)
     h = host(u.hostname)
@@ -70,7 +97,7 @@ def hy2(uri, tag):
         raise Unsupported('unreviewed TLS verification option', 'tls_policy')
     if q.get('insecure', '0') != '0':
         raise Unsupported('insecure TLS not accepted', 'tls_policy')
-    if set(q) - {'sni', 'insecure', 'obfs', 'obfs-password', 'ech'}:
+    if set(q) - {'sni', 'insecure', 'obfs', 'obfs-password', 'ech', 'fm'}:
         raise Unsupported('unknown URI options', 'unsupported_option')
     if 'ech' in q:
         raise Unsupported('ECH mapping not verified', 'ech_unverified')
@@ -83,6 +110,8 @@ def hy2(uri, tag):
         stream['finalmask'] = {'udp': [{'type': 'salamander', 'settings': {'password': q['obfs-password']}}]}
     elif obfs or 'obfs-password' in q:
         raise Unsupported('unsupported obfuscation')
+    if 'fm' in q:
+        stream['hysteriaSettings'].update(fm_legacy(q['fm'], stream.get('finalmask')))
     return {'tag': tag, 'protocol': 'hysteria', 'settings': {'version': 2, 'address': h, 'port': port}, 'streamSettings': stream}
 
 def generation(o):
