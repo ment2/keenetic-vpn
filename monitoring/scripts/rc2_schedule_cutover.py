@@ -43,7 +43,12 @@ def rollback(old_i,old_c,mode,new_i,new_c,stopped):
  require(INIT.read_bytes() in (old_i,new_i) and cron() in (old_c,new_c),"rollback CAS")
  atomic(INIT,old_i,mode);install_cron(old_c)
  if stopped:
-  require(not matching(processes(),"monitoring.vpn_health_collector_loop"),"old collector unexpectedly present")
+  # TERM may have been delivered before an exception. Wait for the old
+  # loop to finish, never start a second copy while it is still present.
+  for _ in range(25):
+   if not matching(processes(),"monitoring.vpn_health_collector_loop"):break
+   time.sleep(.2)
+  require(not matching(processes(),"monitoring.vpn_health_collector_loop"),"old collector termination unconfirmed")
   subprocess.run(["/opt/sbin/start-stop-daemon","-S","-b","-d","/opt/tmp/vpn-monitoring-lab","-p","/opt/var/run/vpn-vless-health.pid","-m","-x","/opt/bin/python3","-O","/opt/tmp/vpn-monitoring-lab/vpn-health.log","--","-u","-B","-m","monitoring.vpn_health_collector_loop","--interval","900","--publish"],check=True)
 def main():
  require(4<=time.localtime().tm_min%15<=10,"quiet window")
@@ -55,6 +60,7 @@ def main():
  new_c=old_c.replace(OLD_CRON+b"\n",NEW_LINES)
  require(new_c.endswith(b"\n"),"cron newline")
  require((STAGE/"rc2_schedule.py").is_file(),"schedule launcher missing")
+ require(not (BACK.exists()),"backup already exists; inspect before retry")
  before=witness();require(len(before[0])==1,"main Xray ambiguous")
  ps=processes();h=matching(ps,"monitoring.vpn_health_collector_loop");tr=matching(ps,"monitoring.traffic_collector_loop")
  require(len(h)==len(tr)==1 and not matching(ps,"monitoring.openai_health_collector_loop") and not matching(ps,"monitoring.rc2_cycle"),"collector inventory")
@@ -69,14 +75,15 @@ def main():
  subprocess.run(["/bin/sh","-n",str(BACK/"init.after")],check=True)
  stopped=False
  try:
+  require(4<=time.localtime().tm_min%15<=10,"quiet window closed")
   require(INIT.read_bytes()==old_i and cron()==old_c,"schedule CAS")
   ps=processes();require(ps.get(pid)==ident and not any(v[0]==pid for v in ps.values()),"collector identity or children changed")
   # TERM sets old collector's graceful stop flag; no forced kill.
-  os.kill(pid,signal.SIGTERM)
+  os.kill(pid,signal.SIGTERM);stopped=True
   for _ in range(25):
-   if pid not in processes():stopped=True;break
+   if pid not in processes():break
    time.sleep(.2)
-  require(stopped,"old collector did not stop")
+  require(not matching(processes(),"monitoring.vpn_health_collector_loop"),"old collector did not stop")
   require(not matching(processes(),"monitoring.vpn_health_collector_loop"),"old collector still present")
   atomic(INIT,new_i,mode);install_cron(new_c)
   require(INIT.read_bytes()==new_i,"init readback")
