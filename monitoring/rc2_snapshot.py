@@ -7,7 +7,8 @@ import os
 import re
 import time
 from pathlib import Path
-from monitoring.dynamic_snapshot import read_config, atomic_cache, ACTIVE, PENDING
+from monitoring.dynamic_snapshot import read_config, atomic_cache, ACTIVE, PENDING, MAX_NODES, MAX_INPUT_AGE
+from monitoring.vpn_inventory import inventory
 from monitoring.rc2_probe import collect, ip_value, city_value
 
 TOPIC="keenetic/vpn-monitor/v1/dynamic_rc2"
@@ -56,6 +57,19 @@ def pool(path,optional=False):
         return {} if optional else None
     except (OSError,ValueError,TypeError,KeyError,AttributeError):
         return None
+
+
+def read_full(path,now):
+    # Read content and freshness from the same inode, even during atomic replacement.
+    with Path(path).open() as f:
+        stamp=int(os.fstat(f.fileno()).st_mtime)
+        cfg=json.load(f)
+    if not 0<=now-stamp<=MAX_INPUT_AGE:
+        raise ValueError("stale subscription")
+    entries=inventory(cfg)
+    if not 1<=len(entries)<=MAX_NODES or len({e["tag"] for e in entries})!=len(entries):
+        raise ValueError("invalid inventory")
+    return cfg,entries,stamp
 
 
 def read_cache(path):
@@ -126,9 +140,10 @@ def membership(node,gen,p):
     return True
 
 
-def snapshot(config,entries,active,pending,cache,now):
+def snapshot(config,entries,active,pending,cache,now,subscription_at=None):
     mapped=node_map(config,entries)
     rows=[]
+    complete=0
     for e in entries:
         node=e["node_id"]
         o=mapped[node]
@@ -141,6 +156,8 @@ def snapshot(config,entries,active,pending,cache,now):
         if not isinstance(raw,dict):
             raw={}
         obs={k:clean_obs(raw.get(k),k,now) for k in KINDS}
+        if all(v["at"] is not None and v["status"]!="stale" for v in obs.values()):
+            complete+=1
         ip=obs["exit_ip"]
         geo=obs["geo"]
         # Never attach geography from a different exit IP. If independent IP
@@ -169,6 +186,7 @@ def snapshot(config,entries,active,pending,cache,now):
                      "last_geo":last if geo["status"]!="ok" else None})
     known=set(mapped)
     result={"schema":2,"checked_at":int(now),"inventory_status":"ok","count":len(rows),"rows":rows,
+            "subscription_at":subscription_at,"probe_complete":complete,
             "active_unmatched":None if active is None else len(set(active)-known),
             "pending_unmatched":None if pending is None else len(set(pending)-known)}
     if len(json.dumps(result,separators=(",",":"),ensure_ascii=True).encode())>32768:
@@ -193,24 +211,20 @@ def main():
     if full in {Path(ACTIVE).resolve(),Path(PENDING).resolve()}:
         raise SystemExit("unfiltered subscription required")
     if a.mode=="probe":
-        cfg,entries=read_config(full,time.time())
-        if not entries:
-            raise SystemExit("empty inventory")
+        cfg,entries,subscription_at=read_full(full,time.time())
         results=collect(cfg,entries,deadline=time.monotonic()+600)
         now=time.time()
         cache=update_cache(cfg,entries,results,read_cache(a.cache),now)
         atomic_cache(a.cache,cache)
         if a.publish:
             from monitoring.rc2_history import publish_history
-            publish_history(snapshot(cfg,entries,None,None,cache,now)["rows"])
+            publish_history(snapshot(cfg,entries,None,None,cache,now,subscription_at)["rows"])
         print("RC2_PROBE",len(results),len(entries))
         return
     now=time.time()
     try:
-        cfg,entries=read_config(full,now)
-        if not entries:
-            raise ValueError("empty inventory")
-        data=snapshot(cfg,entries,pool(ACTIVE),pool(PENDING,True),read_cache(a.cache),now)
+        cfg,entries,subscription_at=read_full(full,now)
+        data=snapshot(cfg,entries,pool(ACTIVE),pool(PENDING,True),read_cache(a.cache),now,subscription_at)
     except (OSError,ValueError,TypeError,KeyError,AttributeError):
         data={"schema":2,"checked_at":int(now),"inventory_status":"unavailable","count":0,"rows":[]}
     if a.publish:
