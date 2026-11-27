@@ -1,0 +1,55 @@
+name: RC2 MIPS49 process containment negative and positive controls
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths:
+      - '.github/workflows/rc2-mips49-containment.yml'
+      - 'monitoring/lab/mixed_rc2/mips49_containment.c'
+permissions:
+  contents: read
+jobs:
+  mips49:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install disposable compiler and full-system emulator
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross cpio gzip curl
+      - name: Verify pinned Linux 4.9 MIPS kernel and build synthetic guest
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/rc2-mips49"; mkdir -p "$W/root" "$W/guest/proc" "$W/guest/dev"
+          curl -fL --retry 2 --max-time 120 -o "$W/kernel.deb" https://archive.debian.org/debian/pool/main/l/linux/linux-image-4.9.0-13-4kc-malta_4.9.228-1_mipsel.deb
+          printf '9a5dff9c498bf5736ca9f97cbb005b4b60bd139aa0f30f5bab9feca783907d9b  %s\n' "$W/kernel.deb" | sha256sum -c -
+          dpkg-deb -x "$W/kernel.deb" "$W/root"
+          printf '20f5380e02f2e40d4495fd61a854e5867f5ccdf95c8c1fd3d53fe27e8be1797f  %s\n' "$W/root/boot/vmlinux-4.9.0-13-4kc-malta" | sha256sum -c -
+          mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror -o "$W/guest/init" monitoring/lab/mixed_rc2/mips49_containment.c
+          (cd "$W/guest"; find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$W/guest.cpio.gz")
+      - name: Boot physical-architecture guest with no NIC or network backend
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/rc2-mips49"
+          set +e
+          timeout --signal=KILL 100s qemu-system-mipsel -M malta -cpu 4KEc -m 256 -smp 1 -nographic -no-reboot -nodefaults -nic none -monitor none -kernel "$W/root/boot/vmlinux-4.9.0-13-4kc-malta" -initrd "$W/guest.cpio.gz" -append 'console=ttyS0 rdinit=/init panic=1' -serial "file:$W/serial.log" > "$W/qemu.log" 2>&1
+          rc=$?
+          set -e
+          cat "$W/serial.log" "$W/qemu.log"
+          test "$rc" = 0
+          grep -Fq 'UID_NNP_ONLY_NEGATIVE_DIRECT_UDP_BYTES_RECEIVED' "$W/serial.log"
+          grep -Fq 'GATED_POSITIVE_ALLOWED_AND_NEGATIVE_FORBIDDEN_NO_BYTES' "$W/serial.log"
+          test "$(grep -c '^OWNER pid=' "$W/serial.log")" = 2
+          test "$(grep -c '^CHILD_REAPED' "$W/serial.log")" = 2
+          grep -Fq 'RC2_CONTAINMENT_LAB_PASS_SYNTHETIC_CONNECTED_UDP_ONLY' "$W/serial.log"
+          grep -Fq 'GUEST_EXIT 0' "$W/serial.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rc2-mips49-containment-evidence
+          path: |
+            ${{ runner.temp }}/rc2-mips49/serial.log
+            ${{ runner.temp }}/rc2-mips49/qemu.log
+          if-no-files-found: warn
+          retention-days: 14
