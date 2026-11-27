@@ -57,7 +57,7 @@ if dns:
  if tcp:payload=struct.pack("!H",len(payload))+payload
 else:payload=token.encode()
 s=socket.socket(socket.AF_INET6,socket.SOCK_STREAM if tcp else socket.SOCK_DGRAM)
-s.settimeout(.75);s.bind(("::",int(source)))
+s.settimeout(4 if phase=="allow" else .75);s.bind(("::",int(source)))
 try:
  s.connect(("fd23:19::2",port));s.sendall(payload);b=s.recv(4096)
  if phase!="allow" or b!=payload:raise SystemExit(2)
@@ -71,7 +71,12 @@ def main():
  suffix=uuid.uuid4().hex[:6]
  client,router,sink=["v6"+x+suffix for x in "crs"]
  created=[];children=[]
- def run(*a):return subprocess.run(a,check=True,text=True,capture_output=True,timeout=10).stdout
+ def run(*a):
+  r=subprocess.run(a,text=True,capture_output=True,timeout=10)
+  if r.returncode:
+   print("FIXTURE_COMMAND_FAILED",a[0],r.returncode,r.stderr,flush=True)
+   raise RuntimeError("fixture command failed")
+  return r.stdout
  def ip(n,*a):return run("ip","-n",n,*a)
  def ns(n,*a):return run("ip","netns","exec",n,*a)
  kinds=(("tcp","tcp",18080),("udp","udp",18081),("dns_udp","udp",53),("dns_tcp","tcp",53))
@@ -79,15 +84,18 @@ def main():
   app=Path(tmp)/"app";wire=Path(tmp)/"wire"
   try:
    for n in (client,router,sink):
-    run("ip","netns","add",n);created.append(n);ip(n,"link","set","lo","up")
+    run("ip","netns","add",n);created.append(n);ns(n,"sysctl","-qw","net.ipv6.conf.all.disable_ipv6=0","net.ipv6.conf.default.disable_ipv6=0");ip(n,"link","set","lo","up")
    ip(client,"link","add","c0","type","veth","peer","name","r0","netns",router)
    ip(router,"link","add","r1","type","veth","peer","name","s0","netns",sink)
    for n,dev,addr in ((client,"c0","fd23:18::2/64"),(router,"r0","fd23:18::1/64"),(router,"r1","fd23:19::1/64"),(sink,"s0","fd23:19::2/64")):
-    ip(n,"-6","addr","add",addr,"dev",dev,"nodad");ip(n,"link","set",dev,"up")
+    ip(n,"link","set",dev,"up");ns(n,"sysctl","-qw","net.ipv6.conf."+dev+".disable_ipv6=0");ip(n,"-6","addr","add",addr,"dev",dev,"nodad")
    ip(client,"-6","route","add","fd23:19::/64","via","fd23:18::1")
    ip(sink,"-6","route","add","fd23:18::/64","via","fd23:19::1")
    ns(router,"sysctl","-qw","net.ipv6.conf.all.forwarding=1")
    for chain in ("FORWARD","OUTPUT"):ns(router,"ip6tables","-P",chain,"ACCEPT")
+   # Explicit neighbor/route positive control before using application probes.
+   ns(client,"ping","-6","-c","1","-W","3","fd23:19::2")
+   ns(router,"ping","-6","-c","1","-W","3","fd23:19::2")
    for path,source in ((app,SERVER),(wire,WIRE)):
     with path.open("w") as f:children.append(subprocess.Popen(["ip","netns","exec",sink,sys.executable,"-u","-c",source],stdout=f,stderr=f))
    for _ in range(50):
