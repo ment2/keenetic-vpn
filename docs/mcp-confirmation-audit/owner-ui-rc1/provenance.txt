@@ -1,0 +1,7 @@
+Archive source SHA256:
+d5ef4b0011e4c570342cebbb1055ce23b3b75392b05e7d526ebbad93fc74319b  baseline.zip
+Git blob comparison for extracted base (LF bytes):
+6d7911ad5b863d66b5eda4330a112f1de3439a1e  operation-consent.mjs
+15455b793f42a4f2211605cc71bfe26287bb3e11  apply-operation-consent.mjs
+381e48a07acb12951e0c7db11e04ba5806f06809  operation-runtime.test.mjs
+17875c83c8ca9bcef5cc4fc1235deddb6e18f01a  INSTALL-ROLLBACK.md
