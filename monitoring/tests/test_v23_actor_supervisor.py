@@ -156,6 +156,43 @@ class LifecycleTests(unittest.TestCase):
         self.assertTrue(service.child.reaped)
         self.assertTrue(service.path.exists())
         with self.assertRaises(m.Blocked):m.Lifecycle(self.g,self.argv,lambda pid:True).start()
+    def test_real_supervisor_death_leaves_receipt_and_blocks_successor(self):
+        if not hasattr(os,"pidfd_open"):self.skipTest("CI pidfd required for cleanup")
+        code="""import runpy,sys,time
+d=runpy.run_path(sys.argv[1])
+m=d['m'];g=d['migration'].m.Migration(sys.argv[2],sys.argv[3])
+s=m.Lifecycle(g,[sys.executable,'-c','import time;time.sleep(60)'],lambda _:True)
+s.start()
+while True:time.sleep(.1)
+"""
+        owner=subprocess.Popen([sys.executable,"-B","-c",code,__file__,str(self.g.root),self.g.boot])
+        receipt=self.g.protected/"supervisor.json"
+        fd=None
+        try:
+            import json
+            for _ in range(100):
+                if receipt.exists():
+                    d=json.loads(receipt.read_bytes())
+                    if d["phase"]=="running":break
+                if owner.poll() is not None:self.fail("supervisor exited")
+                time.sleep(.025)
+            else:self.fail("supervisor did not start")
+            i=m.identity(d["child_pid"])
+            self.assertEqual((i.ppid,i.start),(owner.pid,d["child_start"]))
+            fd=os.pidfd_open(i.pid)
+            owner.kill();self.assertEqual(owner.wait(timeout=5),-signal.SIGKILL)
+            self.assertTrue(receipt.exists())
+            with self.assertRaises(m.Blocked):m.Lifecycle(self.g,self.argv,lambda _:True).start()
+            self.assertEqual(m.identity(i.pid).start,i.start)
+        finally:
+            if owner.poll() is None:owner.kill();owner.wait(timeout=5)
+            if fd is not None:
+                import select
+                signal.pidfd_send_signal(fd,signal.SIGKILL)
+                poll=select.poll();poll.register(fd,select.POLLIN)
+                self.assertTrue(poll.poll(5000))
+                os.close(fd)
+
     def test_external_reap_detected_before_signal(self):
         child=m.OwnedChild([sys.executable,"-c","pass"])
         os.waitpid(child.pid,0)
