@@ -1,5 +1,5 @@
 import base64, json, unittest
-from mixed_rc2_candidate import build, decode, hy2, rows, collect, Unsupported
+from mixed_rc2_candidate import build, decode, hy2, rows, collect, Unsupported, payload
 
 def converter(uri, i):
     from urllib.parse import urlsplit
@@ -55,6 +55,16 @@ class Tests(unittest.TestCase):
         s=json.dumps(rows(records(),{}, {},1000)); self.assertNotIn('secret',s); self.assertNotIn('TEST_SECRET',s); self.assertNotIn('generation',s)
     def test_active(self):
         r=records(); a={x['id']:x['generation'] for x in r[:4]}; v=rows(r,{},a,1000); self.assertEqual(sum(x['active'] for x in v),4); self.assertFalse(v[-1]['active'])
+    def test_port_zero(self):
+        r=records(V+['hy2://pw@hy.example:0']); self.assertEqual(r[-1]['support'],'unsupported'); self.assertIsNone(r[-1]['port'])
+    def test_bad_percent(self):
+        r=records(V+['hy2://p%ZZ@hy.example']); self.assertEqual(r[-1]['support'],'unsupported')
+    def test_incoherent(self):
+        o=observations(); o['geo']['checked_at']=900; self.assertEqual(render(records()[-1],o)['geo_policy'],'UNVERIFIED')
+    def test_payload(self):
+        r=records(); c={x['id']:{'generation':x['generation'],'observations':observations()} for x in r}; p=payload(r,c,{},1000,995,{}); self.assertEqual(p['protocol_counts'],{'vless':10,'hysteria2':2}); self.assertEqual(p['probe_complete'],12); self.assertEqual(payload(r,c,{},3000,995)['inventory_status'],'unavailable')
+    def test_failed_probe_complete(self):
+        r=records(); o=observations(); o['exit_ip']['status']='timeout'; c={x['id']:{'generation':x['generation'],'observations':o} for x in r}; p=payload(r,c,{},1000,995); self.assertEqual(p['probe_complete'],12); self.assertFalse(p['rows'][0]['eligible']); self.assertEqual(p['rows'][0]['exit_ip_probe']['ms'],42)
     def test_collect(self):
         class Cleanup(Exception): pass
         r=records(); c=collect(r,lambda o: observations(),100,lambda:0,Cleanup); self.assertEqual(len(c),12); self.assertEqual(len(collect(r,lambda o:observations(),54,lambda:0,Cleanup)),0)
