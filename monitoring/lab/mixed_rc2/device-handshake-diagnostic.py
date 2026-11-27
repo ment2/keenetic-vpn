@@ -77,9 +77,9 @@ def main():
    assert len(devices)==1;device=next(iter(devices))
    with socket.socket() as sk:sk.bind(("127.0.0.1",0));port=sk.getsockname()[1]
    o={"tag":"probe","protocol":"hysteria","settings":{"version":2,"address":u.hostname,"port":443},"streamSettings":{"network":"hysteria","security":"tls","tlsSettings":{"serverName":q.get("sni") or u.hostname,"alpn":["h3"]},"hysteriaSettings":dict(v,version=2,auth=unquote(u.netloc.rsplit("@",1)[0])),"finalmask":mask}}
-   cfg={"log":{"loglevel":"debug"},"inbounds":[{"listen":"127.0.0.1","port":port,"protocol":"socks","tag":"in","settings":{"auth":"noauth"}}],"outbounds":[{"protocol":"blackhole","tag":"blocked"},o],"routing":{"rules":[{"type":"field","inboundTag":["in"],"outboundTag":"probe"}]}}
+   cfg={"log":{"loglevel":"debug"},"inbounds":[{"listen":"127.0.0.1","port":port,"protocol":"socks","tag":"in","settings":{"auth":"noauth","udp":False}}],"outbounds":[{"protocol":"blackhole","tag":"blocked"},o],"routing":{"domainStrategy":"AsIs","rules":[{"type":"field","inboundTag":["in"],"outboundTag":"probe"}]}}
    with tempfile.TemporaryDirectory() as td:
-    f=Path(td)/"c"
+    f=Path(td)/"probe.json"
     with os.fdopen(os.open(f,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),"w") as w:json.dump(cfg,w)
     with tempfile.TemporaryFile() as logs,tempfile.TemporaryFile() as packets,tempfile.TemporaryFile() as caplog:
      witness=set();phase="CAPTURE_START";x=None;c=None;r=None
@@ -117,7 +117,7 @@ def main():
        if c.poll() is None:c.send_signal(2)
        try:c.wait(2)
        except sp.TimeoutExpired:stop(c)
-     logs.seek(0);s=logs.read(131072).decode(errors="replace").lower();print("LOG",i,{k:s.count(k) for k in ("timeout","no recent network activity","timeout: no recent network activity","certificate","x509","handshake","authentication","authentication failed","connection refused","network is unreachable","failed","quic","no such host","failed to dial","failed to connect","failed to open","drop packet","invalid packet","tls","crypto error","failed to start","failed to load","invalid config","unknown","permission denied","address already in use","failed to listen","no such file","handshake did not complete")})
+     logs.seek(0);s=logs.read(131072).decode(errors="replace").lower();print("LOG",i,{k:s.count(k) for k in ("timeout","no recent network activity","timeout: no recent network activity","certificate","x509","handshake","authentication","authentication failed","connection refused","network is unreachable","failed","quic","no such host","failed to dial","failed to connect","failed to open","drop packet","invalid packet","tls","crypto error","failed to start","failed to load","invalid config","unknown","permission denied","address already in use","failed to listen","no such file","handshake did not complete","unsupported config format","failed to read config","failed to parse","failed to build","config format","failed to decode")})
      packets.seek(0);ls=packets.read(131072).decode(errors="replace").splitlines();caplog.seek(0);cs=caplog.read(8192).decode(errors="replace");drop=re.search(r"(\d+) packets dropped by kernel",cs)
      outp=[l for l in ls if any(" > "+a+".443:" in l for a in ips)];inp=[l for l in ls if any(a+".443 > " in l for a in ips)]
      matched_out=sum(any(re.search(r"\."+str(p)+r" > ",l) for p in witness) for l in outp);matched_in=sum(any(re.search(r"\."+str(p)+r":",l) for p in witness) for l in inp)
