@@ -5,3 +5,5 @@ User visual feedback: original vertically spaced per-server diagnostic paragraph
 CI 46019283668 SUCCESS, 166/166, commit 85f2a6ae56f8f425d2ac33c17371a9521885987f. Template includes an explicit ten-row matrix regression test.
 
 Apply only the existing rc2-shadow card through the authenticated Lovelace API, after exact old-card comparison and private backup. Application job 21333817-0bfe-4591-9195-35d039964a12 was queued; do not resubmit. Verify result and visual rendering before declaring acceptance. No router, cron, Xray, updater, firewall, routing or kill-switch change.
+
+Application completed successfully. Lovelace readback verified other views and six graphs unchanged. Private backup created. Physical mobile rendering still requires visual confirmation. A one-shot real snapshot refresh was queued, job 8377f706-1099-45b7-9a15-d9a2845ef3b7; no schedule change.
