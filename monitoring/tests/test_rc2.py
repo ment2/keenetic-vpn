@@ -142,3 +142,18 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(expiry["internet"],1200)
         msg=list(h.messages(r["id"],r["tag"],expiry))
         self.assertTrue(all(x[1]["expire_after"]==1200 for x in msg))
+
+    def test_ten_node_unicode_payload_and_budget(self):
+        # 253-character host and longest allowed non-BMP city exercise JSON escapes.
+        hosts=[("a"*63+".")*3+"b"*57+("%04d"%i) for i in range(10)]
+        cfg=config(*[outbound("vpn%02d"%(i+1),host) for i,host in enumerate(hosts)])
+        entries=inventory(cfg)
+        addr="2001:db8:ffff:ffff:ffff:ffff:ffff:ffff"
+        raw={e["node_id"]:{"internet":event(),"openai":event(),"exit_ip":event(ip=addr),
+                "geo":event(ip=addr,country="DE",city="𐐀"*64)} for e in entries}
+        cache=s.update_cache(cfg,entries,raw,{},NOW)
+        result=s.snapshot(cfg,entries,s.pool("/nonexistent"),{},cache,NOW)
+        size=len(json.dumps(result,separators=(",",":"),ensure_ascii=True).encode())
+        self.assertEqual(result["count"],10)
+        self.assertLessEqual(size,32768)
+        self.assertLessEqual(10*p.NODE_BUDGET_S,600)
