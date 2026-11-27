@@ -28,4 +28,5 @@ jobs:
           name: v23-release-gate-evidence-20261127
           path: evidence/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 30
