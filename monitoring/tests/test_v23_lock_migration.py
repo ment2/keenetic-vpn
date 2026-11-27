@@ -164,3 +164,53 @@ else:getattr(g,op)()
         moved=self.g.protected.with_name("other")
         self.g.protected.rename(moved);self.g.protected.symlink_to(moved)
         with self.assertRaises(m.Blocked):self.g.run("cron",lambda _:0)
+
+
+class IntegratedMigrationTests(unittest.TestCase):
+    def setUp(self):
+        import test_v23_release_gate as prior
+        self.prior=prior
+        self.fixture=prior.GateTests()
+        self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+        self.r=self.fixture.g
+        self.g=m.Migration(self.fixture.root,str(uuid.uuid4()))
+        for p in (self.g.protected,self.g.actors):p.mkdir(mode=0o700)
+        self.g.control.touch(mode=0o600)
+        for a in m.ACTORS:
+            p=self.g.actors/a;p.write_text("gated-fixture:"+a);p.chmod(0o600)
+        self.g.initialize(True);self.g.migrate()
+
+    def test_release_and_actor_share_one_inode_until_source_rollback(self):
+        self.g.release(self.r,"install",candidate=self.fixture.candidate)
+        self.assertEqual(self.g.release(self.r,"cron"),"new")
+        self.assertEqual(self.g.release(self.r,"monitor",runner=lambda pins:0 if pins==self.r.new else 1),"new")
+        for a in ("watchdog","S97","S98","legacy-vless","legacy-openai"):
+            self.assertEqual(self.g.run(a,lambda p:0,gate=self.r),"protected")
+        with self.assertRaises(m.Blocked):self.g.rollback()
+        self.assertEqual(self.g.release(self.r,"rollback"),"old")
+        self.g.rollback()
+        self.assertTrue(self.g.old.exists())
+        self.assertTrue(self.r.pair_matches(self.r.old))
+
+    def test_release_receipt_fences_all_migration_actors(self):
+        bad=b"#!/bin/sh\nexit 1\n";self.r.wrapper.write_bytes(bad);self.r.wrapper_sha=self.prior.m.sha(bad)
+        with self.assertRaises(self.prior.m.Blocked):self.g.release(self.r,"cron")
+        self.assertTrue(self.r.receipt.exists())
+        with self.assertRaises(m.Blocked):self.g.run("S98",lambda _:0,gate=self.r)
+        with self.assertRaises(m.Blocked):self.g.rollback()
+        with self.assertRaises(m.Blocked):self.g.recover()
+
+    def test_actor_receipt_fences_release(self):
+        with self.assertRaises(m.Blocked):self.g.run("watchdog",lambda _:1,gate=self.r)
+        with self.assertRaises(m.Blocked):self.g.release(self.r,"cron")
+        self.assertFalse(self.fixture.trace.exists())
+
+    def test_prepared_release_pair_blocks_other_actors_until_recovery(self):
+        def cut(stage):
+            if stage=="pins":raise RuntimeError("synthetic interruption")
+        self.r.cut=cut
+        with self.assertRaises(RuntimeError):self.g.release(self.r,"install",candidate=self.fixture.candidate)
+        with self.assertRaises(self.prior.m.Blocked):self.g.run("S97",lambda _:0,gate=self.r)
+        self.r.cut=lambda _:None
+        self.assertEqual(self.g.release(self.r,"recover"),"old")
+        self.assertEqual(self.g.run("S97",lambda _:0,gate=self.r),"protected")
