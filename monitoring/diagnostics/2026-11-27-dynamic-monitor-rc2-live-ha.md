@@ -34,8 +34,10 @@ Reference: https://developers.home-assistant.io/docs/apps/communication/
   120-second between-call budget and conservative 180-second expiry guard.
   No retained state. Regression CI 46018315554, commit
   c41a8b510c32978e87b3779f5053581e6794c886: 165/165 SUCCESS.
-  Staging file write verified by agent, backup created; exact staged
-  execution/readback remains an independent gate until confirmed.
+  Staging file write verified by agent, backup created. Exact staged Git
+  blob 9d0a5d61f138603255bba8b3e641a7c2a7a84f90 matched; patched
+  publisher completed 10/10 nodes in 6.37 s, aggregate PUBACK 10/10.
+  Final live template readback requested.
 
 ## Dashboard and monitor-only staging
 - Supported Lovelace WebSocket API: existing vpn-monitor dashboard read,
@@ -52,7 +54,7 @@ Reference: https://developers.home-assistant.io/docs/apps/communication/
   The two scheduled cycles and physical rollback rehearsal remain open.
 
 ## Next gate
-Verify the patched staging publisher exact blob and live output. Keep
+Keep
 original dashboard view as rollback. Use the existing authenticated browser
 or confirm visual rendering of the shadow view; then perform only the
 monitor-only cutover in a quiet updater window, with refreshed verified
