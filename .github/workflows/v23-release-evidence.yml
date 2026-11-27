@@ -1,0 +1,31 @@
+name: v23 release evidence bundle
+on:
+  push:
+    branches: [feature/vpn-monitoring-home-assistant-20261104]
+    paths:
+      - '.github/workflows/v23-release-evidence.yml'
+      - 'monitoring/diagnostics/2026-11-27-v23-release-gate-final-preparation.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle only reviewed public source and evidence
+        run: |
+          set -eu
+          mkdir evidence
+          git archive HEAD xray/candidates/geo-independent-v23 monitoring/tests/test_v23_release_gate.py monitoring/tests/test_v23_live_wrapper_fixture.py monitoring/tests/test_v23_journal_crash.py monitoring/tests/fixtures/v23_journal_model.py monitoring/tests/fixtures/safe-hourly-live-20261127.fixture.txt monitoring/tests/fixtures/v23_packet_reference.py monitoring/tests/fixtures/v23_packet_ipv6_reference.py monitoring/diagnostics/2026-11-27-v23-release-gate-final-preparation.md monitoring/diagnostics/2026-11-27-v23-coherent-live-acceptance.md monitoring/diagnostics/2026-11-27-v23-geo-independent-crash-packet-acceptance.md .github/workflows/v23-packet-reference.yml .github/workflows/v23-packet-ipv6.yml .github/workflows/vpn-monitoring-tests.yml | tar -x -C evidence
+          git rev-parse HEAD > evidence/COMMIT
+          cd evidence
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v23-release-gate-evidence-20261127
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 30
