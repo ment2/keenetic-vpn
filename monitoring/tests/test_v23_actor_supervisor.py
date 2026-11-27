@@ -14,6 +14,7 @@ import test_v23_lock_migration as migration
 
 DIR=Path(__file__).resolve().parents[2]/"xray/candidates/geo-independent-v23"
 with patch.object(sys,"path",[str(DIR),*sys.path]):
+    sys.modules["lock_migration"]=migration.m
     spec=importlib.util.spec_from_file_location("actor_supervisor",DIR/"actor_supervisor.py")
     m=importlib.util.module_from_spec(spec);sys.modules[spec.name]=m;spec.loader.exec_module(m)
 
@@ -129,3 +130,35 @@ class ActorTests(unittest.TestCase):
         with self.assertRaises(m.Blocked):self.a.s98()
         with self.assertRaises(m.Blocked):self.a.cron()
         self.assertTrue(self.g.receipt.exists())
+
+class LifecycleTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture=migration.IntegratedMigrationTests()
+        self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+        self.g=self.fixture.g
+        self.argv=[sys.executable,"-c","import time;time.sleep(60)"]
+    def test_receipt_persists_while_service_runs_and_no_adoption(self):
+        service=m.Lifecycle(self.g,self.argv,lambda pid:True)
+        try:
+            self.assertEqual(service.start(),0)
+            self.assertTrue(service.healthy())
+            self.assertTrue(service.path.exists())
+            successor=m.Lifecycle(self.g,self.argv,lambda pid:True)
+            with self.assertRaises(m.Blocked):successor.start()
+            self.assertEqual(service.restart(),0)
+            self.assertTrue(service.healthy())
+        finally:
+            if service.child is not None and not service.child.reaped:service.stop()
+        self.assertFalse(service.path.exists())
+    def test_failed_start_retains_receipt(self):
+        service=m.Lifecycle(self.g,self.argv,lambda pid:False)
+        with self.assertRaises(m.Blocked):service.start(timeout=.2)
+        self.assertTrue(service.child.reaped)
+        self.assertTrue(service.path.exists())
+        with self.assertRaises(m.Blocked):m.Lifecycle(self.g,self.argv,lambda pid:True).start()
+    def test_external_reap_detected_before_signal(self):
+        child=m.OwnedChild([sys.executable,"-c","pass"])
+        os.waitpid(child.pid,0)
+        with patch.object(os,"kill") as kill:
+            with self.assertRaises(ChildProcessError):child.stop()
+            kill.assert_not_called()
