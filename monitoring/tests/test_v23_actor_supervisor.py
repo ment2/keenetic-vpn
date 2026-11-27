@@ -162,3 +162,42 @@ class LifecycleTests(unittest.TestCase):
         with patch.object(os,"kill") as kill:
             with self.assertRaises(ChildProcessError):child.stop()
             kill.assert_not_called()
+
+class CoordinatedApplyTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture=migration.IntegratedMigrationTests()
+        self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+        self.g=self.fixture.g;self.r=self.fixture.r
+        with patch.object(sys,"path",[str(DIR),*sys.path]):
+            spec=importlib.util.spec_from_file_location("coordinated_apply",DIR/"coordinated_apply.py")
+            self.app=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.app)
+        self.old=b'{"outbounds":[{"protocol":"vless","tag":"old"}]}'
+        self.new=b'{"outbounds":[{"protocol":"vless","tag":"new"}]}'
+        self.calls=[]
+        self.p=self.g.root/"opt/etc/xray/config.json"
+        self.p.write_bytes(self.old);self.p.chmod(0o600)
+        def restart():
+            self.calls.append(self.p.read_bytes())
+            with self.assertRaises(BlockingIOError):self.g.run("S97",lambda _:0,gate=self.r)
+            return 0
+        self.a=m.Actors(self.g,self.r,restart=restart,healthy=lambda:True,rules_ok=lambda:True,
+                        repair=lambda:0,monitor=lambda pins:0)
+    def test_apply_delegates_restart_under_one_gate(self):
+        a=self.app.Apply(self.g,lambda:self.new,lambda _:True,lambda:True)
+        self.assertEqual(self.a.cron(a.run),"old")
+        self.assertEqual(self.p.read_bytes(),self.new)
+        self.assertEqual(self.calls,[self.new])
+        self.assertEqual(a.backup.read_bytes(),self.old)
+        self.assertFalse(a.pending.exists())
+    def test_failed_health_rolls_back_without_nested_gate(self):
+        a=self.app.Apply(self.g,lambda:self.new,lambda _:True,lambda:self.p.read_bytes()==self.old)
+        with self.assertRaises(self.fixture.prior.m.Blocked):self.a.cron(a.run)
+        self.assertEqual(self.p.read_bytes(),self.old)
+        self.assertEqual(self.calls,[self.new,self.old])
+        self.assertTrue(self.r.receipt.exists())
+        with self.assertRaises(m.Blocked):self.a.watchdog()
+    def test_invalid_candidate_never_restarts(self):
+        a=self.app.Apply(self.g,lambda:b'{"outbounds":[]}',lambda _:True,lambda:True)
+        with self.assertRaises(self.fixture.prior.m.Blocked):self.a.cron(a.run)
+        self.assertEqual(self.p.read_bytes(),self.old)
+        self.assertEqual(self.calls,[])
