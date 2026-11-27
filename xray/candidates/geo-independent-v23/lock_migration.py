@@ -227,7 +227,7 @@ class Migration:
         second top-level actor invocation.
         """
         require(gate.root==self.root and gate.state==self.release_state,"foreign release gate")
-        require(operation in ("install","cron","monitor","recover","rollback"),"unknown operation")
+        require(operation in ("install","cron","coordinated-cron","monitor","recover","rollback"),"unknown operation")
         with self.serialized():
             d=self.state()
             require(d["boot"]==self.boot and d["phase"]=="protected" and self.sole(d)==self.new,"protected lock required")
@@ -237,6 +237,7 @@ class Migration:
             # coordinator holds the control lock for the entire call.
             if operation=="install":result=gate.install(candidate)
             elif operation=="cron":result=gate.cron()
+            elif operation=="coordinated-cron":result=gate.coordinated_cron(runner)
             elif operation=="monitor":result=gate.monitor_probe(runner)
             else:result=gate.recover(operation=="rollback")
             require(self.state()==d and self.sole(d)==self.new,"migration changed during release")
