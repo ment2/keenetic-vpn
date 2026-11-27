@@ -3,6 +3,7 @@
 Never invokes production paths or a real service. Source readback has the
 two probe URLs replaced by .invalid fixtures and all /opt paths relocated.
 """
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,14 +13,15 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 FIXTURE=Path(__file__).parent/"fixtures/safe-hourly-live-20261127.fixture.txt"
 OLD={"fixture_generation":"old","outbounds":[{"tag":"vpn01","protocol":"vless"}]}
 NEW={"fixture_generation":"new","outbounds":[{"tag":"vpn04","protocol":"vless"}]}
 
 class LiveWrapperFixtureTests(unittest.TestCase):
-    def execute(self, scenario):
-        with tempfile.TemporaryDirectory(prefix="v23-wrapper-fixture-") as tmp:
+    def execute(self, scenario, gated=False):
+        with tempfile.TemporaryDirectory(prefix="v23-release-fixture-" if gated else "v23-wrapper-fixture-") as tmp:
             root=Path(tmp)
             for d in ("opt/bin","opt/sbin","opt/etc/xray","opt/etc/init.d","opt/var/log"):
                 (root/d).mkdir(parents=True)
@@ -68,14 +70,49 @@ print(code,end="")
             raw=FIXTURE.read_text().replace("@ROOT@",tmp).replace("@PYTHON@",shlex.quote(sys.executable))
             self.assertNotIn("@ROOT@",raw)
             self.assertNotIn("@PYTHON@",raw)
-            wrapper=root/"wrapper.sh"
+            wrapper=root/"opt/bin/xray-safe-hourly.sh" if gated else root/"wrapper.sh"
             wrapper.write_text(raw)
-            result=subprocess.run(["/bin/sh",str(wrapper)],env=env,capture_output=True,timeout=20)
+            receipt=False
+            if gated:
+                source=Path(__file__).resolve().parents[2]/"xray/candidates/geo-independent-v23/release_gate.py"
+                spec=importlib.util.spec_from_file_location("gate",source)
+                m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+                (root/"marker").write_bytes(b"synthetic-only")
+                for p in (root/"opt/etc/vpn-monitor",root/"opt/tmp",root/"opt/etc/xray/v23-release-journal"):
+                    p.mkdir(parents=True,mode=0o700)
+                lock=root/"opt/tmp/xray-update.lock";lock.touch(mode=0o600)
+                lock.chmod(0o600)
+                binpath=root/"opt/bin"
+                for name in m.NAMES[1:]:
+                    (binpath/name).write_bytes(name.encode())
+                pins={name:m.sha((binpath/name).read_bytes()) for name in m.NAMES}
+                pinpath=root/"opt/etc/vpn-monitor/dynamic-source-pins.json"
+                pinpath.write_bytes(m.encode(pins));pinpath.chmod(0o600)
+                new=(binpath/m.NAMES[0]).read_bytes()+b"\n# new fixture\n"
+                staged=root/"candidate.py";staged.write_bytes(new);staged.chmod(0o600)
+                g=m.Gate(root,pins,m.sha(new),m.sha(wrapper.read_bytes()))
+                g.install(staged)
+                with patch.dict(os.environ,env,clear=True):
+                    try:
+                        self.assertEqual(g.cron(),"new")
+                        rc=0
+                    except m.Blocked:
+                        rc=1
+                receipt=g.receipt.is_file()
+                self.assertTrue(g.pair_matches(g.new))
+                if receipt:
+                    with self.assertRaises(m.Blocked):g.cron()
+                else:
+                    self.assertEqual(g.recover(True),"old")
+                    self.assertTrue(g.pair_matches(g.old))
+                result=type("Result",(),{"returncode":rc})()
+            else:
+                result=subprocess.run(["/bin/sh",str(wrapper)],env=env,capture_output=True,timeout=20)
             log=root/"opt/var/log/xray-update.log"
             trace=root/"restart-trace"
             return {"rc":result.returncode,"active":json.loads(conf.read_text()),
                     "backup":backup.read_bytes() if backup.exists() else None,
-                    "pending":pending.exists(),"old":old,
+                    "pending":pending.exists(),"old":old,"receipt":receipt,
                     "trace":trace.read_text().splitlines() if trace.exists() else [],
                     "log":log.read_text() if log.exists() else "",
                     "workdirs":list(conf.parent.glob(".update.*"))}
@@ -145,3 +182,17 @@ print(code,end="")
             r=subprocess.run(["flock","-n","-o",str(p),sys.executable,"-c","print('executed')"],capture_output=True,timeout=5)
             self.assertEqual(r.returncode,0)
             self.assertEqual(r.stdout.strip(),b"executed")
+
+    def test_journal_gate_invokes_relocated_wrapper_and_preserves_pair(self):
+        r=self.execute("success",gated=True)
+        self.assertEqual((r["rc"],r["active"],r["trace"]),(0,NEW,["new"]))
+        self.assertFalse(r["receipt"])
+        self.assertIn("SUCCESS:",r["log"])
+
+    def test_journal_gate_retains_receipt_after_wrapper_rollback(self):
+        r=self.execute("health_fail",gated=True)
+        self.assertNotEqual(r["rc"],0)
+        self.assertEqual(r["active"],OLD)
+        self.assertEqual(r["trace"],["new","old"])
+        self.assertTrue(r["receipt"])
+        self.assertIn("ROLLBACK_OK:",r["log"])
