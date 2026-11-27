@@ -3,11 +3,11 @@
 type: markdown
 title: VPN и OpenAI · вся подписка
 content: |-
-  {% set eid = 'sensor.keenetic_dynamic_vpn_rc2' %}
+  {% set eid = 'sensor.keenetic_dynamic_vpn_inventory' %}
   {% set rows = state_attr(eid, 'rows') or [] %}
   {% set stamp = state_attr(eid, 'checked_at') | int(0) %}
   {% set age = as_timestamp(now()) - stamp %}
-  {% if states(eid) != 'ok' or state_attr(eid,'schema') != 2 or age < 0 or age > 150 %}
+  {% if states(eid) != 'ok' or age < 0 or age > 150 %}
   ⚪ **Нет актуального списка подписки**
   {% else %}
   {% set counts = namespace(active=0,pending=0,health=0,openai=0) %}
@@ -19,7 +19,7 @@ content: |-
   {% endfor %}
   **Всего: {{ rows | count }}** · активных: {{ counts.active if state_attr(eid,'active_unmatched') is not none else '?' }} · pending: {{ counts.pending if state_attr(eid,'pending_unmatched') is not none else '?' }}
 
-  VPN / Интернет: {{ counts.health }}/{{ rows | count }} · OpenAI: {{ counts.openai }}/{{ rows | count }}
+  VLESS: {{ counts.health }}/{{ rows | count }} · OpenAI: {{ counts.openai }}/{{ rows | count }}
   {% if state_attr(eid,'active_unmatched') is none or state_attr(eid,'pending_unmatched') is none %}
   ⚠️ Данные одного из пулов недоступны.
   {% elif state_attr(eid,'active_unmatched') or state_attr(eid,'pending_unmatched') %}
@@ -30,28 +30,15 @@ content: |-
   {% set o = r[9] if r[10] is not none and 0 <= as_timestamp(now()) - r[10] <= 1800 else 'нет свежих данных' %}
   **{{ r[1] }}** · {{ 'активный' if r[2] == true else ('вне активного' if r[2] == false else 'активный: ?') }} · {{ 'pending' if r[3] == true else ('не pending' if r[3] == false else 'pending: ?') }}
 
-  VPN / Интернет: {{ '✅ HTTP 204' if h == 'ok' else ('⚪ ' ~ h if h in ['missing','stale','unknown','нет свежих данных'] else '❌ ' ~ h) }}
-
-  Адрес подключения: {{ r[12] or '—' }}{{ ':' ~ r[13] if r[13] is not none else '' }}
-
-  {% set g = r[14] %}
-  {% set fresh = g == 'ok' and r[15] is not none and 0 <= as_timestamp(now()) - r[15] <= 1800 %}
-  {% set old = g in ['ok','stale'] and r[15] is not none and 0 <= as_timestamp(now()) - r[15] <= 86400 and not fresh %}
-  Геолокация: {{ '✅ свежая' if fresh else ('🟡 устарела' if old else '⚪ нет данных') }}
-
-  {{ 'IP выхода' if fresh else 'Последний известный IP выхода' }}: {{ (r[7] or '—') if fresh or old else '—' }}
-
-  Страна: {{ (r[8] or '—') if fresh or old else '—' }} · Город: {{ (r[16] or '—') if fresh or old else '—' }}
-
-  Геоданные: {{ as_local(as_datetime(r[15])).strftime('%d.%m %H:%M:%S') if fresh or old else '—' }}
+  VLESS: {{ '✅ OK' if h == 'ok' else ('⚪ ' ~ h if h in ['missing','stale','unknown','нет свежих данных'] else '❌ ' ~ h) }} · {{ (r[8] or '—') if h == 'ok' else '—' }} · {{ (r[7] or '—') if h == 'ok' else '—' }}
 
   OpenAI: {{ '✅ доступен' if o == 'reachable' else ('⚪ ' ~ o if o in ['missing','stale','unknown','нет свежих данных'] else '❌ ' ~ o) }}
 
-  Интернет: {{ as_local(as_datetime(r[5])).strftime('%d.%m %H:%M:%S') if r[5] is not none else '—' }} · {{ r[6] ~ ' мс' if r[6] is not none else '—' }}
+  VLESS: {{ as_local(as_datetime(r[5])).strftime('%d.%m %H:%M:%S') if r[5] is not none else '—' }} · {{ r[6] ~ ' мс' if r[6] is not none else '—' }}
 
   OpenAI: {{ as_local(as_datetime(r[10])).strftime('%d.%m %H:%M:%S') if r[10] is not none else '—' }} · {{ r[11] ~ ' мс' if r[11] is not none else '—' }}
 
   ---
   {% endfor %}
   {% endif %}
-  *Время в часовом поясе Home Assistant. Адрес подключения — из подписки, не обязательно IP выхода. Длительность HTTP-пробы, не RTT. OpenAI — достижимость без авторизации.*
+  *Время в часовом поясе Home Assistant. Длительность полной пробы, не RTT. OpenAI — достижимость без авторизации.*
