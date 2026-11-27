@@ -14,14 +14,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from monitoring.vpn_inventory import inventory
 
-TOPIC = "keenetic/vpn-monitor/v1/dynamic_snapshot"
-DISCOVERY = "homeassistant/sensor/keenetic6059_dynamic_snapshot/config"
+TOPIC = "keenetic/vpn-monitor/v1/dynamic_rc2"
+DISCOVERY = "homeassistant/sensor/keenetic6059_dynamic_rc2/config"
 ACTIVE = "/opt/etc/xray/config.json"
 PENDING = "/opt/etc/xray/config.pending.json"
-CACHE = "/opt/var/lib/vpn-monitor/dynamic-probes.json"
+CACHE = "/opt/var/lib/vpn-monitor/dynamic-probes-rc2.json"
 MAX_PROBE_AGE = 1800
 MAX_INPUT_AGE = 1800
-MAX_PAYLOAD = 4096
+MAX_PAYLOAD = 32768
 MAX_NODES = 24
 
 
@@ -125,7 +125,8 @@ def geo_details(obs, node, now):
     return [*current, None]
 
 
-def retain_geo(previous, current, entries):
+def retain_geo(previous, current, entries, now=None):
+    now = time.time() if now is None else now
     result = {}
     for entry in entries:
         node = entry["node_id"]
@@ -134,10 +135,16 @@ def retain_geo(previous, current, entries):
         if not isinstance(old, dict):
             old = {}
         candidate = new.get("geo")
-        if not isinstance(candidate, dict) or candidate.get("status") != "ok":
+        if measure(candidate, node, "geo", now)[0] != "ok":
             candidate = old.get("last_geo")
         if isinstance(candidate, dict) and candidate.get("node_id") == node:
-            new["last_geo"] = candidate
+            try:
+                dt = datetime.fromisoformat(candidate["checked_at"].replace("Z","+00:00"))
+                stamp = dt.timestamp()
+                if dt.tzinfo is not None and 0 <= now-stamp <= 86400 and measure(candidate,node,"geo",stamp)[0] == "ok":
+                    new["last_geo"] = candidate
+            except (ValueError,TypeError,KeyError,AttributeError,OverflowError):
+                pass
         result[node] = new
     return result
 
@@ -198,8 +205,8 @@ def run_probes(config, entries, health_probe, openai_probe, deadline=None):
 
 
 def discovery():
-    return {"name": "Keenetic dynamic VPN inventory", "unique_id": "keenetic6059_dynamic_snapshot",
-            "default_entity_id": "sensor.keenetic_dynamic_vpn_inventory", "state_topic": TOPIC,
+    return {"name": "Keenetic dynamic VPN inventory", "unique_id": "keenetic6059_dynamic_rc2",
+            "default_entity_id": "sensor.keenetic_dynamic_vpn_rc2", "state_topic": TOPIC,
             "value_template": "{{ value_json.inventory_status }}",
             "json_attributes_topic": TOPIC, "expire_after": 150}
 
@@ -226,13 +233,14 @@ def main():
                 previous = json.loads(Path(args.cache).read_text())
             except (OSError, ValueError):
                 previous = {}
+            completed = len(result)
             result = retain_geo(previous, result, entries)
             atomic_cache(args.cache, result)
             if args.publish:
                 from monitoring.dynamic_history import publish_history
                 rows = snapshot(entries, None, None, result, time.time(), endpoint_labels(config))["rows"]
-                publish_history(rows)
-        print("PROBE_CYCLE", len(result))
+                publish_history(rows, deadline=time.monotonic()+120)
+        print("PROBE_CYCLE", completed, "of", len(entries))
         return
     now = time.time()
     try:
