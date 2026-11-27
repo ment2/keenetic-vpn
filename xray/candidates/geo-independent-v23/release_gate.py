@@ -95,6 +95,8 @@ class Gate:
             require(stat.S_ISREG(s.st_mode) and s.st_uid==self.uid and s.st_nlink==1 and not s.st_mode&0o077,"unsafe lock")
             fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
             self.lock_id=(s.st_dev,s.st_ino)
+            expected=getattr(self,"expected_lock_id",None)
+            require(expected is None or expected==self.lock_id,"migration inode mismatch")
             self.check_lock()
             yield
         finally:
