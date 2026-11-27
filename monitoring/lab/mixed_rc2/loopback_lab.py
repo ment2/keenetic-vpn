@@ -74,9 +74,9 @@ def main():
             exe.write_text('#!/bin/sh\nexec '+shlex.quote(str(Path(args.qemu).resolve()))+' '+shlex.quote(str(xray))+' "$@"\n')
             exe.chmod(0o700)
         run([str(exe), 'version'])
-        http = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Witness)
-        thread = threading.Thread(target=http.serve_forever, daemon=True); thread.start()
-        urls = {k:'http://127.0.0.1:%d/%s' % (http.server_port,k) for k in ('internet','openai','exit_ip','geo')}
+        httpd = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Witness)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
+        urls = {k:'http://127.0.0.1:%d/%s' % (httpd.server_port,k) for k in ('internet','openai','exit_ip','geo')}
         try:
             for masked in (False, True):
                 udp = port(socket.SOCK_DGRAM)
@@ -119,7 +119,7 @@ def main():
                     finally:
                         stop(proc)
         finally:
-            http.shutdown(); http.server_close(); thread.join(timeout=3)
+            httpd.shutdown(); httpd.server_close(); thread.join(timeout=3)
     print('LOOPBACK_LAB_PASS', 'mips32le-qemu-user' if args.qemu else 'amd64')
 
 if __name__=='__main__': main()
