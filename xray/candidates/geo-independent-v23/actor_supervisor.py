@@ -146,7 +146,9 @@ class Actors:
             rc=self.repair()
             return 0 if rc==0 and self.rules_ok() else 1
         return self.m.run("S98",tick,gate=self.r)
-    def cron(self):return self.m.release(self.r,"cron")
+    def cron(self,apply=None):
+        if apply is None:return self.m.release(self.r,"cron")
+        return self.m.release(self.r,"coordinated-cron",runner=lambda _:apply(self.restart))
     def rc2(self):return self.m.release(self.r,"monitor",runner=self.monitor)
 
 class Lifecycle:
@@ -162,6 +164,8 @@ class Lifecycle:
         require(isinstance(migration,Migration),"fixture required")
         self.m=migration
         self.argv=tuple(argv);self.ready=ready
+        exe=Path(self.argv[0]).stat()
+        self.exe_id=(exe.st_dev,exe.st_ino)
         self.path=migration.protected/"supervisor.json"
         self.owner=identity(os.getpid())
         self.child=None
@@ -180,7 +184,7 @@ class Lifecycle:
         while time.monotonic()<end:
             try:
                 i=identity(self.child.pid)
-                if i.ppid==self.owner.pid and i.boot==self.owner.boot and i.argv==tuple(os.fsencode(x) for x in self.argv) and self.ready(i.pid):
+                if i.ppid==self.owner.pid and i.boot==self.owner.boot and (i.exe_dev,i.exe_ino)==self.exe_id and i.argv==tuple(os.fsencode(x) for x in self.argv) and self.ready(i.pid):
                     self.child_identity=i;self._record("running",i);return 0
             except (OSError,ValueError,Blocked):pass
             time.sleep(.02)
