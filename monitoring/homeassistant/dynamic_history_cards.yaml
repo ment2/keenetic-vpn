@@ -1,0 +1,81 @@
+# Candidate list of cards; add to VPN view after discovery acceptance.
+- type: custom:auto-entities
+  card:
+    type: history-graph
+    title: История VLESS · 24 ч
+    hours_to_show: 24
+  show_empty: false
+  filter:
+    template: |-
+      {% set eid = 'sensor.keenetic_dynamic_vpn_inventory' %}
+      {% set rows = state_attr(eid,'rows') or [] %}
+      {% set age = as_timestamp(now()) - (state_attr(eid,'checked_at') | int(0)) %}
+      {% set ns = namespace(entities=[]) %}
+      {% if states(eid) == 'ok' and 0 <= age <= 150 %}
+        {% for r in rows %}
+          {% for s in states.sensor if s.entity_id.startswith('sensor.keenetic_dynamic_') and s.attributes.get('node_id') == r[0] and s.attributes.get('metric') == 'vless' %}
+            {% set ns.entities = ns.entities + [{'entity': s.entity_id, 'name': r[1]}] %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+      {{ ns.entities | to_json }}
+- type: custom:auto-entities
+  card:
+    type: history-graph
+    title: История OpenAI · 24 ч
+    hours_to_show: 24
+  show_empty: false
+  filter:
+    template: |-
+      {% set eid = 'sensor.keenetic_dynamic_vpn_inventory' %}
+      {% set rows = state_attr(eid,'rows') or [] %}
+      {% set age = as_timestamp(now()) - (state_attr(eid,'checked_at') | int(0)) %}
+      {% set ns = namespace(entities=[]) %}
+      {% if states(eid) == 'ok' and 0 <= age <= 150 %}
+        {% for r in rows %}
+          {% for s in states.sensor if s.entity_id.startswith('sensor.keenetic_dynamic_') and s.attributes.get('node_id') == r[0] and s.attributes.get('metric') == 'openai' %}
+            {% set ns.entities = ns.entities + [{'entity': s.entity_id, 'name': r[1]}] %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+      {{ ns.entities | to_json }}
+- type: custom:auto-entities
+  card:
+    type: history-graph
+    title: Длительность VLESS · 24 ч (не RTT)
+    hours_to_show: 24
+  show_empty: false
+  filter:
+    template: |-
+      {% set eid = 'sensor.keenetic_dynamic_vpn_inventory' %}
+      {% set rows = state_attr(eid,'rows') or [] %}
+      {% set age = as_timestamp(now()) - (state_attr(eid,'checked_at') | int(0)) %}
+      {% set ns = namespace(entities=[]) %}
+      {% if states(eid) == 'ok' and 0 <= age <= 150 %}
+        {% for r in rows %}
+          {% for s in states.sensor if s.entity_id.startswith('sensor.keenetic_dynamic_') and s.attributes.get('node_id') == r[0] and s.attributes.get('metric') == 'vless_ms' %}
+            {% set ns.entities = ns.entities + [{'entity': s.entity_id, 'name': r[1]}] %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+      {{ ns.entities | to_json }}
+- type: custom:auto-entities
+  card:
+    type: history-graph
+    title: Длительность OpenAI · 24 ч (не RTT)
+    hours_to_show: 24
+  show_empty: false
+  filter:
+    template: |-
+      {% set eid = 'sensor.keenetic_dynamic_vpn_inventory' %}
+      {% set rows = state_attr(eid,'rows') or [] %}
+      {% set age = as_timestamp(now()) - (state_attr(eid,'checked_at') | int(0)) %}
+      {% set ns = namespace(entities=[]) %}
+      {% if states(eid) == 'ok' and 0 <= age <= 150 %}
+        {% for r in rows %}
+          {% for s in states.sensor if s.entity_id.startswith('sensor.keenetic_dynamic_') and s.attributes.get('node_id') == r[0] and s.attributes.get('metric') == 'openai_ms' %}
+            {% set ns.entities = ns.entities + [{'entity': s.entity_id, 'name': r[1]}] %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+      {{ ns.entities | to_json }}
