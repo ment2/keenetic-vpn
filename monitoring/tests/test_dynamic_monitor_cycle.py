@@ -16,7 +16,7 @@ class CycleTests(unittest.TestCase):
         pins={n:"a"*64 for n in c.SOURCE_NAMES}
         self.assertEqual(c.cycle("probe",minute=3,pins_reader=lambda:pins,idle=lambda:True,runner=runner),0)
         self.assertEqual([x.args[0] for x in runner.call_args_list],["monitoring.full_subscription_snapshot","monitoring.dynamic_snapshot"])
-        self.assertEqual(runner.call_args.args[1],["probe","--full",c.DEFAULT_OUTPUT])
+        self.assertEqual(runner.call_args.args[1],["probe","--full",c.DEFAULT_OUTPUT,"--publish"])
     def test_busy_updater_skip(self):
         runner=Mock(return_value=0)
         self.assertEqual(c.cycle("probe",minute=3,idle=lambda:False,runner=runner),3)
