@@ -53,7 +53,7 @@ Initial CI 46027471055 SUCCESS 249/249 (17 new tests). Integration CI
 exception classes; actual prepared-state refusal occurred before callback.
 Corrected test asserts correct class and no callback/receipt. Final
 source/test commit c688ff4f4ab88bb3cc85d6e3637f71367c114d5e.
-Final CI 46027796975: awaiting result at report draft.
+Final CI 46027796975 SUCCESS 255/255 (23 new tests relative to 232).
 Tests use real flock, previously opened FD contending with relocated
 path, real SIGKILL before and after rename/commit and rollback, simulated
 boot, no-replace destination, missing lock, unknown actor and persistent
