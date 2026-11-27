@@ -1,0 +1,120 @@
+TAP version 13
+# Subtest: keenetic source + Node SQLite shim
+    # Subtest: catalog and unauthenticated boundaries
+    ok 1 - catalog and unauthenticated boundaries
+      ---
+      duration_ms: 20.514663
+      type: 'test'
+      ...
+    # Subtest: owner approval exact and non-automatic
+    ok 2 - owner approval exact and non-automatic
+      ---
+      duration_ms: 13.241652
+      type: 'test'
+      ...
+    # Subtest: old grants and wrong key cannot enqueue
+    ok 3 - old grants and wrong key cannot enqueue
+      ---
+      duration_ms: 29.396358
+      type: 'test'
+      ...
+    # Subtest: revocation and policy revision/expiry
+    ok 4 - revocation and policy revision/expiry
+      ---
+      duration_ms: 28.16487
+      type: 'test'
+      ...
+    # Subtest: parallel same-request calls insert exactly one; only same proof gets dedup result
+    ok 5 - parallel same-request calls insert exactly one; only same proof gets dedup result
+      ---
+      duration_ms: 17.851845
+      type: 'test'
+      ...
+    # Subtest: REST, exec alias, legacy mapping and nonmutating reserved key
+    ok 6 - REST, exec alias, legacy mapping and nonmutating reserved key
+      ---
+      duration_ms: 17.428589
+      type: 'test'
+      ...
+    # Subtest: race revoke versus enqueue, at most one wins
+    ok 7 - race revoke versus enqueue, at most one wins
+      ---
+      duration_ms: 5.023423
+      type: 'test'
+      ...
+    # Subtest: bounded redacted audit and rollback preserves finished job
+    ok 8 - bounded redacted audit and rollback preserves finished job
+      ---
+      duration_ms: 12.817071
+      type: 'test'
+      ...
+    1..8
+ok 1 - keenetic source + Node SQLite shim
+  ---
+  duration_ms: 191.042994
+  type: 'test'
+  ...
+# Subtest: ha source + Node SQLite shim
+    # Subtest: catalog and unauthenticated boundaries
+    ok 1 - catalog and unauthenticated boundaries
+      ---
+      duration_ms: 8.290282
+      type: 'test'
+      ...
+    # Subtest: owner approval exact and non-automatic
+    ok 2 - owner approval exact and non-automatic
+      ---
+      duration_ms: 8.202752
+      type: 'test'
+      ...
+    # Subtest: old grants and wrong key cannot enqueue
+    ok 3 - old grants and wrong key cannot enqueue
+      ---
+      duration_ms: 22.419652
+      type: 'test'
+      ...
+    # Subtest: revocation and policy revision/expiry
+    ok 4 - revocation and policy revision/expiry
+      ---
+      duration_ms: 21.121892
+      type: 'test'
+      ...
+    # Subtest: parallel same-request calls insert exactly one; only same proof gets dedup result
+    ok 5 - parallel same-request calls insert exactly one; only same proof gets dedup result
+      ---
+      duration_ms: 13.755939
+      type: 'test'
+      ...
+    # Subtest: REST, exec alias, legacy mapping and nonmutating reserved key
+    ok 6 - REST, exec alias, legacy mapping and nonmutating reserved key
+      ---
+      duration_ms: 13.357155
+      type: 'test'
+      ...
+    # Subtest: race revoke versus enqueue, at most one wins
+    ok 7 - race revoke versus enqueue, at most one wins
+      ---
+      duration_ms: 4.919546
+      type: 'test'
+      ...
+    # Subtest: bounded redacted audit and rollback preserves finished job
+    ok 8 - bounded redacted audit and rollback preserves finished job
+      ---
+      duration_ms: 9.197014
+      type: 'test'
+      ...
+    1..8
+ok 2 - ha source + Node SQLite shim
+  ---
+  duration_ms: 111.427517
+  type: 'test'
+  ...
+1..2
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 307.888441
