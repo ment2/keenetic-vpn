@@ -68,9 +68,12 @@ def generation(up,pins):
 def boot_decision(*,current_boot,accepted_boot,receipt_present,journal_phase,pair,lock_exists,legacy_fenced):
     """Pure conservative startup admission; no automatic recovery on reboot."""
     if receipt_present:return "BLOCK_RECEIPT"
-    if not lock_exists:return "BLOCK_MISSING_LOCK"
-    if current_boot!=accepted_boot:return "BLOCK_BOOT_REACCEPT"
-    if not legacy_fenced:return "BLOCK_LEGACY"
+    if lock_exists is not True:return "BLOCK_MISSING_LOCK"
+    try:
+        valid_boot=type(current_boot) is str and type(accepted_boot) is str and str(uuid.UUID(current_boot))==current_boot and current_boot==accepted_boot
+    except (ValueError,TypeError,AttributeError):valid_boot=False
+    if not valid_boot:return "BLOCK_BOOT_REACCEPT"
+    if legacy_fenced is not True:return "BLOCK_LEGACY"
     if journal_phase in ("prepared","rollback"):return "RECOVER_UNDER_LOCK"
     if journal_phase=="committed" and pair=="new":return "ALLOW_NEW"
     if journal_phase is None and pair=="old":return "ALLOW_OLD"
