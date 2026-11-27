@@ -49,3 +49,10 @@ preserving old history and traffic collector. No production Xray/updater,
 firewall, routes, kill-switch, cron or dashboard changes made in this turn.
 Physical cutover remains NO-GO. See prior RC2 runbook and HA discovery
 supplement for the already completed physical tests.
+
+## Final staged integrity check
+
+All 13 staged source Git blob hashes MATCH the final tested commit.
+All three backup manifest entries passed SHA256 verification (monitor init,
+original crontab, monitoring source archive). No new installation performed.
+The HA authorization and repeated live-cycle acceptance gates remain open.
