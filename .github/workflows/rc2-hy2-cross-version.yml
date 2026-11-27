@@ -1,0 +1,52 @@
+name: Hysteria2 2.7.1 interop and mask mismatch controls
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths:
+      - 'monitoring/lab/mixed_rc2/cross_version_lab.py'
+      - '.github/workflows/rc2-hy2-cross-version.yml'
+permissions:
+  contents: read
+jobs:
+  cross-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            asset: Xray-linux-64.zip
+            sha256: 29ce535b56e207a406ffa1c2d4842dcc410be003eff8ec508bb732abc9f8e385
+          - arch: mips32le
+            asset: Xray-linux-mips32le.zip
+            sha256: 1590b2bcefe64fb0604f29c8c75219bfbe8f63daa3bc8e3956edfa6da97c5869
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch and verify public release binaries
+        env:
+          ASSET: ${{ matrix.asset }}
+          DIGEST: ${{ matrix.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/rc2-bin"
+          cd "$RUNNER_TEMP/rc2-bin"
+          curl --fail --location --silent --show-error --max-time 120 -o xray.zip "https://github.com/XTLS/Xray-core/releases/download/v26.2.6/$ASSET"
+          printf '%s  xray.zip\n' "$DIGEST" | sha256sum -c -
+          unzip -q xray.zip xray
+          curl --fail --location --silent --show-error --max-time 120 -o hysteria https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.1/hysteria-linux-amd64
+          printf '%s  hysteria\n' 2f855265ee252e3c09546da18b6c0c6123e846e91868f37b589ac37477ff4e20 | sha256sum -c -
+          chmod 755 xray hysteria
+      - name: Install disposable emulator
+        if: matrix.arch == 'mips32le'
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qemu-user
+      - name: Run synthetic local QUIC interoperability test in isolated namespace
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "$ARCH" = mips32le ]; then args+=(--qemu /usr/bin/qemu-mipsel); fi
+          sudo unshare --net -- bash -c 'set -e; ip link set lo up; export PYTHONPATH="$1"; shift; exec python3 -B "$@"' lab "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/monitoring/lab/mixed_rc2/cross_version_lab.py" --xray "$RUNNER_TEMP/rc2-bin/xray" --hysteria "$RUNNER_TEMP/rc2-bin/hysteria" "${args[@]}"
