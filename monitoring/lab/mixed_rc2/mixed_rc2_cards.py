@@ -41,6 +41,7 @@ TEMPLATE = '''{% set eid = '__ENTITY__' %}
 
 {% for r in rows %}
 **{{ r.tag }} · {{ 'Hysteria2' if r.protocol == 'hysteria2' else 'VLESS' }}** · {{ r.support }}  
+{% if r.support == 'unsupported' %}Причина: {{ {'unsupported_option':'неизвестный параметр','ech_unverified':'ECH не проверен','duplicate_option':'дубли параметров','tls_policy':'нарушение TLS-политики','invalid_uri':'неподдерживаемая URI'}.get(r.get('support_reason'),'не уточнена') }}.  {% endif %}
 Вход: `{{ '[' ~ r.host ~ ']' if ':' in r.host else r.host }}:{{ r.port if r.port is not none else '—' }}`  
 Выход: {{ r.exit_ip if r.exit_ip and status(r.exit_ip_probe) == 'ok' else '—' }} · {{ r.geo.city or '—' if status(r.geo) == 'ok' else '—' }}  
 VPN: {{ label(status(r.vpn)) }} · Сеть: {{ label(status(r.internet)) }} / {{ ms(r.internet) }} · AI: {{ label(status(r.openai)) }} / {{ ms(r.openai) }}  

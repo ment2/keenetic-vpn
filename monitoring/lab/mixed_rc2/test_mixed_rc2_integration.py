@@ -173,4 +173,12 @@ class Tests(unittest.TestCase):
     def test_card_render(self):
         self.cycle();p=self.snapshot();env=Environment(undefined=StrictUndefined);tmpl=env.from_string(overview()['content']);dt=lambda t:datetime.datetime.fromtimestamp(t,datetime.timezone.utc);kw=dict(state_attr=lambda eid,k:p.get(k),states=lambda eid:'ok',now=lambda:dt(1000),as_timestamp=lambda d:d.timestamp(),as_local=lambda d:d,as_datetime=dt);s=tmpl.render(**kw);self.assertIn('Подключений: 12',s);self.assertIn('Hysteria2 2',s);self.assertIn('hy02',s);self.assertIn('42 мс',s);self.assertNotIn('synthetic-',s);kw['now']=lambda:dt(1200);self.assertIn('Нет актуальной',tmpl.render(**kw))
 
+    def test_unsupported_option_card_and_history(self):
+        self.cycle(fetch=lambda:'\n'.join(V+H[:1]+['hy2://pw@lt.example?ech=FAKE_ECH_SECRET']).encode()); p=self.snapshot();r=p['rows'][-1]
+        self.assertEqual(r['support_reason'],'ech_unverified');self.assertEqual(r['vpn']['status'],'unsupported');self.assertFalse(r['eligible'])
+        self.assertEqual(history(r,1000)[1][1]['vpn'],'unsupported');self.assertNotIn('FAKE_ECH_SECRET',json.dumps(p))
+        dt=lambda t:datetime.datetime.fromtimestamp(t,datetime.timezone.utc)
+        card=Environment(undefined=StrictUndefined).from_string(overview()['content']).render(state_attr=lambda eid,k:p.get(k),states=lambda eid:'ok',now=lambda:dt(1000),as_timestamp=lambda d:d.timestamp(),as_local=lambda d:d,as_datetime=dt)
+        self.assertIn('ECH не проверен',card);self.assertNotIn('FAKE_ECH_SECRET',card)
+
 if __name__=='__main__':unittest.main()

@@ -35,6 +35,16 @@ class Tests(unittest.TestCase):
     def test_unknown_option(self):
         for q in ['x=1','insecure=1','sni=a&sni=b','obfs=gecko','pinSHA256=aa']:
             with self.subTest(q=q),self.assertRaises(Unsupported): hy2('hy2://pw@x.example?'+q,'hy01')
+    def test_option_reasons_fail_closed(self):
+        for query,reason in [('ech=FAKE_ECH_SECRET','ech_unverified'),('custom=FAKE_UNKNOWN_SECRET','unsupported_option'),('sni=a&sni=b','duplicate_option'),('insecure=1&ech=FAKE_ECH_SECRET','tls_policy')]:
+            with self.subTest(query=query):
+                r=records(V+H[:1]+['hy2://pw@lt.example?'+query]); self.assertEqual(len(r),12)
+                self.assertIsNone(r[-1]['outbound']); self.assertEqual(r[-1]['support_reason'],reason)
+                x=render(r[-1],observations()); self.assertEqual(x['support_reason'],reason); self.assertFalse(x['eligible']); self.assertEqual(x['geo_policy'],'UNVERIFIED')
+                self.assertNotIn('FAKE_',json.dumps(x))
+    def test_untrusted_reason_not_published(self):
+        r=records(V+['hy2://pw@lt.example?other=FAKE_UNKNOWN_SECRET'])[-1]; r['support_reason']='FAKE_UNKNOWN_SECRET'
+        self.assertEqual(render(r,observations())['support_reason'],'invalid_uri')
     def test_other_scheme(self):
         with self.assertRaises(ValueError): records(V+['trojan://pw@x.example'])
     def test_duplicate(self):

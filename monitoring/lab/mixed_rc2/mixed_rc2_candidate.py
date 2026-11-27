@@ -12,8 +12,12 @@ KINDS = ('internet', 'openai', 'exit_ip', 'geo')
 FRESH = 1800
 COUNTRIES = frozenset('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split())
 
+REASONS = frozenset(('unsupported_option', 'ech_unverified', 'duplicate_option', 'tls_policy', 'invalid_uri'))
+
 class Unsupported(ValueError):
-    pass
+    def __init__(self, message, reason='invalid_uri'):
+        super().__init__(message)
+        self.reason = reason if reason in REASONS else 'invalid_uri' 
 
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -55,10 +59,14 @@ def hy2(uri, tag):
     auth = unquote(raw_auth, errors='strict')
     pairs = parse_qsl(u.query, keep_blank_values=True, strict_parsing=True, max_num_fields=32, errors='strict')
     q = dict(pairs)
-    if len(q) != len(pairs) or set(q) - {'sni', 'insecure', 'obfs', 'obfs-password'}:
-        raise Unsupported('unknown or duplicate URI options')
+    if len(q) != len(pairs):
+        raise Unsupported('duplicate URI options', 'duplicate_option')
     if q.get('insecure', '0') != '0':
-        raise Unsupported('insecure TLS not accepted')
+        raise Unsupported('insecure TLS not accepted', 'tls_policy')
+    if set(q) - {'sni', 'insecure', 'obfs', 'obfs-password', 'ech'}:
+        raise Unsupported('unknown URI options', 'unsupported_option')
+    if 'ech' in q:
+        raise Unsupported('ECH mapping not verified', 'ech_unverified')
     if not auth or len(auth) > 4096 or any(ord(c) < 32 or ord(c) == 127 for c in auth):
         raise Unsupported('invalid auth')
     sni = host(q.get('sni') or h)
@@ -77,6 +85,7 @@ def build(body, vless_converter, vless_inventory):
     """Returns private records; do not log or publish. Keeps old VLESS tag ordering."""
     records, vl, hy = [], 0, 0
     for uri in decode(body):
+        reason = None
         u = urlsplit(uri)
         scheme = u.scheme.lower()
         if scheme == 'vless':
@@ -103,8 +112,10 @@ def build(body, vless_converter, vless_inventory):
             node = 'hy2_' + digest([protocol, h, p])[:20]
             try:
                 o = hy2(uri, tag)
-            except (Unsupported, ValueError):
-                o, status = None, 'unsupported'
+            except Unsupported as exc:
+                o, status, reason = None, 'unsupported', exc.reason
+            except ValueError:
+                o, status, reason = None, 'unsupported', 'invalid_uri'
         else:
             raise ValueError('unrecognized subscription scheme')
         if any(r['id'] == node for r in records):
@@ -113,7 +124,7 @@ def build(body, vless_converter, vless_inventory):
             raise ValueError('invalid VLESS port')
         if protocol == 'hysteria2' and (type(p) is not int or not 1 <= p <= 65535):
             p = None
-        records.append({'id': node, 'tag': tag, 'protocol': protocol, 'host': h, 'port': p, 'support': status, 'outbound': o, 'generation': generation(o) if o else None})
+        records.append({'id': node, 'tag': tag, 'protocol': protocol, 'host': h, 'port': p, 'support': status, 'support_reason': reason, 'outbound': o, 'generation': generation(o) if o else None})
     return records
 
 def observation(raw, kind, now):
@@ -171,7 +182,10 @@ def rows(records, cache, active, now, pending=None):
         member = None if active is None else r['id'] in active
         pending_member = None if pending is None else r['id'] in pending
         coherent = all(v['at'] is not None and v['status'] == 'ok' for v in obs.values()) and max(v['at'] for v in obs.values()) - min(v['at'] for v in obs.values()) <= 55
+        safe_reason = r.get('support_reason')
         output.append(dict({k: r[k] for k in ('id', 'tag', 'protocol', 'host', 'port', 'support')}, active=member, pending=pending_member, pending_config_matches=(pending[r['id']] == r['generation'] if pending_member else None), active_config_matches=(active[r['id']] == r['generation'] if member else None), vpn={'status': 'ok' if positive else 'not_confirmed' if attempted else r['support'] if r['support'] != 'ready' else 'missing', 'at': max(positive or attempted, default=None)}, internet=obs['internet'], openai=obs['openai'], exit_ip=ip.get('ip') if ip['status'] == 'ok' else None, exit_ip_at=ip['at'] if ip['status'] == 'ok' else None, exit_ip_source='exit_ip' if ip['status'] == 'ok' else None, exit_ip_probe=ip, geo=obs['geo'], last_geo=None, geo_policy=decision, eligible=decision == 'ALLOWED' and coherent))
+        if r['support'] != 'ready':
+            output[-1]['support_reason'] = safe_reason if isinstance(safe_reason, str) and safe_reason in REASONS else 'invalid_uri'
     return output
 
 def collect(records, probe, deadline, monotonic, cleanup_error):
