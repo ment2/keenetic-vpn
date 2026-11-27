@@ -39,7 +39,7 @@ class Migration:
     def __init__(self,root,boot,*,cut=lambda _:None):
         self.root=Path(root).resolve()
         require(self.root.parent==Path(tempfile.gettempdir()).resolve()
-                and self.root.name.startswith("v23-lock-fixture-"),"fixture only")
+                and self.root.name.startswith(("v23-lock-fixture-","v23-release-fixture-")),"fixture only")
         require((self.root/"marker").read_bytes()==b"synthetic-only","fixture marker")
         require(valid_boot(boot),"invalid boot")
         self.boot=boot;self.cut=cut;self.uid=os.geteuid()
@@ -50,6 +50,9 @@ class Migration:
         self.record=self.protected/"migration.json"
         self.receipt=self.protected/"actor-running.json"
         self.actors=self.root/"actors"
+        self.release_state=self.root/"opt/etc/xray/v23-release-journal"
+        self.release_receipt=self.release_state/"run.json"
+        self.release_journal=self.release_state/"journal.json"
 
     def read(self,p):
         fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW)
@@ -98,7 +101,7 @@ class Migration:
         self.verify_dirs()
         with self.locked(self.control):
             self.verify_actors()
-            require(not self.exists(self.receipt),"ambiguous actor lifetime")
+            require(not self.exists(self.receipt) and not self.exists(self.release_receipt),"ambiguous actor lifetime")
             yield
 
     def state(self):
@@ -168,6 +171,7 @@ class Migration:
 
     def rollback(self):
         with self.serialized():
+            require(not self.exists(self.release_journal),"restore updater/pins before lock rollback")
             d=self.state()
             require(d["boot"]==self.boot and d["phase"]=="protected" and self.sole(d)==self.new,"not committed")
             with self.locked(self.new,d["inode"]):
@@ -178,6 +182,7 @@ class Migration:
     def run(self,actor,fn):
         require(actor in ACTORS,"unknown actor")
         with self.serialized():
+            require(not self.exists(self.release_journal),"use integrated release admission when journal exists")
             d=self.state()
             require(d["boot"]==self.boot and d["phase"] in ("legacy","protected"),"recovery required")
             p=self.sole(d)
@@ -193,3 +198,26 @@ class Migration:
                 require(self.state()==d and self.sole(d)==p,"state changed during actor")
                 self.receipt.unlink();sync_dir(self.protected)
                 return d["phase"]
+
+    def release(self,gate,operation,*,candidate=None,runner=None):
+        """Fixture integration with the existing release gate.
+
+        Control lock held first; release Gate alone acquires the data lock.
+        Avoid nested same-inode flock. No CLI, no native production paths.
+        Wrapper-owned S97 is part of the one guarded operation, not a
+        second top-level actor invocation.
+        """
+        require(gate.root==self.root and gate.state==self.release_state,"foreign release gate")
+        require(operation in ("install","cron","monitor","recover","rollback"),"unknown operation")
+        with self.serialized():
+            d=self.state()
+            require(d["boot"]==self.boot and d["phase"]=="protected" and self.sole(d)==self.new,"protected lock required")
+            gate.lock=self.new
+            # Existing release Gate checks identity on open/readback. The
+            # coordinator holds the control lock for the entire call.
+            if operation=="install":result=gate.install(candidate)
+            elif operation=="cron":result=gate.cron()
+            elif operation=="monitor":result=gate.monitor_probe(runner)
+            else:result=gate.recover(operation=="rollback")
+            require(self.state()==d and self.sole(d)==self.new,"migration changed during release")
+            return result
