@@ -42,6 +42,19 @@ class Tests(unittest.TestCase):
                 self.assertIsNone(r[-1]['outbound']); self.assertEqual(r[-1]['support_reason'],reason)
                 x=render(r[-1],observations()); self.assertEqual(x['support_reason'],reason); self.assertFalse(x['eligible']); self.assertEqual(x['geo_policy'],'UNVERIFIED')
                 self.assertNotIn('FAKE_',json.dumps(x))
+    def test_tls_aliases_never_admitted(self):
+        for alias in ('noverify', 'skipcertverify', 'allow_insecure', 'Insecure', 'tls-skip-verify', 'verify'):
+            for value in ('0','1','false','true','FAKE_SECRET'):
+                with self.subTest(alias=alias, value=value):
+                    r=records(V+H[:1]+['hy2://pw@lt.example?'+alias+'='+value])[-1]
+                    self.assertEqual(r['support_reason'],'tls_policy'); self.assertIsNone(r['outbound'])
+                    x=render(r,observations()); self.assertFalse(x['eligible']);self.assertNotIn('FAKE_SECRET',json.dumps(x))
+    def test_tls_alias_with_canonical_is_not_dropped(self):
+        with self.assertRaises(Unsupported) as err: hy2('hy2://pw@x.example?insecure=0&noverify=0','hy01')
+        self.assertEqual(err.exception.reason,'tls_policy')
+    def test_strict_tls_unchanged(self):
+        o=hy2('hy2://pw@x.example?insecure=0&sni=x.example','hy01')
+        self.assertNotIn('allowInsecure',o['streamSettings']['tlsSettings'])
     def test_untrusted_reason_not_published(self):
         r=records(V+['hy2://pw@lt.example?other=FAKE_UNKNOWN_SECRET'])[-1]; r['support_reason']='FAKE_UNKNOWN_SECRET'
         self.assertEqual(render(r,observations())['support_reason'],'invalid_uri')
