@@ -137,3 +137,54 @@ else:getattr(g,op)()
             self.g.lock.rename(self.g.lock.with_name("old.lock"))
             self.g.lock.write_bytes(b"");self.g.lock.chmod(0o600)
             with self.assertRaises(m.Blocked):self.g.check_lock()
+
+    def test_monitor_uses_verified_pins_and_same_lock(self):
+        def runner(pins):
+            self.assertEqual(pins,self.g.new)
+            self.assertTrue(self.g.receipt.is_file())
+            with self.assertRaises(BlockingIOError):self.g.cron()
+            with self.assertRaises(BlockingIOError):self.g.recover(True)
+            return 0
+        self.g.install(self.candidate)
+        self.assertEqual(self.g.monitor_probe(runner),"new")
+        self.assertFalse(self.g.receipt.exists())
+    def test_monitor_does_not_recover_prepared_pair(self):
+        self.killed("install","pins")
+        before=self.g.pair()
+        with self.assertRaises(m.Blocked):self.g.monitor_probe(lambda _:self.fail("ran"))
+        self.assertEqual(self.g.pair(),before)
+        self.assertEqual(self.g.cron(),"old")
+    def test_monitor_unknown_completion_blocks_wrapper(self):
+        with self.assertRaises(m.Blocked):self.g.monitor_probe(lambda _:1)
+        self.assertEqual(m.decode(self.g.receipt.read_bytes())["role"],"monitor")
+        with self.assertRaises(m.Blocked):self.g.cron()
+    def test_parent_death_with_live_wrapper_child_fences_next_cron(self):
+        # The child deliberately outlives its killed parent, only in a fixture.
+        wrapper=b'#!/bin/sh\nset -eu\nd="$(dirname "$0")"\ntouch "$d/child-ready"\nwhile [ ! -f "$d/child-release" ]; do sleep 0.05; done\ntouch "$d/child-done"\n'
+        self.g.wrapper.write_bytes(wrapper)
+        self.g.wrapper_sha=m.sha(wrapper)
+        code="""import runpy,sys
+d=runpy.run_path(sys.argv[1]);g=d['gate'](sys.argv[2])
+g.wrapper_sha=g.read(g.wrapper)[0] and d['m'].sha(g.read(g.wrapper)[0])
+g.cron()
+"""
+        child=subprocess.Popen([sys.executable,"-B","-c",code,__file__,str(self.root)])
+        try:
+            for _ in range(100):
+                if (self.g.bin/"child-ready").exists():break
+                if child.poll() is not None:self.fail("parent exited early")
+                time.sleep(.025)
+            else:self.fail("child not ready")
+            with self.assertRaises(BlockingIOError):self.g.cron()
+            child.kill();self.assertEqual(child.wait(timeout=5),-signal.SIGKILL)
+            self.assertFalse((self.g.bin/"child-done").exists())
+            with self.assertRaises(m.Blocked):self.g.cron()
+            with self.assertRaises(m.Blocked):self.g.recover(True)
+        finally:
+            (self.g.bin/"child-release").touch()
+            if child.poll() is None:child.kill();child.wait(timeout=5)
+            for _ in range(100):
+                if (self.g.bin/"child-done").exists():break
+                time.sleep(.025)
+        self.assertTrue((self.g.bin/"child-done").exists())
+        self.assertTrue(self.g.receipt.exists())
