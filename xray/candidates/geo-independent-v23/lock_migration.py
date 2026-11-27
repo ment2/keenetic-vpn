@@ -179,22 +179,33 @@ class Migration:
                 self.move(self.new,self.old,d)
                 self.save(d,"legacy")
 
-    def run(self,actor,fn):
+    def run(self,actor,fn,*,gate=None):
         require(actor in ACTORS,"unknown actor")
         with self.serialized():
-            require(not self.exists(self.release_journal),"use integrated release admission when journal exists")
+            require(gate is not None or not self.exists(self.release_journal),"use integrated release admission when journal exists")
             d=self.state()
             require(d["boot"]==self.boot and d["phase"] in ("legacy","protected"),"recovery required")
             p=self.sole(d)
             require(p==(self.new if d["phase"]=="protected" else self.old),"phase/path mismatch")
             with self.locked(p,d["inode"]):
                 require(self.sole(d)==p,"lock path changed")
+                if gate is not None:
+                    require(gate.root==self.root and gate.state==self.release_state,"foreign release gate")
+                    gate.lock=p;gate.lock_id=tuple(d["inode"])
+                    gate.verify_idle()
+                    if self.exists(self.release_journal):
+                        j,_,_=gate.checked_journal()
+                        require(j["phase"]=="committed" and gate.pair_matches(gate.new),"release not committed")
+                    else:require(gate.pair_matches(gate.old),"unknown release baseline")
                 atomic(self.receipt,encode({"actor":actor,"boot":self.boot,"pid":os.getpid(),"inode":d["inode"]}),0o600)
                 self.cut("before-actor")
                 rc=fn(p)
                 self.cut("after-actor")
                 require(type(rc) is int and rc==0,"actor completion unknown")
                 self.verify_actors()
+                if gate is not None:
+                    gate.verify_idle()
+                    require(gate.pair_matches(gate.new if self.exists(self.release_journal) else gate.old),"release pair changed")
                 require(self.state()==d and self.sole(d)==p,"state changed during actor")
                 self.receipt.unlink();sync_dir(self.protected)
                 return d["phase"]
