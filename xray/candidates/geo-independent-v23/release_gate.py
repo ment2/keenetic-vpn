@@ -188,20 +188,42 @@ class Gate:
     def recover(self,rollback=False):
         with self.held():return self.recover_locked(rollback)
 
+    def guarded_run(self,generation,role,runner):
+        expected=self.new if generation=="new" else self.old
+        require(self.pair_matches(expected),"pair mismatch")
+        self.check_lock()
+        # Durable intent survives death of this parent. Never auto-clear on
+        # nonzero return, ambiguous child lifetime, reboot or exception.
+        atomic(self.receipt,encode({"phase":"running","role":role,"generation":generation,
+                                    "pid":os.getpid()}),0o600)
+        self.cut("before-"+role)
+        rc=runner(dict(expected))
+        self.cut("after-"+role)
+        require(type(rc) is int and rc==0,"child nonzero; inspection required")
+        self.verify_dependencies()
+        require(self.pair_matches(expected),"pair changed during child")
+        self.check_lock();self.receipt.unlink();sync_dir(self.state)
+        return generation
+
     def cron(self):
         with self.held():
             generation=self.recover_locked()
-            expected=self.new if generation=="new" else self.old
-            require(self.pair_matches(expected),"pair mismatch")
-            self.check_lock()
-            # Durable intent survives death of this parent. Never auto-clear on
-            # nonzero return, ambiguous child lifetime, reboot or exception.
-            atomic(self.receipt,encode({"phase":"running","generation":generation,"pid":os.getpid()}),0o600)
-            self.cut("before-wrapper")
-            result=subprocess.run(["/bin/sh",str(self.wrapper)],close_fds=True)
-            self.cut("after-wrapper")
-            require(result.returncode==0,"wrapper nonzero; inspection required")
-            self.verify_dependencies()
-            require(self.pair_matches(expected),"pair changed during wrapper")
-            self.check_lock();self.receipt.unlink();sync_dir(self.state)
-            return generation
+            return self.guarded_run(generation,"wrapper",
+                lambda _:subprocess.run(["/bin/sh",str(self.wrapper)],close_fds=True).returncode)
+
+    def monitor_probe(self,runner):
+        """Proposed RC2 adapter: hold same exclusive lock across refresh+probe.
+
+        Monitor never recovers transaction files. Runner receives verified pins;
+        native integration must use the exact audited refresh/probe commands.
+        """
+        with self.held():
+            self.verify_idle()
+            if self.exists(self.journal):
+                j,_,_=self.checked_journal()
+                require(j["phase"]=="committed" and self.pair_matches(self.new),"transaction not committed")
+                generation="new"
+            else:
+                require(self.pair_matches(self.old),"unknown baseline")
+                generation="old"
+            return self.guarded_run(generation,"monitor",runner)
