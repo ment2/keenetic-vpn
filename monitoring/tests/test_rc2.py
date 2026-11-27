@@ -157,3 +157,24 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(result["count"],10)
         self.assertLessEqual(size,32768)
         self.assertLessEqual(10*p.NODE_BUDGET_S,600)
+
+    def test_history_two_phase_and_expiry_guard(self):
+        r1,_=row(config(outbound()),sample())
+        r2,_=row(config(outbound("vpn02","two.example.invalid")),sample())
+        events=[]
+        def publish(**kw):
+            events.append(("discovery" if kw["retain"] else "state",kw["payload"]))
+        sent=h.publish_history([r1,r2],publisher=publish,password_reader=lambda _: "test-only",
+                               clock=lambda:NOW,monotonic=lambda:0,sleep=lambda x:events.append(("settle",x)))
+        self.assertEqual(sent,2)
+        self.assertEqual([x[0] for x in events],["discovery"]*12+["settle"]+["state"]*2)
+        self.assertEqual(events[12][1],h.DISCOVERY_SETTLE_S)
+        self.assertTrue(all(x[1]["expire_after"]==1800-h.EXPIRY_GUARD_S for x in events[:12]))
+    def test_history_budget_before_discovery(self):
+        r,_=row(config(outbound()),sample())
+        pub=Mock(); sleep=Mock()
+        sent=h.publish_history([r],publisher=pub,password_reader=lambda _: "test-only",
+                               clock=lambda:NOW,monotonic=Mock(side_effect=[0,119]),sleep=sleep)
+        self.assertEqual(sent,0)
+        pub.assert_not_called()
+        sleep.assert_not_called()
