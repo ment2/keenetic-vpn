@@ -141,6 +141,20 @@ else:getattr(g,op)()
         with self.assertRaises(m.Blocked):self.g.recover()
         self.assertTrue(self.g.old.exists());self.assertTrue(self.g.new.exists())
 
+    def test_uncooperative_actor_can_bypass_old_path_mid_run(self):
+        self.g.migrate()
+        def body(p):
+            self.g.old.touch(mode=0o600)
+            r=subprocess.run(["flock","-n",str(self.g.old),"/bin/true"],timeout=5)
+            self.assertEqual(r.returncode,0)
+            return 0
+        # The next readback blocks and retains receipt, but a raw legacy
+        # action already ran. This is a negative safety witness, not a pass
+        # for arbitrary privileged actor fencing.
+        with self.assertRaises(m.Blocked):self.g.run("cron",body)
+        self.assertTrue(self.g.receipt.exists())
+        with self.assertRaises(m.Blocked):self.g.recover()
+
     def test_foreign_actor_or_ungated_script_blocks(self):
         p=self.g.actors/"watchdog";p.write_text("legacy")
         with self.assertRaises(m.Blocked):self.g.migrate()
@@ -214,3 +228,10 @@ class IntegratedMigrationTests(unittest.TestCase):
         self.r.cut=lambda _:None
         self.assertEqual(self.g.release(self.r,"recover"),"old")
         self.assertEqual(self.g.run("S97",lambda _:0,gate=self.r),"protected")
+
+    def test_release_gate_checks_expected_inode_before_child(self):
+        self.r.lock=self.g.new
+        self.r.expected_lock_id=(0,0)
+        with self.assertRaises(self.prior.m.Blocked):self.r.cron()
+        self.assertFalse(self.fixture.trace.exists())
+        self.assertFalse(self.r.receipt.exists())
