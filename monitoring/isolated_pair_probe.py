@@ -20,8 +20,8 @@ from monitoring.vpn_inventory import inventory
 XRAY = "/opt/sbin/xray"
 CURL = "/opt/bin/curl"
 STARTUP_S = 5
-HTTP_S = 12
-PAIR_BUDGET_S = 45
+HTTP_S = 8
+PAIR_BUDGET_S = 42
 
 
 def owned_listener(pid, port, proc_root="/proc"):
@@ -85,10 +85,25 @@ def geo_result(result):
         ip=str(ipaddress.ip_address(d["ip"]))
         country=d["country_code"]
         if d.get("success") is True and isinstance(country,str) and re.fullmatch("[A-Z]{2}",country):
-            return {"status":"ok","ip":ip,"country_code":country}
+            return {"status":"ok","ip":ip,"country_code":country,"city":clean_city(d.get("city"))}
     except (ValueError,TypeError,KeyError,AttributeError):
         pass
     return {"status":"failed"}
+
+
+def clean_city(value):
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value if 0 < len(value) <= 64 and all(c.isalpha() or c in " -.'’" for c in value) else None
+
+
+def internet_result(result):
+    if result is None:
+        return "unknown"
+    if result.returncode:
+        return "failed"
+    return "ok" if result.stdout.strip() == b"204" else "failed"
 
 
 def openai_result(result):
@@ -145,10 +160,15 @@ def probe_pair(config, tag):
                     break
                 time.sleep(0.1)
             start=time.monotonic()
-            h=query_owned(proc,port,"https://ipwho.is/",body=True)
-            result["health"]=normalize_result(tag,node,geo_result(h) if h is not None else {"status":"unknown"},time.monotonic()-start)
-            if h is None:
-                result["health"]["status"]="unknown"
+            h=query_owned(proc,port,"https://www.gstatic.com/generate_204")
+            result["health"]=normalize_result(tag,node,{"status":"unknown"},time.monotonic()-start)
+            result["health"].update(status=internet_result(h), route_verified=internet_result(h)=="ok",
+                                    test_kind="isolated_xray_http204")
+            start=time.monotonic()
+            g=query_owned(proc,port,"https://ipwho.is/",body=True)
+            geo=geo_result(g) if g is not None else {"status":"unknown"}
+            result["geo"]=normalize_result(tag,node,geo,time.monotonic()-start)
+            result["geo"]["city"]=geo.get("city")
             start=time.monotonic()
             o=query_owned(proc,port,"https://api.openai.com/v1/models")
             status=openai_result(o) if o is not None else "unknown"
