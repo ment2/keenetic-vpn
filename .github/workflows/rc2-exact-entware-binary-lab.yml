@@ -1,0 +1,60 @@
+name: Exact archived Entware device binary interoperability
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths: ['.github/workflows/rc2-exact-entware-binary-lab.yml']
+permissions:
+  contents: read
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch archived package and verify exact device binary
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/exact-entware"; mkdir -p "$W"; cd "$W"
+          curl -q --fail --location --silent --show-error --proto '=https' --proto-redir '=https' --max-time 120 --max-filesize 12000000 -o xray.ipk https://bin.entware.net/mipselsf-k3.4/archive/xray-core_26.2.6-1_mipsel-3.4.ipk
+          test "$(stat -c %s xray.ipk)" = 10336897
+          python3 - <<'PY'
+          import tarfile,io,subprocess
+          from pathlib import Path
+          p=Path("xray.ipk")
+          with p.open("rb") as f: magic=f.read(8)
+          if magic==b"!<arch>\n":
+              names=subprocess.check_output(["ar","t",str(p)],text=True).splitlines()
+              assert "data.tar.gz" in names
+              data=subprocess.check_output(["ar","p",str(p),"data.tar.gz"])
+          else:
+              with tarfile.open(p,"r:*") as t:
+                  members=[m for m in t if m.name.lstrip("./")=="data.tar.gz"]
+                  assert len(members)==1 and members[0].isfile()
+                  data=t.extractfile(members[0]).read(12000001)
+          assert len(data)<=12000000
+          with tarfile.open(fileobj=io.BytesIO(data),mode="r:gz") as t:
+              matches=[m for m in t if m.name.lstrip("./")=="opt/sbin/xray"]
+              assert len(matches)==1 and matches[0].isfile() and matches[0].size==33751197
+              payload=t.extractfile(matches[0]).read(33751198)
+          assert len(payload)==33751197
+          Path("xray").write_bytes(payload)
+          PY
+          printf '680db07db2b5d53080bfecb8752bc830c6a890367aa3bc57d42d4660506591f2  xray\n' | sha256sum -c -
+          echo EXACT_DEVICE_BINARY_SHA256_MATCH
+          go version -m xray | grep -E 'go1.26.1|GOMIPS=|GOARCH=|CGO_ENABLED=|vcs.revision=|quic-go'
+          chmod 755 xray
+      - name: Fetch pinned synthetic server
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/exact-entware"
+          curl -q --fail --location --silent --show-error --max-time 120 -o "$W/hysteria" https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.1/hysteria-linux-amd64
+          printf '2f855265ee252e3c09546da18b6c0c6123e846e91868f37b589ac37477ff4e20  %s\n' "$W/hysteria" | sha256sum -c -
+          chmod 755 "$W/hysteria"
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qemu-user iproute2
+      - name: Exact installed binary, isolated synthetic QUIC laboratory
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/exact-entware"
+          sudo unshare --net -- bash -c 'set -e; ip link set lo up; export PYTHONPATH="$1"; shift; exec python3 -B "$@"' lab "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/monitoring/lab/mixed_rc2/cross_version_lab.py" --xray "$W/xray" --hysteria "$W/hysteria" --qemu /usr/bin/qemu-mipsel
