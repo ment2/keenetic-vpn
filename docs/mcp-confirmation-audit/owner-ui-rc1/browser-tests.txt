@@ -1,0 +1,8 @@
+Browser acceptance: BLOCKED (not PASS).
+Attempt: python test-browser.py
+Chromium launched; first navigation to the loopback synthetic fixture returned:
+playwright._impl._errors.Error: Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR
+No UI test assertions ran. No external or production requests were attempted.
+No alternate browser route or bypass attempted. Do not equate this with the
+original production write_file rejection or with ChatGPT host confirmation.
+The script is retained for authorized isolated browser acceptance.
