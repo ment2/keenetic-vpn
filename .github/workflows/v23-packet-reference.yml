@@ -1,0 +1,17 @@
+name: v23 disposable packet reference
+on:
+  push:
+    branches: [feature/vpn-monitoring-home-assistant-20261104]
+    paths:
+      - 'monitoring/tests/fixtures/v23_packet_reference.py'
+      - '.github/workflows/v23-packet-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo env GITHUB_ACTIONS=true python3 monitoring/tests/fixtures/v23_packet_reference.py
