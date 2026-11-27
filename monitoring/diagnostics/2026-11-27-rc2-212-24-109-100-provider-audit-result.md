@@ -1,0 +1,9 @@
+# Provider subscription audit result — 27 November 2026
+Predecessors 5452d8208731aa9a7196efcd907891ad1b7e83d8, a6d54be6168885911592fda3269e181fbb1e9069 and 583f66f4cd1f8729b4a06afa6d0899f062c00a50. Approved command SHA256 f0fbb014b0ebb4d8695cf5cb634253457b3517217d2bec4621499d03131f993a. Job f9fea3c5-e222-4854-9390-0ef961f9667a DONE exit 0. No resubmission.
+
+## Findings
+Fresh provider response: Base64, 12 nonempty records, 10 VLESS and 2 Hysteria2. Reader selects 10 VLESS, exact match with independently counted VLESS lines. All 10 converted without errors; all match RC2 full-subscription snapshot ignoring positional tag, and all 4 active VLESS outbounds match fresh candidates. All VLESS endpoints are unchanged from prior inventory. Target literal 212.24.109.100 absent in all 10 VLESS raw/converted/snapshot endpoints and all 4 active endpoints. CONFIGS_UNCHANGED True. Snapshot mtime 22:18:05.463988, active config 21:16:08.255989, RC2 probe cache 22:19:36.095988 MSK.
+
+Confirmed cause of the 12-to-10 inventory discrepancy: subscription() filters to vless:// and omits the two Hysteria2 records by design. Specific IP attribution is NOT yet confirmed: approved command did not parse Hysteria2 endpoints, and five VLESS egress IPs were unknown in prior measurements. Next narrowly scoped read-only check should parse and sanitize Hysteria2 endpoint host/port, optionally resolve DNS, and compare target. Requires separate exact-command approval. No production config, updater, monitoring, routing or firewall changes. No credentials or raw response exported.
+
+Active matching VLESS: vpn01 de-tls.nerpvpn.net:443; vpn06 nl-2.nerpvpn.net:443; vpn07 pl1.nerpvpn.net:443; vpn09 us-tls.nerpvpn.net:443. All other VLESS entries present in RC2 but inactive.
