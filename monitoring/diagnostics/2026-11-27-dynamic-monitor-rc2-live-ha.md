@@ -37,7 +37,8 @@ Reference: https://developers.home-assistant.io/docs/apps/communication/
   Staging file write verified by agent, backup created. Exact staged Git
   blob 9d0a5d61f138603255bba8b3e641a7c2a7a84f90 matched; patched
   publisher completed 10/10 nodes in 6.37 s, aggregate PUBACK 10/10.
-  Final live template readback requested.
+  Final live HA template readback: 10/10 tags, no errors, all six
+  graph filters 10/10, state ok, probe_complete=10.
 
 ## Dashboard and monitor-only staging
 - Supported Lovelace WebSocket API: existing vpn-monitor dashboard read,
