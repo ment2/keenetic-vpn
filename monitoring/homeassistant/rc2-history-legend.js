@@ -42,7 +42,7 @@ function legendRows(timelines) {
         rawByLabel.get(label).add(s.state);
       }
     }
-    const series=timeline._chartData;
+    const series=timeline.shadowRoot?.querySelector("ha-chart-base")?.data;
     if(!Array.isArray(series)) continue;
     for(const dataset of series) {
       for(const segment of dataset.data||[]) {
@@ -144,7 +144,7 @@ class RC2HistoryLegend extends HTMLElement {
       const swatch=document.createElement("span");swatch.className="swatch";
       swatch.style.backgroundColor=r.color;swatch.setAttribute("aria-hidden","true");
       const label=document.createElement("span");
-      label.textContent=r.state==="ok"?LABEL_OK[this._metric]:(TITLES[r.state]||r.label||r.state);
+      label.textContent=r.state==="ok"?LABEL_OK[this._metric]:(Object.hasOwn(TITLES,r.state)?TITLES[r.state]:(r.label||r.state));
       label.title=r.state;
       item.append(swatch,label);this.items.append(item);
     }
