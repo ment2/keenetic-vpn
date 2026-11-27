@@ -1,0 +1,227 @@
+#!/opt/bin/python3
+"""RC2 candidate. Not installed. Preserve existing Home fail-closed routing."""
+import fcntl, hashlib, json, os, re, shlex, select, signal, stat, subprocess, sys, tempfile, time
+from pathlib import Path
+ROOT=Path('/proc'); SERVICE='/opt/etc/init.d/S98xray-wifi'; PY='/opt/bin/python3'
+PID=Path('/opt/var/run/xray-wifi.pid'); ID=Path(str(PID)+'.identity'); LOCK=Path(str(PID)+'.control.lock')
+LIFE=Path(str(PID)+'.watch.lock'); REQUEST=Path(str(PID)+'.stop.json')
+IP='/opt/sbin/ip'; IPT='/opt/sbin/iptables'; MODULE=Path('/lib/modules/4.9-ndm-5/xt_TPROXY.ko')
+MODULE_SHA='2e78816ca7115768200c46ac83fa8301a1912139d72baa22005a8d2220b99423'
+CHAIN='XRAY_WIFI'; MARK='0x40000000/0x40000000'; NET='192.168.1.0/24'
+NETS=('0.0.0.0/8','10.0.0.0/8','100.64.0.0/10','127.0.0.0/8','169.254.0.0/16','172.16.0.0/12','192.168.0.0/16','224.0.0.0/4','240.0.0.0/4')
+RULES=[['-d',n,'-j','RETURN'] for n in NETS]+[['-p',p,'-j','TPROXY','--on-port','12345','--tproxy-mark',MARK] for p in ('tcp','udp')]
+STOP=False
+class Error(RuntimeError): pass
+
+def need(ok,why):
+    if not ok: raise Error(why)
+def run(*args,check=True):
+    r=subprocess.run(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=10)
+    if check and r.returncode: raise Error('COMMAND_FAILED '+args[0]+' '+str(r.returncode))
+    return r
+
+def ipt(*a,check=True): return run(IPT,'-t','mangle',*a,check=check)
+def boot(): return (ROOT/'sys/kernel/random/boot_id').read_text().strip()
+def proc(pid):
+    try:
+        p=ROOT/str(pid); f=(p/'stat').read_text().rsplit(')',1)[1].split(); args=(p/'cmdline').read_bytes().rstrip(b'\0').split(b'\0')
+        return {'pid':pid,'boot':boot(),'ticks':f[19],'state':f[0],'args':args}
+    except (OSError,ValueError,IndexError): return None
+
+def role(p):
+    if not p or p['state']=='Z': return None
+    a=p['args']; s=os.fsencode(SERVICE)
+    if a==[os.fsencode(PY),s,b'watch']: return 'rc1'
+    if len(a)==5 and a[:3]==[os.fsencode(PY),s,b'watch'] and all(x.isdigit() for x in a[3:]): return 'rc2'
+    if len(a)==3 and a[0] in (b'/opt/bin/sh',b'/bin/sh') and a[1:]==[s,b'start']: return 'legacy'
+    return None
+
+def watchers():
+    return [(v,role(v)) for p in ROOT.iterdir() if p.name.isdigit() and (v:=proc(int(p.name))) and role(v)]
+
+def same(a,b): return bool(a and b and all(a[k]==b[k] for k in ('pid','boot','ticks','args')) and b['state']!='Z')
+def atomic(p,data):
+    fd,n=tempfile.mkstemp(prefix='.'+p.name+'.',dir=p.parent)
+    try:
+        with os.fdopen(fd,'w') as f: f.write(data); f.flush(); os.fsync(f.fileno())
+        os.replace(n,p)
+    finally:
+        if os.path.exists(n): os.unlink(n)
+def record(p):
+    atomic(ID,json.dumps({k:p[k] for k in ('pid','boot','ticks')})+'\n'); atomic(PID,str(p['pid'])+'\n')
+def clear_record():
+    for p in (PID,ID,REQUEST):
+        try: p.unlink()
+        except FileNotFoundError: pass
+
+def target_ready(): return 'TPROXY' in (ROOT/'net/ip_tables_targets').read_text().splitlines()
+
+def ensure_module():
+    if target_ready(): return
+    need(os.uname().release=='4.9-ndm-5','KERNEL_MISMATCH')
+    need(stat.S_ISREG(MODULE.lstat().st_mode) and hashlib.sha256(MODULE.read_bytes()).hexdigest()==MODULE_SHA,'MODULE_HASH_MISMATCH')
+    run('/opt/sbin/insmod',str(MODULE)); need(target_ready(),'TARGET_NOT_REGISTERED')
+
+def guard():
+    r=run(IPT,'-t','filter','-S','XRAY_KS_HOME').stdout.splitlines()
+    need(r==['-N XRAY_KS_HOME','-A XRAY_KS_HOME -d 192.168.0.0/16 -j RETURN','-A XRAY_KS_HOME -s 192.168.1.0/24 -i br0 -j DROP'],'KILLSWITCH_DRIFT')
+    f=run(IPT,'-t','filter','-S','FORWARD').stdout.splitlines()
+    need(f[:2]==['-P FORWARD DROP','-A FORWARD -j XRAY_KS_HOME'] and f.count('-A FORWARD -j XRAY_KS_HOME')==1,'KILLSWITCH_ORDER_DRIFT')
+
+def rule_tokens(line): return shlex.split(line)
+def chain_plan(lines):
+    """Only exact expected prefix can be extended; no flush, delete or reordering."""
+    need(len(lines)<=len(RULES),'UNEXPECTED_CHAIN_LENGTH')
+    for i,line in enumerate(lines):
+        a=rule_tokens(line); need(a[:2]==['-A',CHAIN],'UNEXPECTED_CHAIN_LINE')
+        if i<len(NETS): need(a[2:]==RULES[i],'UNEXPECTED_RETURN_RULE')
+        else:
+            p=('tcp','udp')[i-len(NETS)]
+            # iptables canonical output may add -m tcp/udp or --on-ip 0.0.0.0.
+            b=a[2:]; cleaned=[]; j=0
+            while j<len(b):
+                if b[j:j+2] in (['-m',p],['--on-ip','0.0.0.0']): j+=2
+                else: cleaned.append(b[j]); j+=1
+            need(cleaned==RULES[i],'UNEXPECTED_TPROXY_RULE')
+    return RULES[len(lines):]
+
+def ensure_routes(apply=True):
+    rules=run(IP,'-4','rule','show').stdout.splitlines(); target=['20000:','from','all','fwmark',MARK,'lookup','100']; desired=[r for r in rules if r.split()==target]
+    need(not any('lookup 100' in r and r not in desired for r in rules),'FOREIGN_TABLE100_POLICY')
+    need(len(desired)<=1,'DUPLICATE_POLICY')
+    need(not any(r.strip().startswith('20000:') and r not in desired for r in rules),'POLICY_PRIORITY_CONFLICT')
+    need(not desired or desired[0].strip().startswith('20000:'),'POLICY_PRIORITY_DRIFT')
+    t=run(IP,'-4','route','show','table','100',check=False)
+    need(t.returncode==0 or (not t.stdout.strip() and 'FIB table does not exist' in t.stderr),'TABLE_READ_FAILED')
+    rows=t.stdout.splitlines(); need(not rows or (len(rows)==1 and rows[0].split()==['local','default','dev','lo','scope','host']),'TABLE100_CONFLICT')
+    if apply:
+        if not rows: run(IP,'-4','route','add','local','default','dev','lo','table','100')
+        if not desired: run(IP,'-4','rule','add','fwmark',MARK,'lookup','100','priority','20000')
+    return bool(rows and desired)
+
+def jump_plan():
+    lines=ipt('-S','PREROUTING').stdout.splitlines()
+    expected={p:['-A','PREROUTING','-s',NET,'-i','br0','-p',p,'-j',CHAIN] for p in ('tcp','udp')}
+    seen=[]; ordinary=[]
+    for line in lines:
+        a=rule_tokens(line)
+        if CHAIN not in a:
+            if a[:2]==['-A','PREROUTING']: ordinary.append(a)
+            continue
+        need(not ordinary,'PREROUTING_ORDER_DRIFT')
+        matches=[p for p,v in expected.items() if a==v]
+        need(len(matches)==1 and matches[0] not in seen,'PREROUTING_DRIFT')
+        seen.extend(matches)
+    return [p for p in ('tcp','udp') if p not in seen]
+
+def chain_state():
+    q=ipt('-S',CHAIN,check=False)
+    if q.returncode:
+        need('No chain/target/match by that name' in q.stderr,'CHAIN_READ_FAILED')
+        return None
+    ls=q.stdout.splitlines(); need(ls and ls[0]=='-N '+CHAIN,'CHAIN_HEADER')
+    return chain_plan(ls[1:])
+
+def ensure():
+    guard(); ensure_routes(False); plan=chain_state(); jump_plan()
+    ensure_module(); guard(); ensure_routes()
+    if plan is None:
+        ipt('-N',CHAIN)
+    plan=chain_state(); need(plan is not None,'CHAIN_MISSING')
+    for a in plan: ipt('-A',CHAIN,*a)
+    for a in RULES: ipt('-C',CHAIN,*a)
+    need(chain_state()==[],'CHAIN_INCOMPLETE')
+    for p in jump_plan():
+        a=['-s',NET,'-i','br0','-p',p,'-j',CHAIN]
+        ipt('-I','PREROUTING','1',*a)
+        ipt('-C','PREROUTING',*a)
+    need(not jump_plan() and ensure_routes(False),'ROUTING_INCOMPLETE'); guard()
+
+def check_live():
+    guard(); need(target_ready(),'MODULE_MISSING'); need(ensure_routes(False),'ROUTE_NOT_READY'); need(chain_state()==[] and not jump_plan(),'CHAIN_NOT_READY')
+    for a in RULES: ipt('-C',CHAIN,*a)
+    print('S98_CHECK_OK')
+
+def lock_open(path):
+    fd=os.open(path,os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+    try:
+        st=os.fstat(fd); need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and not st.st_mode & 0o077,'LOCK_INVALID')
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB); return fd
+    except BaseException: os.close(fd); raise
+
+def identity(p): return {k:p[k] for k in ('pid','boot','ticks')}
+def ready_record(p):
+    try: return json.loads(ID.read_text())==identity(p) and PID.read_text().strip()==str(p['pid'])
+    except (OSError,ValueError): return False
+def requested(p):
+    try: return json.loads(REQUEST.read_text())==identity(p)
+    except (OSError,ValueError): return False
+
+def watch(fd,ready):
+    # The control process hands over the same locked open-file description.
+    need(os.path.samestat(os.fstat(fd),LIFE.lstat()),'LIFETIME_LOCK_INVALID')
+    fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    os.set_inheritable(fd,False); os.set_inheritable(ready,False)
+    p=proc(os.getpid()); need(role(p)=='rc2','WATCH_IDENTITY_INVALID')
+    global STOP
+    def stop(*_):
+        global STOP; STOP=True
+    signal.signal(signal.SIGTERM,stop); signal.signal(signal.SIGINT,stop)
+    try:
+        ensure(); record(p); os.write(ready,b'R')
+    finally: os.close(ready)
+    print('S98_HEALTHY',flush=True)
+    while not STOP and not requested(p):
+        for _ in range(60):
+            if STOP or requested(p): break
+            time.sleep(1)
+        if STOP or requested(p): break
+        try: ensure(); print('S98_HEALTHY',flush=True)
+        except (Error,OSError,subprocess.SubprocessError,ValueError) as e: print('S98_DEGRADED',type(e).__name__,str(e),flush=True)
+
+def control(action):
+    fd=lock_open(LOCK)
+    try:
+        ws=watchers(); need(len(ws)<=1,'MULTIPLE_WATCHERS'); need(not ws or ws[0][1]=='rc2','LEGACY_WATCHER_ACTIVE: planned migration required')
+        if action=='status':
+            if ws:
+                need(ready_record(ws[0][0]) and not requested(ws[0][0]),'WATCHER_NOT_READY'); print('RUNNING',ws[0][0]['pid']); return
+            print('STOPPED'); return
+        if action in ('stop','restart'):
+            if ws:
+                p=ws[0][0]; need(same(p,proc(p['pid'])),'PROCESS_DRIFT')
+                atomic(REQUEST,json.dumps(identity(p))+'\n')
+                for _ in range(160):
+                    if not same(p,proc(p['pid'])): break
+                    time.sleep(.25)
+                need(not same(p,proc(p['pid'])),'STOP_TIMEOUT')
+            # Refuse cleanup if an unrecognized watcher still owns the lifetime lock.
+            life=lock_open(LIFE); os.close(life); clear_record(); ws=[]
+        if action in ('start','restart'):
+            if ws:
+                need(ready_record(ws[0][0]) and not requested(ws[0][0]),'WATCHER_NOT_READY'); return
+            life=lock_open(LIFE)
+            try:
+                clear_record(); rd,wr=os.pipe()
+                try:
+                    with open('/opt/var/log/xray-wifi.log','a') as log:
+                        c=subprocess.Popen([PY,SERVICE,'watch',str(life),str(wr)],stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True,close_fds=True,pass_fds=(life,wr))
+                finally: os.close(wr)
+                try:
+                    ready=select.select([rd],[],[],60)[0]
+                    need(ready and os.read(rd,1)==b'R','WATCHER_START_UNCONFIRMED')
+                    p=proc(c.pid); need(role(p)=='rc2' and ready_record(p),'WATCHER_IDENTITY_FAILED'); print('S98_READY',c.pid)
+                finally: os.close(rd)
+            finally: os.close(life)
+    finally: os.close(fd)
+
+if __name__=='__main__':
+    try:
+        need(os.geteuid()==0,'ROOT_REQUIRED'); action=sys.argv[1] if len(sys.argv)>1 else ''
+        need(action in ('start','stop','restart','status','watch','check'),'INVALID_ACTION')
+        if action=='watch':
+            need(len(sys.argv)==4 and all(v.isdigit() for v in sys.argv[2:]),'WATCH_REQUIRES_HANDOFF'); watch(int(sys.argv[2]),int(sys.argv[3]))
+        elif action=='check': check_live()
+        else: control(action)
+    except (Error,OSError,subprocess.SubprocessError,ValueError) as e:
+        print('S98_RC2_ERROR',type(e).__name__,str(e),file=sys.stderr); sys.exit(1)
