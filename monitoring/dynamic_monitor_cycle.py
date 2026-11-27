@@ -72,7 +72,7 @@ def cycle(mode, *, minute=None, pins_reader=source_pins, idle=updater_idle,
         return rc
     if not idle():
         return 3
-    return runner("monitoring.dynamic_snapshot",["probe","--full",DEFAULT_OUTPUT])
+    return runner("monitoring.dynamic_snapshot",["probe","--full",DEFAULT_OUTPUT,"--publish"])
 
 
 def main():
