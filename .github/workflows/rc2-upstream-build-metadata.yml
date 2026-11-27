@@ -1,0 +1,23 @@
+name: RC2 read-only upstream binary metadata
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths: ['.github/workflows/rc2-upstream-build-metadata.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify and inspect official MIPSLE binary without execution
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -q --fail --location --silent --show-error --max-time 120 -o xray.zip https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-mips32le.zip
+          printf '%s  xray.zip\n' 1590b2bcefe64fb0604f29c8c75219bfbe8f63daa3bc8e3956edfa6da97c5869 | sha256sum -c -
+          unzip -p xray.zip xray > xray-reference
+          printf '%s  xray-reference\n' 3d2588c5ef770a6a7e1bfdd5db511130fb3acd79eb91bfcb108753b3e1dda1f6 | sha256sum -c -
+          stat -c 'SIZE %s' xray-reference
+          readelf -h xray-reference
+          go version -m xray-reference | grep -E 'go[0-9]|^[[:space:]]+path[[:space:]]|^[[:space:]]+mod[[:space:]]|^[[:space:]]+build[[:space:]]+(GOARCH|GOOS|GOMIPS|CGO_ENABLED|vcs.revision|vcs.modified|vcs.time|[-]buildmode|[-]compiler|[-]tags)='
