@@ -213,6 +213,12 @@ class Gate:
             return self.guarded_run(generation,"wrapper",
                 lambda _:subprocess.run(["/bin/sh",str(self.wrapper)],close_fds=True).returncode)
 
+    def coordinated_cron(self,runner):
+        """Fixture-only wrapper port: delegated restart runs in same owner."""
+        with self.held():
+            generation=self.recover_locked()
+            return self.guarded_run(generation,"wrapper",runner)
+
     def monitor_probe(self,runner):
         """Proposed RC2 adapter: hold same exclusive lock across refresh+probe.
 
