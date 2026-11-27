@@ -44,12 +44,16 @@ not print private routes or export candidate outside a temporary directory.
 CI 46023450359 SUCCESS 197/197 (ordinary suite; no claim that CI executed
 the hardware harness). Staged harness write verified SHA256
 1feb056cb6258d05f5c8f8709493410e3102819551af44828d7c67709a03a12e.
-Execution job 53cd0ce1-9b60-4457-a948-ec875e796387 queued; do not resend.
+Execution job 53cd0ce1-9b60-4457-a948-ec875e796387 completed exit 1.
+PREFLIGHT 18:18:10 MSK, minute modulo 15 = 3, log ages [893,155] s.
+TRIAL_ABORT RuntimeError. The collector-age gate (60..700 s) rejected
+before acquiring the lock or starting any probe. Do not resend this job.
+A fresh quiet-window observation is required; the full trial remains open.
 Previous aggregate route mismatch still unexplained; its original per-table
 data were not retained. No inferred cause or physical no-leak success.
 
 ## Remaining release gates
-Resolve result of existing job. Full coherent subscription, real Xray -test,
+Full coherent subscription, real Xray -test,
 and unchanged route witnesses must be positively observed. If preflight
 aborts, use a newly justified quiet window, not a bypass of the 180-second
 transport cap. Resolve any route differences using per-table structure and
