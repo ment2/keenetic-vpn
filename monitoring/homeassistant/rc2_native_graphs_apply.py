@@ -20,14 +20,14 @@ def make_graphs(rows,states):
  metrics=("vpn","internet","openai","geo","internet_ms","openai_ms")
  assert len({r["id"] for r in rows})==len(rows)>0
  assert all((r["id"],m) in by for r in rows for m in metrics),"missing metric"
- ordered=sorted(rows,key=lambda r:(r.get("active") is not True,r["tag"]))
+ ordered=sorted(rows,key=lambda r:int(r["tag"][3:]))
  def entity(r,m,name=None):return {"entity":by[(r["id"],m)],"name":name or r["tag"]}
  def graph(title,hours,entities):return {"type":"history-graph","title":title,"hours_to_show":hours,"entities":entities}
  # Native graph cards show the entire current subscription, not a stale
  # hardcoded active-pool list. Membership is live in the separate table.
  individual=[graph(r["tag"]+" · время HTTP-пробы, мс · 6 ч",6,[entity(r,"internet_ms","Интернет"),entity(r,"openai_ms","OpenAI")]) for r in ordered]
  labels={"vpn":"VPN","internet":"Интернет","openai":"OpenAI","geo":"Геолокация","internet_ms":"Интернет, время пробы","openai_ms":"OpenAI, время пробы"}
- historical=[graph(labels[m]+" · 24 ч",24,[entity(r,m) for r in rows]) for m in metrics]
+ historical=[graph(labels[m]+" · 24 ч",24,[entity(r,m) for r in ordered]) for m in metrics]
  return individual,historical
 def main():
  allstates=rest("states")
@@ -47,7 +47,7 @@ def main():
    assert len(cards)==11 and [c["type"] for c in cards]==["markdown","markdown","custom:auto-entities","markdown"]+["custom:auto-entities"]*6+["markdown"],"unexpected page shape"
    assert [cards[j]["title"] for j in (0,1,3,10)]==["Сводка RC2","Серверы VPN","Как читать графики","Подробности серверов"]
    note=copy.deepcopy(cards[3])
-   note["content"]="Графики всех текущих серверов подписки за 6 часов. Новая HTTP-проба каждые 15 минут; сводка каждую минуту. Порядок графиков соответствует пулу на момент настройки, актуальное членство см. в таблице. При изменении состава подписки список графиков нужно обновить. Время HTTP-пробы (включая ожидание ошибок), не ICMP ping. Интернет — HTTP 204, OpenAI — HTTP 401."
+   note["content"]="Графики всех текущих серверов подписки за 6 часов. Новая HTTP-проба каждые 15 минут; сводка каждую минуту. Графики расположены по номеру VPN; актуальное членство в пуле см. в таблице. При изменении состава подписки список графиков нужно обновить. Время HTTP-пробы (включая ожидание ошибок), не ICMP ping. Интернет — HTTP 204, OpenAI — HTTP 401."
    desired["views"][i]["cards"]=cards[:2]+individual+[note]+historical+[cards[10]]
   assert digest(cfg)=="c955bcb4d61a7e769f6c5d59512984bf7650a4222c62c6e30b5084888d9f0058","dashboard changed"
   backup=BASE/("rc2-before-native-graphs-"+str(int(time.time()))+".json")
