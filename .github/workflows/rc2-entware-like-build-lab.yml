@@ -1,0 +1,44 @@
+name: Entware-like Xray Go 1.26.1 MIPSLE softfloat interop
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths: ['.github/workflows/rc2-entware-like-build-lab.yml']
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1'
+          cache: false
+      - name: Fetch exact upstream source and build with Entware-like Go settings
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/entware-like"; mkdir -p "$W"
+          git clone --depth 1 --branch v26.2.6 https://github.com/XTLS/Xray-core.git "$W/src"
+          cd "$W/src"
+          test "$(git rev-parse HEAD)" = 12ee51e4bb1d02ece4ef4b7114efa2bcdc130995
+          test "$(go env GOVERSION)" = go1.26.1
+          export GOOS=linux GOARCH=mipsle GOMIPS=softfloat CGO_ENABLED=0 GOTOOLCHAIN=local GOTELEMETRY=off GOWORK=off
+          go build -trimpath -ldflags '-s -w -X github.com/xtls/xray-core/core.build=12ee51e4' -o "$W/xray" ./main
+          go version -m "$W/xray" | grep -E 'go1.26.1|GOMIPS=|GOARCH=|CGO_ENABLED=|vcs.revision=|quic-go'
+          sha256sum "$W/xray"
+      - name: Verify pinned public synthetic server
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/entware-like"
+          curl -q --fail --location --silent --show-error --max-time 120 -o "$W/hysteria" https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.1/hysteria-linux-amd64
+          printf '2f855265ee252e3c09546da18b6c0c6123e846e91868f37b589ac37477ff4e20  %s\n' "$W/hysteria" | sha256sum -c -
+          chmod 755 "$W/hysteria"
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qemu-user iproute2
+      - name: Test reconstructed binary against synthetic server in isolated loopback namespace
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/entware-like"
+          sudo unshare --net -- bash -c 'set -e; ip link set lo up; export PYTHONPATH="$1"; shift; exec python3 -B "$@"' lab "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/monitoring/lab/mixed_rc2/cross_version_lab.py" --xray "$W/xray" --hysteria "$W/hysteria" --qemu /usr/bin/qemu-mipsel
