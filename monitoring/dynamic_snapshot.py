@@ -69,7 +69,7 @@ def measure(event, node_id, kind, now):
     success = "ok" if kind == "health" else "reachable"
     status = event.get("status")
     allowed = {"ok", "failed", "unknown"} if kind == "health" else {"reachable", "network_error", "http_error", "timeout", "unreachable", "unknown"}
-    if status not in allowed or (status == success and event.get("route_verified") is not True):
+    if not isinstance(status, str) or status not in allowed or (status == success and event.get("route_verified") is not True):
         status = "unknown"
     ms = event.get("test_duration_ms")
     if type(ms) is not int or not 0 <= ms <= 120000:
@@ -91,6 +91,8 @@ def snapshot(entries, active, pending, observations, now):
     for e in entries:
         node = e["node_id"]
         obs = observations.get(node, {})
+        if not isinstance(obs, dict):
+            obs = {}
         h = measure(obs.get("health"), node, "health", now)
         o = measure(obs.get("openai"), node, "openai", now)
         # Compact schema: ID, label, active, pending, health, time, duration,
@@ -158,13 +160,11 @@ def main():
     if full in {Path(args.active).resolve(), Path(args.pending).resolve(), Path(ACTIVE).resolve(), Path(PENDING).resolve()}:
         raise SystemExit("unfiltered subscription required")
     if args.mode == "probe":
-        from monitoring import vpn_node_probe as h, openai_node_probe as o
+        from monitoring.isolated_pair_probe import collect
         with os.fdopen(os.open(args.cache + ".lock", os.O_CREAT | os.O_RDWR, 0o600), "r+") as lock:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             config, entries = read_config(full, time.time())
-            hp, op = h.load_probe(), o.load_probe()
-            result = run_probes(config, entries, lambda c,t: h.probe_one(c,t,hp),
-                                lambda c,t: o.probe_one(c,t,op), time.monotonic()+840)
+            result = collect(config, entries, deadline=time.monotonic()+480)
             atomic_cache(args.cache, result)
         print("PROBE_CYCLE", len(result))
         return
