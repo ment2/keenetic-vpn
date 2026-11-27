@@ -1,0 +1,106 @@
+name: Xray release comparison and MIPS runtime regression
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths:
+      - '.github/workflows/rc2-release-runtime-lab.yml'
+      - 'monitoring/lab/mixed_rc2/release_comparison_lab.py'
+      - 'monitoring/lab/mixed_rc2/go_runtime_probe.go'
+      - 'monitoring/lab/mixed_rc2/go_runtime_mips49.c'
+permissions:
+  contents: read
+jobs:
+  interop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '26.2.6'
+            schema: legacy
+            digest: 29ce535b56e207a406ffa1c2d4842dcc410be003eff8ec508bb732abc9f8e385
+          - version: '26.3.27'
+            schema: modern
+            digest: 23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch and verify official artifacts
+        env:
+          VER: ${{ matrix.version }}
+          SHA: ${{ matrix.digest }}
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/compare"; mkdir -p "$W"; cd "$W"
+          curl -q --fail --location --max-time 120 --silent --show-error -o xray.zip "https://github.com/XTLS/Xray-core/releases/download/v$VER/Xray-linux-64.zip"
+          printf '%s  xray.zip\n' "$SHA" | sha256sum -c -
+          unzip -p xray.zip xray > xray; chmod 755 xray
+          go version -m xray | grep -E 'go[0-9]|quic-go'
+          curl -q --fail --location --max-time 120 --silent --show-error -o hysteria https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.1/hysteria-linux-amd64
+          printf '2f855265ee252e3c09546da18b6c0c6123e846e91868f37b589ac37477ff4e20  hysteria\n' | sha256sum -c -
+          chmod 755 hysteria
+      - name: Run common synthetic fixture on loopback only
+        env:
+          SCHEMA: ${{ matrix.schema }}
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/compare"
+          sudo unshare --net -- bash -c 'set -e; ip link set lo up; export PYTHONPATH="$1"; shift; exec python3 -B "$@"' lab "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/monitoring/lab/mixed_rc2/release_comparison_lab.py" --xray "$W/xray" --hysteria "$W/hysteria" --schema "$SCHEMA"
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1'
+          cache: false
+      - name: Build minimal old runtime probe
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/runtime"; mkdir -p "$W/guest/proc" "$W/guest/dev" "$W/root"
+          test "$(go env GOVERSION)" = go1.26.1
+          GOOS=linux GOARCH=mipsle GOMIPS=softfloat CGO_ENABLED=0 GOTOOLCHAIN=local GO111MODULE=off go build -o "$W/guest/old" monitoring/lab/mixed_rc2/go_runtime_probe.go
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.2'
+          cache: false
+      - name: Build fixed runtime probe
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/runtime"
+          test "$(go env GOVERSION)" = go1.26.2
+          GOOS=linux GOARCH=mipsle GOMIPS=softfloat CGO_ENABLED=0 GOTOOLCHAIN=local GO111MODULE=off go build -o "$W/guest/fixed" monitoring/lab/mixed_rc2/go_runtime_probe.go
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross cpio gzip curl unzip
+      - name: Build pinned guest without networking
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/runtime"
+          curl -q -fL --max-time 120 -o "$W/kernel.deb" https://archive.debian.org/debian/pool/main/l/linux/linux-image-4.9.0-13-4kc-malta_4.9.228-1_mipsel.deb
+          printf '9a5dff9c498bf5736ca9f97cbb005b4b60bd139aa0f30f5bab9feca783907d9b  %s\n' "$W/kernel.deb" | sha256sum -c -
+          dpkg-deb -x "$W/kernel.deb" "$W/root"
+          printf '20f5380e02f2e40d4495fd61a854e5867f5ccdf95c8c1fd3d53fe27e8be1797f  %s\n' "$W/root/boot/vmlinux-4.9.0-13-4kc-malta" | sha256sum -c -
+          curl -q -fL --max-time 120 -o "$W/xray.zip" https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-mips32le.zip
+          printf 'fe1ded07a64fe0a406c6c1089f09b6c2999fc2309509ca4c98d93469c0cbf9df  %s\n' "$W/xray.zip" | sha256sum -c -
+          unzip -p "$W/xray.zip" xray > "$W/guest/xray"; chmod 755 "$W/guest/xray"
+          go version -m "$W/guest/xray" | grep -E 'go[0-9]|GOMIPS=|GOARCH='
+          mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror -o "$W/guest/init" monitoring/lab/mixed_rc2/go_runtime_mips49.c
+          (cd "$W/guest"; find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$W/guest.cpio.gz")
+      - name: Compare futex and startup behavior on real Linux 4.9 guest
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/runtime"
+          set +e
+          timeout --signal=KILL 120s qemu-system-mipsel -M malta -cpu 4KEc -m 256 -smp 1 -nographic -no-reboot -nodefaults -nic none -monitor none -kernel "$W/root/boot/vmlinux-4.9.0-13-4kc-malta" -initrd "$W/guest.cpio.gz" -append 'console=ttyS0 rdinit=/init panic=1' -serial "file:$W/serial.log" > "$W/qemu.log" 2>&1
+          rc=$?
+          set -e
+          cat "$W/serial.log" "$W/qemu.log"
+          test "$rc" = 0
+          grep -Fq 'GO_RUNTIME_WITNESS go1.26.2 count=3200' "$W/serial.log"
+          grep -Fq 'RUNTIME_RESULT go1.26.1 rc=' "$W/serial.log"
+          grep -Fq 'RUNTIME_RESULT xray26.3.27 rc=' "$W/serial.log"
+          grep -Fq 'GUEST_EXIT 0' "$W/serial.log"
