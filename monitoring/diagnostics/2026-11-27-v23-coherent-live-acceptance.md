@@ -46,9 +46,26 @@ IPv6 no corresponding XRAY chain and no default route in all displayed
 tables. Initial audit aggregated same-name chains across iptables tables:
 do not infer filter policies or ordering from that output. Separate
 filter/mangle audit and passive 65-second route observation job
-ae50a45c-3d68-45b2-accf-3b4567a36621 submitted once; result pending.
-S98 source contains sleep 60, rule script contains route replace and
-chain flush; possible periodic writer, not established historical cause.
+ae50a45c-3d68-45b2-accf-3b4567a36621 completed exit 0. Exact separated
+tables: IPv4 filter FORWARD policy DROP (13 rules), XRAY_KS_HOME first
+jump, guard chain RETURN/DROP; filter OUTPUT ACCEPT (7 rules), no direct
+XRAY guard jump. IPv4 mangle PREROUTING first two rules jump XRAY_WIFI,
+11 rules in XRAY_WIFI, previously verified TCP/UDP TPROXY. IPv6 filter
+FORWARD DROP (12 rules), OUTPUT ACCEPT (3 rules), no XRAY guard chain;
+no default IPv6 route in the preceding all-tables snapshot. These are
+structural observations, not end-to-end outage or no-leak proofs.
+S98 calls rules script in a loop with sleep 60. Rule script SHA256
+ ead5de5555aaab1170a140ca3d41ea546330a99ba873b1961bee536bc12780ef.
+During 65-second passive ip monitor route observation, four IPv4 route
+snapshot changes (one added, one removed, repeated), none in table 100,
+none with expires fields; other three snapshot categories unchanged.
+38 route event lines, 19 Deleted, zero table 100/local default lines.
+Monitor was terminated by its owner after observation (rc -15).
+Thus background IPv4 routing churn is independently observed without
+candidate activity. Original mismatch cause cannot be attributed exactly;
+no evidence implicates table 100 in observed churn. Do not waive strict
+route witnesses, or claim the legacy S98 is safe. No raw route addresses
+or secrets disclosed.
 
 ## Release gate
 Previous unit CI 46023450359 SUCCESS 197/197 and packet reference CI
