@@ -196,3 +196,20 @@ class QualificationTests(unittest.TestCase):
                               geo={"status":"ok","city":"PRIVATE_FIXTURE"})])
         self.assertNotIn("203.0.113.1",self.out.getvalue())
         self.assertNotIn("PRIVATE_FIXTURE",self.out.getvalue())
+
+    def test_all_four_requests_independent_even_when_internet_fails(self):
+        observations=[{"status":"timeout"},event(401),{"status":"network_error"},{"status":"geo_unavailable"}]
+        fake_child=Mock()
+        with patch.object(self.m.subprocess,"Popen",return_value=fake_child), patch.object(self.m,"live_owner",return_value=True), patch.object(self.m,"observe",side_effect=observations) as observe, patch.object(self.m,"stop_child") as stop:
+            result=self.m.probe_node(outbound(4))
+        self.assertEqual([x.args[2] for x in observe.call_args_list],["internet","openai","exit_ip","geo"])
+        self.assertEqual(result["openai"],event(401))
+        self.assertFalse(self.m.qualify(result,NOW))
+        stop.assert_called_once_with(fake_child)
+
+    def test_candidate_budget_does_not_export_partial_pool(self):
+        ticks=iter([0,710])
+        with self.assertRaises(RuntimeError):
+            self.m.select_pool(["fixture","fixture"],deadline=720,converter=converter,
+                               probe=Mock(return_value=positive()),clock=lambda:NOW,
+                               monotonic=lambda:next(ticks))
