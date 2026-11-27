@@ -1,0 +1,21 @@
+name: RC2 synthetic diagnostic evidence
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths:
+      - '.github/workflows/rc2-evidence-semantics.yml'
+      - 'monitoring/lab/mixed_rc2/test_evidence_semantics.py'
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run existing classification and admission logic with simulated observations, network isolated
+        run: |
+          set -euo pipefail
+          sudo unshare --net -- env PYTHONPATH="$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/monitoring/lab/mixed_rc2" python3 -B monitoring/lab/mixed_rc2/test_evidence_semantics.py
