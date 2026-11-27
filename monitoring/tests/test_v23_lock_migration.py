@@ -224,7 +224,8 @@ class IntegratedMigrationTests(unittest.TestCase):
             if stage=="pins":raise RuntimeError("synthetic interruption")
         self.r.cut=cut
         with self.assertRaises(RuntimeError):self.g.release(self.r,"install",candidate=self.fixture.candidate)
-        with self.assertRaises(self.prior.m.Blocked):self.g.run("S97",lambda _:0,gate=self.r)
+        with self.assertRaises(m.Blocked):self.g.run("S97",lambda _:self.fail("actor ran"),gate=self.r)
+        self.assertFalse(self.g.receipt.exists())
         self.r.cut=lambda _:None
         self.assertEqual(self.g.release(self.r,"recover"),"old")
         self.assertEqual(self.g.run("S97",lambda _:0,gate=self.r),"protected")
