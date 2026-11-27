@@ -5,6 +5,7 @@ drained before bootstrap. This cannot fence arbitrary privileged writers.
 Never create a replacement lock after an ambiguous move or reboot.
 """
 import contextlib
+import ctypes
 import fcntl
 import json
 import os
@@ -17,6 +18,18 @@ from release_gate import atomic, sync_dir, encode, decode, sha, require, Blocked
 ACTORS=("cron","manual-updater","watchdog","S97","S98","legacy-vless","legacy-openai","RC2-probe")
 # Synthetic contracts only; not hashes of installed legacy scripts.
 GATED={a:sha(("gated-fixture:"+a).encode()) for a in ACTORS}
+
+def rename_noreplace(src,dst):
+    # Linux CI primitive: refuse to clobber any destination, even if it
+    # appeared after the preflight. Native kernel/libc support is a gate.
+    libc=ctypes.CDLL(None,use_errno=True)
+    fn=getattr(libc,"renameat2",None)
+    require(fn is not None,"renameat2 unavailable")
+    fn.argtypes=(ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint)
+    fn.restype=ctypes.c_int
+    if fn(-100,os.fsencode(src),-100,os.fsencode(dst),1)!=0:
+        n=ctypes.get_errno()
+        raise OSError(n,os.strerror(n))
 
 def valid_boot(b):
     try:return type(b) is str and str(uuid.UUID(b))==b
@@ -120,7 +133,7 @@ class Migration:
     def move(self,src,dst,d):
         require(self.sole(d)==src and not self.exists(dst),"move CAS")
         # No copy, create, unlink, or hardlink. Same inode under flock.
-        os.rename(src,dst)
+        rename_noreplace(src,dst)
         sync_dir(src.parent);sync_dir(dst.parent)
         require(self.sole(d)==dst,"move readback")
         self.cut("renamed")
