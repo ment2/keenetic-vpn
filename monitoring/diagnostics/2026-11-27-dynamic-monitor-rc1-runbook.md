@@ -120,3 +120,9 @@ Offline CI is not physical acceptance. Production application remains NO-GO
 until actual isolated probe, resource/timing, MQTT discovery/expiry,
 supported HA edit/render, backup and rollback checks are verified. No
 production deployment or monitoring cutover was performed in this stage.
+
+## Verified CI
+
+- Run 46013356951, commit 6aa9fbba899a59fa6220b709e545e5c3e0cc5825, job 140554233377: SUCCESS.
+- 138/138 tests, including synthetic HA Jinja rendering, current stable-ID history filters, real Linux loopback listener inode ownership, source parser rejection and schedule/lock checks.
+- CI runner is not the router; no live MQTT/HA acceptance, packet no-leak proof, physical backup or rollback rehearsal is claimed.
