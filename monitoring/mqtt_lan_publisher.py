@@ -42,7 +42,7 @@ def publish_once(*, host, port, username, password, topic, payload, client_id="k
     if not 1 <= port <= 65535:
         raise ValueError("port")
     data = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode()
-    if len(data) > 4096:
+    if len(data) > (32768 if topic == "keenetic/vpn-monitor/v1/dynamic_rc2" else 4096):
         raise ValueError("payload too large")
     connect = (_field("MQTT") + b"\x04\xc2" + struct.pack("!H", 20)
                + _field(client_id) + _field(username) + _field(password))
