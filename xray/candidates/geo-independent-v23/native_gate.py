@@ -107,6 +107,10 @@ def check():
     for rel in ("","bin","etc","etc/xray","etc/vpn-monitor","var","var/lib","var/lib/vpn-monitor"):
         dev,_=safe_directory(root/rel)
         require(dev==root.stat().st_dev,"unexpected mount inside persistent tree")
+    # A 0600 file in a 0777 non-sticky directory can still be renamed or
+    # removed by another user. Inode checks alone cannot close that race.
+    lock_parent_dev,_=safe_directory(LOCK.parent)
+    require(lock_parent_dev==root.stat().st_dev,"lock not on persistent mount")
     before=boot_id()
     fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW)
     try:
