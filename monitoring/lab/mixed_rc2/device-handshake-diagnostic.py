@@ -51,13 +51,17 @@ def main():
   fcntl.flock(lock,6);fcntl.flock(ul,5)
   for i,l in enumerate(hy,1):
    t=time.localtime();mem=int(next(x.split()[1] for x in Path("/proc/meminfo").read_text().splitlines() if x.startswith("MemAvailable:")))
-   if mem<81920 or ((3-t.tm_min)%15)*60-t.tm_sec<55 or t.tm_min>=58:print("SKIP_RESOURCE_SLOT",i);break
+   gap=((3-t.tm_min)%15)*60-t.tm_sec
+   print("RESOURCE",i,"MEM_KIB",mem,"MINUTE",t.tm_min,"SECONDS_TO_RC2",gap,flush=True)
+   if mem<81920 or gap<55 or t.tm_min>=58:print("SKIP_RESOURCE_SLOT",i);break
    u=urlsplit(l);q=uq(parse_qsl(u.query,True,True,max_num_fields=32));assert set(q)<={"sni","insecure","obfs","obfs-password","fm"} and q.get("insecure","0")=="0" and q["obfs"]=="salamander" and q["obfs-password"]
    m=json.loads(q["fm"],object_pairs_hook=uq);mask={"udp":[{"type":"salamander","settings":{"password":q["obfs-password"]}}]};v=m["quicParams"]
    assert set(m)=={"udp","quicParams"} and m["udp"]==mask["udp"] and set(v)<={"congestion","keepAlivePeriod","maxIdleTimeout"} and v["congestion"]=="bbr" and u.port==443
    for k,lo,hi in [("keepAlivePeriod",2,60),("maxIdleTimeout",4,120)]:
     if k in v:assert type(v[k]) is int and (v[k]==0 or lo<=v[k]<=hi)
    ips=sorted({x[4][0] for x in socket.getaddrinfo(u.hostname,443,socket.AF_INET,socket.SOCK_DGRAM)});assert ips and all(ipaddress.ip_address(x).is_global for x in ips);print("DNS",i,ips,flush=True)
+   for ip in ips:
+    route=sp.run(["ip","route","get",ip],capture_output=True,timeout=5); match=re.search(rb"\\bdev ([A-Za-z0-9_.-]+)",route.stdout);print("ROUTE",i,ip,"RC",route.returncode,"DEVICE",match.group(1).decode() if match else "UNKNOWN",flush=True)
    with socket.socket() as sk:sk.bind(("127.0.0.1",0));port=sk.getsockname()[1]
    o={"tag":"probe","protocol":"hysteria","settings":{"version":2,"address":u.hostname,"port":443},"streamSettings":{"network":"hysteria","security":"tls","tlsSettings":{"serverName":q.get("sni") or u.hostname,"alpn":["h3"]},"hysteriaSettings":dict(v,version=2,auth=unquote(u.netloc.rsplit("@",1)[0])),"finalmask":mask}}
    cfg={"log":{"loglevel":"debug"},"inbounds":[{"listen":"127.0.0.1","port":port,"protocol":"socks","tag":"in","settings":{"auth":"noauth"}}],"outbounds":[{"protocol":"blackhole","tag":"blocked"},o],"routing":{"rules":[{"type":"field","inboundTag":["in"],"outboundTag":"probe"}]}}
@@ -85,8 +89,11 @@ def main():
         print("CURL",i,r.returncode,out.decode() if re.fullmatch(rb"[0-9]{3}",out) else "INVALID","LISTENER_AFTER",owned(x.pid,port),"CONNECTED_UDP_OWNERS",witness,flush=True)
        finally:stop(r)
       finally:stop(x)
-     finally:stop(c)
-     logs.seek(0);s=logs.read(131072).decode(errors="replace").lower();print("LOG",i,{k:s.count(k) for k in ("timeout","no recent network activity","certificate","x509","handshake","authentication","connection refused","network is unreachable","failed","quic")})
+     finally:
+      if c.poll() is None:c.send_signal(2)
+      try:c.wait(2)
+      except sp.TimeoutExpired:stop(c)
+     logs.seek(0);s=logs.read(131072).decode(errors="replace").lower();print("LOG",i,{k:s.count(k) for k in ("timeout","no recent network activity","timeout: no recent network activity","certificate","x509","handshake","authentication","authentication failed","connection refused","network is unreachable","failed","quic","no such host","failed to dial","failed to connect","failed to open","drop packet","invalid packet","tls","crypto error")})
      packets.seek(0);ls=packets.read(131072).decode(errors="replace").splitlines();caplog.seek(0);cs=caplog.read(8192).decode(errors="replace");drop=re.search(r"(\d+) packets dropped by kernel",cs)
      print("PACKETS",i,"OUT",sum(any(" > "+a+".443:" in l for a in ips) for l in ls),"IN",sum(any(a+".443 > " in l for a in ips) for l in ls),"LINES",len(ls),"KERNEL_DROPS",int(drop.group(1)) if drop else None,flush=True)
    assert sha(A)==old[0]
