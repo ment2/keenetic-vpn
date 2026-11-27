@@ -63,7 +63,7 @@ RC2 runner constructs exact refresh + probe argv with reviewed pins,
 skips probe after refresh failure, and avoids old rc2_cycle idle check
 that would conflict with the held lock. It is an injected runner
 contract; no native monitor schedule integration or execution claimed.
-CI 46026734626 SUCCESS 231/231, 12 new tests including simulated reboot
+Final CI 46026859953 SUCCESS 232/232, 13 new tests (including lock-parent rejection). Earlier CI 46026734626 SUCCESS 231/231, including simulated reboot
 with new lock inode and preserved journal/receipt. Actual power failure
 and boot ordering remain unproven.
 
