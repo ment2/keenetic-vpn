@@ -213,3 +213,20 @@ class QualificationTests(unittest.TestCase):
             self.m.select_pool(["fixture","fixture"],deadline=720,converter=converter,
                                probe=Mock(return_value=positive()),clock=lambda:NOW,
                                monotonic=lambda:next(ticks))
+
+    def test_real_curl_does_not_fallback_to_direct_when_proxy_unreachable(self):
+        import shutil
+        curl=shutil.which("curl")
+        if not curl:
+            self.skipTest("curl required")
+        with socket.socket() as destination,socket.socket() as refused_proxy:
+            destination.bind(("127.0.0.1",0));destination.listen(4)
+            refused_proxy.bind(("127.0.0.1",0))
+            target=destination.getsockname()[1]
+            port=refused_proxy.getsockname()[1]
+            with patch.object(self.m,"CURL",curl), patch.dict(self.m.URLS,{"internet":"https://127.0.0.1:%d/204"%target}), patch.dict(os.environ,{"NO_PROXY":"*","no_proxy":"*","HTTPS_PROXY":"http://127.0.0.1:%d"%target}):
+                r=self.m.request(port,"internet")
+            self.assertNotEqual(r.returncode,0)
+            destination.settimeout(.2)
+            with self.assertRaises(TimeoutError):
+                destination.accept()
