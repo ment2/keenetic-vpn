@@ -54,7 +54,7 @@ def pool_ids(path, optional=False):
 def measure(event, node_id, kind, now):
     if not isinstance(event, dict) or event.get("node_id") != node_id:
         return ["missing", None, None, None, None]
-    expected = {"health": "isolated_xray_http_egress", "openai": "isolated_xray_openai_http"}[kind]
+    expected = {"health": "isolated_xray_http204", "geo": "isolated_xray_http_egress", "openai": "isolated_xray_openai_http"}[kind]
     if event.get("test_kind") != expected:
         return ["missing", None, None, None, None]
     try:
@@ -66,16 +66,16 @@ def measure(event, node_id, kind, now):
             return ["stale", stamp, None, None, None]
     except (ValueError, KeyError, TypeError, AttributeError, OverflowError):
         return ["missing", None, None, None, None]
-    success = "ok" if kind == "health" else "reachable"
+    success = "reachable" if kind == "openai" else "ok"
     status = event.get("status")
-    allowed = {"ok", "failed", "unknown"} if kind == "health" else {"reachable", "network_error", "http_error", "timeout", "unreachable", "unknown"}
+    allowed = {"ok", "failed", "unknown"} if kind != "openai" else {"reachable", "network_error", "http_error", "timeout", "unreachable", "unknown"}
     if not isinstance(status, str) or status not in allowed or (status == success and event.get("route_verified") is not True):
         status = "unknown"
     ms = event.get("test_duration_ms")
     if type(ms) is not int or not 0 <= ms <= 120000:
         ms = None
     ip = country = None
-    if kind == "health" and status == success:
+    if kind == "geo" and status == success:
         try:
             ip = str(ipaddress.ip_address(event.get("egress_ip")))
         except ValueError:
@@ -86,7 +86,63 @@ def measure(event, node_id, kind, now):
     return [status, stamp, ms, ip, country]
 
 
-def snapshot(entries, active, pending, observations, now):
+def endpoint_labels(config):
+    labels = {}
+    for outbound in config.get("outbounds", []):
+        if outbound.get("protocol") != "vless":
+            continue
+        server = outbound["settings"]["vnext"][0]
+        address = server["address"]
+        port = int(server["port"])
+        # Only hostname/IP and port; never URI, credentials or parameters.
+        try:
+            address = str(ipaddress.ip_address(address))
+        except ValueError:
+            if not isinstance(address, str) or not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", address):
+                address = None
+        if address and 1 <= port <= 65535:
+            labels[outbound["tag"]] = [address, port]
+    return labels
+
+
+def geo_details(obs, node, now):
+    from monitoring.isolated_pair_probe import clean_city
+    current = measure(obs.get("geo"), node, "geo", now)
+    prior = obs.get("last_geo")
+    if current[0] == "ok":
+        event = obs["geo"]
+        return [*current, clean_city(event.get("city"))]
+    if isinstance(prior, dict):
+        try:
+            stamp = datetime.fromisoformat(prior["checked_at"].replace("Z","+00:00")).timestamp()
+            # Last known data are never treated as fresh after a failed attempt.
+            if 0 <= now-stamp <= 86400:
+                old = measure(prior, node, "geo", stamp)
+                if old[0] == "ok":
+                    return ["stale", old[1], old[2], old[3], old[4], clean_city(prior.get("city"))]
+        except (ValueError,TypeError,KeyError,AttributeError,OverflowError):
+            pass
+    return [*current, None]
+
+
+def retain_geo(previous, current, entries):
+    result = {}
+    for entry in entries:
+        node = entry["node_id"]
+        old = previous.get(node, {}) if isinstance(previous, dict) else {}
+        new = dict(current.get(node, {}))
+        if not isinstance(old, dict):
+            old = {}
+        candidate = new.get("geo")
+        if not isinstance(candidate, dict) or candidate.get("status") != "ok":
+            candidate = old.get("last_geo")
+        if isinstance(candidate, dict) and candidate.get("node_id") == node:
+            new["last_geo"] = candidate
+        result[node] = new
+    return result
+
+
+def snapshot(entries, active, pending, observations, now, endpoints=None):
     rows = []
     for e in entries:
         node = e["node_id"]
@@ -95,12 +151,13 @@ def snapshot(entries, active, pending, observations, now):
             obs = {}
         h = measure(obs.get("health"), node, "health", now)
         o = measure(obs.get("openai"), node, "openai", now)
-        # Compact schema: ID, label, active, pending, health, time, duration,
-        # egress IP, country, OpenAI, time, duration.
+        g = geo_details(obs, node, now)
+        endpoint = (endpoints or {}).get(e["tag"], [None,None])
+        # Preserve RC1 column offsets for history; append RC2 fields.
         rows.append([node, e["tag"], None if active is None else node in active,
-                     None if pending is None else node in pending, *h, *o[:3]])
+                     None if pending is None else node in pending, *h[:3], g[3], g[4], *o[:3], *endpoint, g[0], g[1], g[5], g[2]])
     known = {e["node_id"] for e in entries}
-    result = {"schema": 1, "checked_at": int(now), "count": len(rows),
+    result = {"schema": 2, "checked_at": int(now), "count": len(rows),
               "inventory_status": "ok", "rows": rows,
               "active_unmatched": None if active is None else len(active-known),
               "pending_unmatched": None if pending is None else len(pending-known)}
@@ -165,16 +222,21 @@ def main():
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             config, entries = read_config(full, time.time())
             result = collect(config, entries, deadline=time.monotonic()+480)
+            try:
+                previous = json.loads(Path(args.cache).read_text())
+            except (OSError, ValueError):
+                previous = {}
+            result = retain_geo(previous, result, entries)
             atomic_cache(args.cache, result)
             if args.publish:
                 from monitoring.dynamic_history import publish_history
-                rows = snapshot(entries, None, None, result, time.time())["rows"]
+                rows = snapshot(entries, None, None, result, time.time(), endpoint_labels(config))["rows"]
                 publish_history(rows)
         print("PROBE_CYCLE", len(result))
         return
     now = time.time()
     try:
-        _, entries = read_config(full, now)
+        config, entries = read_config(full, now)
         if not entries:
             raise ValueError("empty subscription")
         try:
@@ -184,9 +246,9 @@ def main():
                 obs = {}
         except (OSError, ValueError):
             obs = {}
-        result = snapshot(entries, pool_ids(args.active), pool_ids(args.pending, optional=True), obs, now)
+        result = snapshot(entries, pool_ids(args.active), pool_ids(args.pending, optional=True), obs, now, endpoint_labels(config))
     except (ValueError, OSError, KeyError, TypeError, AttributeError):
-        result = {"schema": 1, "checked_at": int(now), "inventory_status": "unavailable", "count": 0, "rows": []}
+        result = {"schema": 2, "checked_at": int(now), "inventory_status": "unavailable", "count": 0, "rows": []}
     if args.publish:
         from monitoring.mqtt_lan_publisher import load_password, publish_once
         kw = dict(host="192.168.0.169", port=1883, username="keenetic_monitor",
