@@ -1,0 +1,48 @@
+name: Official Hysteria2 full-system MIPS Linux 4.9
+on:
+  push:
+    branches: [feature/rc2-hysteria2-monitor-candidate-20261127]
+    paths:
+      - '.github/workflows/rc2-official-hy2-mips49.yml'
+      - 'monitoring/lab/mixed_rc2/official_hy2_mips49.c'
+permissions:
+  contents: read
+jobs:
+  mips49:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends qemu-system-mips gcc-mipsel-linux-gnu libc6-dev-mipsel-cross cpio gzip curl openssl
+      - name: Build pinned guest
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/official-mips49"; mkdir -p "$W/root" "$W/guest/proc" "$W/guest/dev"
+          curl -q -fL --max-time 120 -o "$W/kernel.deb" https://archive.debian.org/debian/pool/main/l/linux/linux-image-4.9.0-13-4kc-malta_4.9.228-1_mipsel.deb
+          printf '9a5dff9c498bf5736ca9f97cbb005b4b60bd139aa0f30f5bab9feca783907d9b  %s\n' "$W/kernel.deb" | sha256sum -c -
+          dpkg-deb -x "$W/kernel.deb" "$W/root"
+          printf '20f5380e02f2e40d4495fd61a854e5867f5ccdf95c8c1fd3d53fe27e8be1797f  %s\n' "$W/root/boot/vmlinux-4.9.0-13-4kc-malta" | sha256sum -c -
+          curl -q -fL --max-time 120 -o "$W/guest/hy" https://github.com/HyNetworks/hysteria/releases/download/app/v2.7.0/hysteria-linux-mipsle-sf
+          printf 'df667889840c3976e73abd29880d4a672bb62a88b73bfb7b6c6b4d5406a6907c  %s\n' "$W/guest/hy" | sha256sum -c -
+          chmod 755 "$W/guest/hy"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj /CN=localhost -addext subjectAltName=DNS:localhost -addext basicConstraints=critical,CA:TRUE -keyout "$W/guest/key.pem" -out "$W/guest/ca.pem" 2>/dev/null
+          printf '%s\n' '{"listen":"127.0.0.1:14443","tls":{"cert":"/ca.pem","key":"/key.pem"},"auth":{"type":"password","password":"synthetic-only"},"obfs":{"type":"salamander","salamander":{"password":"synthetic-mask"}}}' > "$W/guest/server.json"
+          printf '%s\n' '{"server":"127.0.0.1:14443","auth":"synthetic-only","tls":{"sni":"localhost","ca":"/ca.pem","insecure":false},"obfs":{"type":"salamander","salamander":{"password":"synthetic-mask"}},"socks5":{"listen":"127.0.0.1:11080","disableUDP":true}}' > "$W/guest/client.json"
+          mipsel-linux-gnu-gcc -static -O2 -Wall -Wextra -Werror -o "$W/guest/init" monitoring/lab/mixed_rc2/official_hy2_mips49.c
+          (cd "$W/guest"; find . -print0 | cpio --null -o --format=newc 2>/dev/null | gzip -1 > "$W/guest.cpio.gz")
+      - name: Boot real MIPS Linux 4.9 without NIC
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/official-mips49"
+          set +e
+          timeout --signal=KILL 120s qemu-system-mipsel -M malta -cpu 4KEc -m 256 -smp 1 -nographic -no-reboot -nodefaults -nic none -monitor none -kernel "$W/root/boot/vmlinux-4.9.0-13-4kc-malta" -initrd "$W/guest.cpio.gz" -append 'console=ttyS0 rdinit=/init panic=1' -serial "file:$W/serial.log" > "$W/qemu.log" 2>&1
+          rc=$?
+          set -e
+          cat "$W/serial.log" "$W/qemu.log"
+          test "$rc" = 0
+          grep -Fq 'OFFICIAL_HY2_MIPS49_SALAMANDER_TLS_HTTP204_PASS' "$W/serial.log"
+          grep -Fq 'GUEST_HTTP_WITNESS' "$W/serial.log"
+          grep -Fq 'GUEST_CHILDREN_REAPED' "$W/serial.log"
+          grep -Fq 'GUEST_EXIT 0' "$W/serial.log"
