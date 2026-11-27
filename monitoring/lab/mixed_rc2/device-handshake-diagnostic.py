@@ -15,9 +15,17 @@ def stop(p):
 def owned(pid,port):
  try:
   endpoint="0100007F:%04X"%port
-  ids={x[9] for l in Path("/proc/net/tcp").read_text().splitlines()[1:] for x in [l.split()] if len(x)>9 and x[1]==endpoint and x[3]=="0A"}
-  return len(ids)==1 and any(os.readlink(f)=="socket:[%s]"%next(iter(ids)) for f in Path("/proc/%d/fd"%pid).iterdir() if f.exists() or f.is_symlink())
- except OSError:return False
+  with Path("/proc/net/tcp").open() as f:
+   next(f,None)
+   ids={p[9] for l in f for p in [l.split()] if len(p)>9 and p[1].upper()==endpoint and p[3]=="0A"}
+  if len(ids)!=1:return False
+  inode=next(iter(ids))
+  for fd in Path("/proc/%d/fd"%pid).iterdir():
+   try:
+    if os.readlink(fd)=="socket:[%s]"%inode:return True
+   except OSError:continue
+ except (OSError,ValueError):pass
+ return False
 def udp_owned(pid,ips):
  try:
   ids=set()
@@ -74,31 +82,42 @@ def main():
     f=Path(td)/"c"
     with os.fdopen(os.open(f,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),"w") as w:json.dump(cfg,w)
     with tempfile.TemporaryFile() as logs,tempfile.TemporaryFile() as packets,tempfile.TemporaryFile() as caplog:
-     c=sp.Popen([shutil.which("tcpdump"),"-n","-l","-i",device,"-s","96","-c","512","udp and port 443 and ("+" or ".join("host "+a for a in ips)+")"],stdout=packets,stderr=caplog)
+     witness=set();phase="CAPTURE_START";x=None;c=None;r=None
      try:
-      time.sleep(.5);assert c.poll() is None
+      c=sp.Popen([shutil.which("tcpdump"),"-n","-l","-i",device,"-s","96","-c","512","udp and port 443 and ("+" or ".join("host "+a for a in ips)+")"],stdout=packets,stderr=caplog)
+      time.sleep(.5)
+      print("CAPTURE_START",i,c.poll(),flush=True)
+      phase="XRAY_CONFIG_TEST"
+      test=sp.run([str(X),"run","-test","-config",str(f)],stdout=logs,stderr=logs,timeout=12)
+      print("CONFIG_TEST",i,test.returncode,flush=True)
+      if test.returncode:raise RuntimeError("config test")
+      phase="XRAY_START"
       x=sp.Popen([str(X),"run","-config",str(f)],stdout=logs,stderr=logs)
-      try:
-       end=time.monotonic()+5
-       while time.monotonic()<end and not owned(x.pid,port):
-        if x.poll() is not None:break
-        time.sleep(.1)
-       assert x.poll() is None and owned(x.pid,port)
-       env={k:v for k,v in os.environ.items() if k.lower() not in ("http_proxy","https_proxy","all_proxy","no_proxy")}
-       r=sp.Popen([str(B/"curl"),"-q","--noproxy","","--proxy","socks5h://127.0.0.1:%d"%port,"--connect-timeout","10","--max-time","12","-s","-o","/dev/null","-w","%{http_code}","https://www.gstatic.com/generate_204"],stdout=sp.PIPE,stderr=sp.DEVNULL,env=env)
-       witness=set();end=time.monotonic()+14
-       try:
-        while r.poll() is None and time.monotonic()<end:
-         witness.update(udp_owned(x.pid,ips));time.sleep(.1)
-        out,_=r.communicate(timeout=1)
-        print("CURL",i,r.returncode,out.decode() if re.fullmatch(rb"[0-9]{3}",out) else "INVALID","LISTENER_AFTER",owned(x.pid,port),"OWNED_UDP_PORT_COUNT",len(witness),flush=True)
-       finally:stop(r)
-      finally:stop(x)
+      end=time.monotonic()+6
+      while time.monotonic()<end and not owned(x.pid,port):
+       if x.poll() is not None:break
+       time.sleep(.1)
+      own=owned(x.pid,port)
+      print("XRAY_START",i,x.poll(),"OWNED",own,flush=True)
+      if x.poll() is not None or not own:raise RuntimeError("listener")
+      phase="CURL"
+      env={k:v for k,v in os.environ.items() if k.lower() not in ("http_proxy","https_proxy","all_proxy","no_proxy")}
+      r=sp.Popen([str(B/"curl"),"-q","--noproxy","","--proxy","socks5h://127.0.0.1:%d"%port,"--connect-timeout","10","--max-time","12","-s","-o","/dev/null","-w","%{http_code}","https://www.gstatic.com/generate_204"],stdout=sp.PIPE,stderr=sp.DEVNULL,env=env)
+      end=time.monotonic()+14
+      while r.poll() is None and time.monotonic()<end:
+       witness.update(udp_owned(x.pid,ips));time.sleep(.1)
+      out,_=r.communicate(timeout=1)
+      print("CURL",i,r.returncode,out.decode() if re.fullmatch(rb"[0-9]{3}",out) else "INVALID","LISTENER_AFTER",owned(x.pid,port),"OWNED_UDP_PORT_COUNT",len(witness),flush=True)
+     except Exception as e:
+      print("PHASE_ERROR",i,phase,type(e).__name__,flush=True)
      finally:
-      if c.poll() is None:c.send_signal(2)
-      try:c.wait(2)
-      except sp.TimeoutExpired:stop(c)
-     logs.seek(0);s=logs.read(131072).decode(errors="replace").lower();print("LOG",i,{k:s.count(k) for k in ("timeout","no recent network activity","timeout: no recent network activity","certificate","x509","handshake","authentication","authentication failed","connection refused","network is unreachable","failed","quic","no such host","failed to dial","failed to connect","failed to open","drop packet","invalid packet","tls","crypto error")})
+      if r is not None:stop(r)
+      if x is not None:stop(x)
+      if c is not None:
+       if c.poll() is None:c.send_signal(2)
+       try:c.wait(2)
+       except sp.TimeoutExpired:stop(c)
+     logs.seek(0);s=logs.read(131072).decode(errors="replace").lower();print("LOG",i,{k:s.count(k) for k in ("timeout","no recent network activity","timeout: no recent network activity","certificate","x509","handshake","authentication","authentication failed","connection refused","network is unreachable","failed","quic","no such host","failed to dial","failed to connect","failed to open","drop packet","invalid packet","tls","crypto error","failed to start","failed to load","invalid config","unknown","permission denied","address already in use","failed to listen","no such file","handshake did not complete")})
      packets.seek(0);ls=packets.read(131072).decode(errors="replace").splitlines();caplog.seek(0);cs=caplog.read(8192).decode(errors="replace");drop=re.search(r"(\d+) packets dropped by kernel",cs)
      outp=[l for l in ls if any(" > "+a+".443:" in l for a in ips)];inp=[l for l in ls if any(a+".443 > " in l for a in ips)]
      matched_out=sum(any(re.search(r"\."+str(p)+r" > ",l) for p in witness) for l in outp);matched_in=sum(any(re.search(r"\."+str(p)+r":",l) for p in witness) for l in inp)
