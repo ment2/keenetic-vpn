@@ -189,6 +189,7 @@ class Migration:
             require(p==(self.new if d["phase"]=="protected" else self.old),"phase/path mismatch")
             with self.locked(p,d["inode"]):
                 require(self.sole(d)==p,"lock path changed")
+                release_generation=None
                 if gate is not None:
                     require(gate.root==self.root and gate.state==self.release_state,"foreign release gate")
                     gate.lock=p;gate.lock_id=tuple(d["inode"])
@@ -196,7 +197,10 @@ class Migration:
                     if self.exists(self.release_journal):
                         j,_,_=gate.checked_journal()
                         require(j["phase"]=="committed" and gate.pair_matches(gate.new),"release not committed")
-                    else:require(gate.pair_matches(gate.old),"unknown release baseline")
+                        release_generation="new"
+                    else:
+                        require(gate.pair_matches(gate.old),"unknown release baseline")
+                        release_generation="old"
                 atomic(self.receipt,encode({"actor":actor,"boot":self.boot,"pid":os.getpid(),"inode":d["inode"]}),0o600)
                 self.cut("before-actor")
                 rc=fn(p)
@@ -205,7 +209,11 @@ class Migration:
                 self.verify_actors()
                 if gate is not None:
                     gate.verify_idle()
-                    require(gate.pair_matches(gate.new if self.exists(self.release_journal) else gate.old),"release pair changed")
+                    if release_generation=="new":
+                        j,_,_=gate.checked_journal()
+                        require(j["phase"]=="committed" and gate.pair_matches(gate.new),"release pair changed")
+                    else:
+                        require(not self.exists(self.release_journal) and gate.pair_matches(gate.old),"release pair changed")
                 require(self.state()==d and self.sole(d)==p,"state changed during actor")
                 self.receipt.unlink();sync_dir(self.protected)
                 return d["phase"]
@@ -224,6 +232,7 @@ class Migration:
             d=self.state()
             require(d["boot"]==self.boot and d["phase"]=="protected" and self.sole(d)==self.new,"protected lock required")
             gate.lock=self.new
+            gate.expected_lock_id=tuple(d["inode"])
             # Existing release Gate checks identity on open/readback. The
             # coordinator holds the control lock for the entire call.
             if operation=="install":result=gate.install(candidate)
