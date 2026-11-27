@@ -48,6 +48,17 @@ class NativeContractTests(unittest.TestCase):
     def test_mount_escape(self):
         text="1 0 8:1 / /media/my\\040usb rw - ext4 /dev/sda1 rw"
         self.assertEqual(m.mount_record("/media/my usb/etc",text)["device"],"8:1")
+    def test_lock_parent_requires_protected_directory(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"lock-parent";p.mkdir(mode=0o700)
+            self.assertEqual(m.safe_directory(p,os.geteuid()),(p.stat().st_dev,p.stat().st_ino))
+            for mode in (0o777,0o1777,0o775):
+                p.chmod(mode)
+                with self.assertRaises(m.Blocked):m.safe_directory(p,os.geteuid())
+            p.chmod(0o755)
+            self.assertEqual(m.safe_directory(p,os.geteuid()),(p.stat().st_dev,p.stat().st_ino))
+            q=Path(d)/"alias";q.symlink_to(p)
+            with self.assertRaises(m.Blocked):m.safe_directory(q,os.geteuid())
     def test_read_no_symlink_or_hardlink(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"file";p.write_bytes(b"fixture");p.chmod(0o600)
