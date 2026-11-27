@@ -12,9 +12,9 @@ N2 = "node_" + "b"*20
 ENTRIES = [{"node_id": N1, "tag": "vpn01"}, {"node_id": N2, "tag": "vpn06"}]
 
 def event(node=N1, kind="health", age=0, verified=True):
-    return {"node_id": node, "test_kind": "isolated_xray_http_egress" if kind=="health" else "isolated_xray_openai_http",
+    return {"node_id": node, "test_kind": {"health":"isolated_xray_http204","geo":"isolated_xray_http_egress","openai":"isolated_xray_openai_http"}[kind],
             "checked_at": datetime.fromtimestamp(NOW-age,timezone.utc).isoformat(),
-            "status": "ok" if kind=="health" else "reachable", "route_verified": verified,
+            "status": "reachable" if kind=="openai" else "ok", "route_verified": verified,
             "test_duration_ms": 4000, "egress_ip": "203.0.113.1", "country_code": "DE"}
 
 class DynamicSnapshotTests(unittest.TestCase):
@@ -72,3 +72,46 @@ class DynamicSnapshotTests(unittest.TestCase):
     def test_discovery_expiry(self):
         self.assertEqual(d.discovery()["expire_after"],150)
         self.assertEqual(d.discovery()["json_attributes_topic"],d.TOPIC)
+
+    def test_geo_failure_independent_of_http204(self):
+        r=d.snapshot(ENTRIES,set(),set(),{N1:{"health":event(),"geo":dict(event(kind="geo"),status="failed"),"openai":event(kind="openai")}},NOW)
+        row=r["rows"][0]
+        self.assertEqual((row[4],row[9],row[14]),("ok","reachable","failed"))
+        self.assertIsNone(row[7])
+    def test_last_geo_is_stale_after_failure_and_expires(self):
+        prior=dict(event(kind="geo",age=600),city="Berlin")
+        merged=d.retain_geo({N1:{"last_geo":prior}},{N1:{"geo":dict(event(kind="geo"),status="failed")}},ENTRIES,now=NOW)
+        r=d.snapshot(ENTRIES,set(),set(),merged,NOW)
+        self.assertEqual(r["rows"][0][14:17],["stale",NOW-600,"Berlin"])
+        self.assertEqual(r["rows"][0][7],"203.0.113.1")
+        self.assertIsNone(d.snapshot(ENTRIES,set(),set(),merged,NOW+86401)["rows"][0][7])
+    def test_address_change_does_not_inherit_geo(self):
+        prior=dict(event(kind="geo"),city="Berlin")
+        new=[{"node_id":N2,"tag":"vpn01"}]
+        merged=d.retain_geo({N1:{"last_geo":prior}},{},new,now=NOW)
+        row=d.snapshot(new,set(),set(),merged,NOW,{"vpn01":["new.example.invalid",443]})["rows"][0]
+        self.assertIsNone(row[7])
+        self.assertEqual(row[12:14],["new.example.invalid",443])
+    def test_new_egress_replaces_previous(self):
+        a=dict(event(kind="geo",age=600),city="Berlin")
+        b=dict(event(kind="geo"),egress_ip="203.0.113.2",city="Paris",country_code="FR")
+        merged=d.retain_geo({N1:{"last_geo":a}},{N1:{"geo":b}},ENTRIES,now=NOW)
+        row=d.snapshot(ENTRIES,set(),set(),merged,NOW)["rows"][0]
+        self.assertEqual((row[7],row[8],row[16]),("203.0.113.2","FR","Paris"))
+    def test_invalid_geo_never_overwrites_good(self):
+        prior=event(kind="geo",age=600)
+        invalid=event(kind="geo",verified=False)
+        merged=d.retain_geo({N1:{"last_geo":prior}},{N1:{"geo":invalid}},ENTRIES,now=NOW)
+        self.assertEqual(merged[N1]["last_geo"],prior)
+    def test_payload_worst_case(self):
+        entries=[{"node_id":"node_%020x"%i,"tag":"vpn%02d"%i} for i in range(1,25)]
+        observations={e["node_id"]:{"health":event(e["node_id"]),"openai":event(e["node_id"],kind="openai"),"geo":dict(event(e["node_id"],kind="geo"),city="𐐀"*64,egress_ip="2001:db8:ffff:ffff:ffff:ffff:ffff:ffff")} for e in entries}
+        endpoints={e["tag"]:["a"*253,65535] for e in entries}
+        result=d.snapshot(entries,set(),set(),observations,NOW,endpoints)
+        self.assertEqual(result["count"],24)
+        self.assertLessEqual(len(json.dumps(result,separators=(",",":"),ensure_ascii=True).encode()),d.MAX_PAYLOAD)
+    def test_endpoint_never_contains_uri_or_credentials(self):
+        def ob(address):
+            return {"protocol":"vless","tag":"vpn01","settings":{"vnext":[{"address":address,"port":443}]}}
+        self.assertEqual(d.endpoint_labels({"outbounds":[ob("example.invalid")]}),{"vpn01":["example.invalid",443]})
+        self.assertEqual(d.endpoint_labels({"outbounds":[ob("secret@host")] }),{})
