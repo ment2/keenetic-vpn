@@ -42,3 +42,10 @@ No operational master/escrow key was created; no sender, receiver, schedule, or 
 5. Only after the gates pass, resume the frozen Backup DR runbook and perform its owner-reviewed allowlist, key/escrow, first archive, receipt, and isolated restore gates.
 
 No release gate is marked passed based on a synthetic tool result or permission grant.
+
+## Follow-up after user authorization
+
+- The exact RC2 and RC3 source archives are available and were inspected; they contain pinned manifests and test harnesses, not a native runtime or preinstalled packages.
+- A read-only search of the current runtime, system package paths and workspace found no `workerd` executable or installed `miniflare`/`workerd` packages. The local npm cache has no matching package entries.
+- The current Work shell is not established as the project-approved native runner. Existing GitHub Actions runs remain empty for the pinned commit, and the available GitHub actions tools do not expose workflow dispatch. No package installation or alternate download route was attempted.
+- User authorized continuation, but that permission does not provision a runner. Native acceptance and rollback remain blocked until an authorized runner is connected or exposed.
