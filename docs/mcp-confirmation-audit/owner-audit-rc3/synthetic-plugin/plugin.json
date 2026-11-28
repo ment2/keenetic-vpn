@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "synthetic-consent-lab",
+  "version": "0.1.0",
+  "description": "Disposable confirmation test with a fixed in-memory marker. No production devices, credentials, files, shell, or external data."
+}
