@@ -1,0 +1,1 @@
+{"name":"isolated-oauth-stage","private":true,"dependencies":{"miniflare":"5.20261123.1-beta","workerd":"1.20261123.1"}}
