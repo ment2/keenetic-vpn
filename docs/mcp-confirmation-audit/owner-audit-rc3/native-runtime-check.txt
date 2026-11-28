@@ -1,0 +1,5 @@
+npm error code ENOTCACHED
+npm error request to https://registry.npmjs.org/youch-core/-/youch-core-0.3.3.tgz failed: cache mode is 'only-if-cached' but no cached response is available.
+npm error A complete log of this run can be found in: <local-npm-log>
+
+Normal npm ci attempt: timed out after 10 seconds; no usable native runtime installed.
