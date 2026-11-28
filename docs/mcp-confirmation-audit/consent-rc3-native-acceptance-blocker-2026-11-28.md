@@ -2,50 +2,36 @@
 
 ## Decision
 
-**MCP Operation Consent RC3: NO-GO. Backup DR: HOLD.** The requested native acceptance and rollback could not be run because this Work session has no approved native runner available. Backup DR did not proceed past the existing installation gate. No production Worker, router, Home Assistant service, policy, or plugin was changed.
+**RC3 native acceptance: PASS. Native rollback/reapply: PASS. RC3 release: NO-GO. Backup DR: HOLD.** The isolated GitHub Actions run passed both native gates. Production Worker, router, Home Assistant service, policy, plugin, and deployment state were not changed.
 
-## Checkpoint and fixture
+## Checkpoint and exact inputs
 
-- Parent requested: `ment2/keenetic-vpn@c1575fca78e967f136140b9c0388cd07823a8e46`; the referenced RC3 README is readable at that ref.
-- The supplied host-native checkpoint archive was extracted and all 12 listed payload hashes in `SHA256SUMS` passed.
-- The recorded synthetic result remains **BETA / 1**. It was not repeated. No additional host confirmation window was observed, so this is evidence of one successful synthetic mutation only; host-side decline and distinct confirmation evidence are still missing.
-- The exact legacy Keenetic reference was retrieved from `ment2/keenetic-control@c422f98ec4ec9b4626603a893de877ff74e161ef`; Git blob: `64e9ae80553852a4ee77c290db13da2e8fa7fc1a`.
+- RC3 source: `ment2/keenetic-vpn@c1575fca78e967f136140b9c0388cd07823a8e46`.
+- Legacy Keenetic reference: `ment2/keenetic-control@c422f98ec4ec9b4626603a893de877ff74e161ef`, Git blob `64e9ae80553852a4ee77c290db13da2e8fa7fc1a`.
+- Reconstructed RC6/RC2/RC3 sources and pinned sidecars passed the preflight hashes. Native package lock SHA-256: `9920663ac095b9f382d5d2db06f1a9422fc72369d3ef895dbc8ba1463413374b`; Miniflare `5.20261123.1-beta`, workerd `1.20261123.1`.
+- Final GitHub Actions run `46124288069`, job `140915306692`, commit `7e05b773c1d62b081e905177f670be52987b0c0f`; evidence artifact `15255416343` (30-day retention). The branch is `codex/consent-rc3-native-rollback-20261128` in `ment2/keenetic-control`.
 
-## Native runner gate
+## Native acceptance and rollback
 
-The current Work shell reports Node `v24.22.3` and npm `11.19.1`, but neither pinned `miniflare@5.20261123.1-beta` nor `workerd@1.20261123.1` is installed; `workerd` is absent from PATH. The checkpoint already records blocked package installation in its prior environment. This session exposes no existing GitHub Actions run for commit c1575fca, and no runner dispatch interface was available. No package install, mirror, alternate transport, or retry of the denied operation was attempted.
+- Existing RC3 native integration harness passed on GitHub-hosted Ubuntu with the pinned Workerd runtime: **10/10 tests**, 0 failures. Both Keenetic and HA Worker builds passed 4/4 subtests: correlated approval/revoke audit, invalid proof and owner pairing rejection, signed transport consumption, and revoke-versus-consume race plus redaction checks. The test host denies outbound calls and uses synthetic bindings and SQLite Durable Objects.
+- Separate native rollback/reapply passed **2/2**: RC3 → exact RC2 → RC3 for Keenetic and HA using the same temporary SQLite Durable Object persistence path. A completed synthetic job remained `done`; the legacy audit route remained available during rollback; the owner-audit table/events were preserved after reapply (`audit_preserved=8` per target); a policy revision invalidated a pending test grant.
+- The prior Work UI BETA/1 operation was **not repeated**. These were isolated Workerd fixtures with their own synthetic operations and disposable state; no live endpoints were contacted.
 
-Therefore the native RC3 harness, native rollback/reapply, and their isolation/SQLite checks remain **NOT RUN**. Loopback HTTPS and packaging tests in the checkpoint do not substitute for workerd acceptance.
+## Current working MCP compatibility
 
-## Current MCP compatibility
+Read-only permission metadata: Keenetic revision 2 and HA revision 4; remote/admin enabled; scopes `diagnostic`, `exec`, `read_file`, `write_file`. This is an administrative grant, not host-consent evidence.
 
-Read-only permission metadata still reports Keenetic revision 2 and Home Assistant revision 4, both with remote/admin enabled and diagnostic/exec/read_file/write_file scopes. This is an administrative grant, not proof of host consent.
+The current write tools remain legacy contracts: Keenetic `queue_router_task` and HA `ha_exec_command` / `ha_write_file` accept optional `confirmed?: boolean`. They do not carry RC3 pending-operation registration, challenge-bound owner approval/revocation, or the signed one-time transport proof. **The current MCP adapters are not compatible with RC3 as a released consent path.** No write call was made.
 
-The active write descriptors remain legacy-style:
-- Keenetic `queue_router_task`: `op`, optional command/path/content, optional `confirmed`.
-- Home Assistant `ha_exec_command` and `ha_write_file`: command or path/content plus optional `confirmed`.
+## Backup DR decision and remaining gates
 
-They do not expose the RC3 pending-client registration, challenge-bound owner approval/revocation, signed one-time consumption proof, or the authenticated transport-header contract. RC3 is therefore not compatible with the currently exposed write tools as a released consent path. No write call was made.
+The original gate at commit `ment2/keenetic-vpn@4af0362b459fea39bd3e850a8028293b7873e8f1` still forbids repeating or routing around the previously rejected Keenetic package transfer. The new GitHub workflow was test-only (`contents: read`), with no deployment step. It does not establish an approved sender installation route. Commit `4af0362b459fea39bd3e850a8028293b7873e8f1` was not used to install or activate anything.
 
-## Backup DR decision
+RC3 remains NO-GO and Backup DR remains HOLD until the separately required host integration and real install gates are met. In particular, the reported BETA/1 run had no additional host confirmation window; it cannot stand in for an independent accept/decline test, and it was not repeated. The current adapters also lack the RC3 transport. The sender install path must be established through the previously authorized normal route; no alternate tool, host, or transfer method was used.
 
-The existing Backup DR gate still forbids repeating or rerouting the rejected Keenetic package transfer. Permission metadata does not establish an allowed sender installation path. The required independently approved runner and штатный путь установки were not established, so commit `4af0362b459fea39bd3e850a8028293b7873e8f1` was **not** used to install or activate anything.
+No operational master/escrow key was created; no owner-reviewed allowlist, sender, schedule, archive, receipt, or isolated restore was activated. Existing receiver staging `17/17` and synthetic restore PASS remain historical evidence and were not rerun.
 
-No operational master/escrow key was created; no sender, receiver, schedule, or archive was activated; no HA or router change was made. Existing receiver staging and synthetic restore evidence remain historical and were not rerun.
+## Evidence links
 
-## Release gates still open
-
-1. Run the pinned RC3 native harness and rollback/reapply on an explicitly permitted isolated runner using the exact compiled sources and legacy reference.
-2. Establish actual host-side accept and decline evidence without repeating BETA/1, then verify that refusal does not reach the fixture.
-3. Attest deployed descriptors, transport identity, and client compatibility; the active MCP contracts currently do not implement RC3.
-4. Independently establish an allowed Backup DR installation path without repeating or routing around the rejected transfer.
-5. Only after the gates pass, resume the frozen Backup DR runbook and perform its owner-reviewed allowlist, key/escrow, first archive, receipt, and isolated restore gates.
-
-No release gate is marked passed based on a synthetic tool result or permission grant.
-
-## Follow-up after user authorization
-
-- The exact RC2 and RC3 source archives are available and were inspected; they contain pinned manifests and test harnesses, not a native runtime or preinstalled packages.
-- A read-only search of the current runtime, system package paths and workspace found no `workerd` executable or installed `miniflare`/`workerd` packages. The local npm cache has no matching package entries.
-- The current Work shell is not established as the project-approved native runner. Existing GitHub Actions runs remain empty for the pinned commit, and the available GitHub actions tools do not expose workflow dispatch. No package installation or alternate download route was attempted.
-- User authorized continuation, but that permission does not provision a runner. Native acceptance and rollback remain blocked until an authorized runner is connected or exposed.
+- [Successful native acceptance and rollback run](https://github.com/ment2/keenetic-control/actions/runs/46124288069)
+- [Isolated runner branch](https://github.com/ment2/keenetic-control/tree/codex/consent-rc3-native-rollback-20261128)
