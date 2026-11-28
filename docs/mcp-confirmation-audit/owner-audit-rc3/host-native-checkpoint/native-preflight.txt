@@ -1,0 +1,7 @@
+RC3 archive manifest: 20/20 SHA-256 verified
+RC3 entrypoint/coordinator and pinned lock verified
+v22.16.0
+Miniflare: MODULE_NOT_FOUND
+Workerd: not on PATH
+Original legacy source not present in isolated reconstructed tree: catalog stub retained
+No package installation attempted; no network endpoint registered.
