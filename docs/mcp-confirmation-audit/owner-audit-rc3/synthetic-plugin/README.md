@@ -1,0 +1,10 @@
+# Synthetic Consent Lab (unregistered test plugin source)
+
+Independent MCP fixture for ChatGPT confirmation tests. No production device access, files, command execution, persistent data, external requests or secrets. Only the two enum values ALPHA/BETA can be stored in memory. Each accepted replacement increments a bounded count. Read-only status has no effect; the write has destructiveHint:true because it overwrites the fixture and is not idempotent because of the counter. The direct protocol tests do NOT test host approval. The fixture's noauth scheme is for a disposable test instance, not a production design.
+
+Use a separately authorized private test hosting instance with an isolated state lifetime and no production bindings. Do not expose it on an unauthorized route or use it to bypass an earlier denial. The portable plugin.json identifies the package; mcp.json or registered .app.json can be generated ONLY after an actual approved HTTPS endpoint and registered technical ID exist. Do not register a fake URL. This source package is not a connected plugin.
+
+Host test: in a new chat, select only the test plugin. Scan tools and verify annotation values. Read baseline. Explicitly request a replacement of ALPHA by BETA, decline the genuine host confirmation. Read status and assert count unchanged. In a separate new explicitly requested test, approve the genuine confirmation and read status to verify one replacement. Record only actual UI outcome, synthetic counts and timestamps; do not infer host approval from a server response. If the host doesn't show a prompt, or an administrator blocks the browser/connection, stop and record the gate. Do not retry denied calls. Keep the fixture private and dispose of the test instance after the test. The in-memory implementation requires a single test process/instance; verify stable state between observations. Do not use shared or production deployments.
+
+Official reference: https://developers.openai.com/plugins/reference#annotations
+Packaging: https://developers.openai.com/plugins/build/plugins
