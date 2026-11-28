@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: keenetic actual transport request wiring
+ok 1 - keenetic actual transport request wiring
+  ---
+  duration_ms: 46.022124
+  type: 'test'
+  ...
+# Subtest: ha actual transport request wiring
+ok 2 - ha actual transport request wiring
+  ---
+  duration_ms: 4.439192
+  type: 'test'
+  ...
+# Subtest: no unsafe origins or equal credentials
+ok 3 - no unsafe origins or equal credentials
+  ---
+  duration_ms: 0.394697
+  type: 'test'
+  ...
+# Subtest: no fallback/retry on lost response or forbidden route
+ok 4 - no fallback/retry on lost response or forbidden route
+  ---
+  duration_ms: 0.424441
+  type: 'test'
+  ...
+# Subtest: redirect rejected, response not echoed
+ok 5 - redirect rejected, response not echoed
+  ---
+  duration_ms: 1.113754
+  type: 'test'
+  ...
+# Subtest: owner approval cannot be triggered without explicit assertion
+ok 6 - owner approval cannot be triggered without explicit assertion
+  ---
+  duration_ms: 0.220613
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 142.881868
