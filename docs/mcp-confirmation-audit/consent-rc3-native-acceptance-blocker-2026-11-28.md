@@ -35,3 +35,11 @@ No operational master/escrow key was created; no owner-reviewed allowlist, sende
 
 - [Successful native acceptance and rollback run](https://github.com/ment2/keenetic-control/actions/runs/46124288069)
 - [Isolated runner branch](https://github.com/ment2/keenetic-control/tree/codex/consent-rc3-native-rollback-20261128)
+
+## Follow-up: owner authorization and current preflight (2026-11-28)
+
+The owner explicitly authorized retrying the previously rejected transfer and use of another host. This updates the earlier consent restriction. **No transfer, file write, sender activation, or service change has been performed yet.** The 4af deployment gate still requires the exact source allowlist and local content/dependency review, exact paths for two SQLite files, an identical two-sided plan, sufficient storage reserve, secure 32-byte master provisioning with independent offline escrow, and a persistent authenticated receiver before a real sender/schedule can run.
+
+Fresh read-only Keenetic checks: router online; Python 3.13.9; MIPSel Entware package inventory includes Python 3 and SQLite support. The status diagnostic reports 3.31 GB free, but does not identify the mount, so this does not yet prove that the configured archive target meets the 5 GiB reserve. Read-only HA status identifies the target as the add-on container (UID 0), not the HA OS host; it does not attest a persistent receiver or available archive storage. MCP permission revisions remain Keenetic 2 and HA 4 with `exec`/`write_file` enabled, but the working adapters still lack the RC3 challenge/proof transport.
+
+The non-deployable review ledger remains explicitly not a service plan. Its candidate paths and two unidentified SQLite files were not converted into an allowlist or sent anywhere. Native GitHub Actions remains test-only (`contents: read`). The successful BETA/1 operation was not repeated. No operational key/escrow was created and no production change occurred. **Production Backup DR remains HOLD** until the owner-reviewed plan, secure provisioning/escrow, receiver/storage, and exact transfer operation are resolved; RC3 remains NO-GO on adapter/host-consent compatibility.
