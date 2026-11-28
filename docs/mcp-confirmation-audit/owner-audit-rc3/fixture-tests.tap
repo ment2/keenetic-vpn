@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: accurate annotation catalog and read baseline
+ok 1 - accurate annotation catalog and read baseline
+  ---
+  duration_ms: 35.390747
+  type: 'test'
+  ...
+# Subtest: only exact fixed synthetic marker accepted; no path/command
+ok 2 - only exact fixed synthetic marker accepted; no path/command
+  ---
+  duration_ms: 3.713035
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 147.60861
