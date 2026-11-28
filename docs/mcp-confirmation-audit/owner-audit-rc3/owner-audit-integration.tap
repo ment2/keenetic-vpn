@@ -1,0 +1,72 @@
+TAP version 13
+# Subtest: keenetic local owner consent audit
+    # Subtest: approved then revoked is one correlated audit sequence; no job
+    ok 1 - approved then revoked is one correlated audit sequence; no job
+      ---
+      duration_ms: 22.533463
+      type: 'test'
+      ...
+    # Subtest: wrong proof or mismatched owner request does not mutate audit lifecycle
+    ok 2 - wrong proof or mismatched owner request does not mutate audit lifecycle
+      ---
+      duration_ms: 23.200101
+      type: 'test'
+      ...
+    # Subtest: transport integrates with real Worker and consent is consumed atomically
+    ok 3 - transport integrates with real Worker and consent is consumed atomically
+      ---
+      duration_ms: 23.799041
+      type: 'test'
+      ...
+    # Subtest: race revoke versus consume and private audit shape
+    ok 4 - race revoke versus consume and private audit shape
+      ---
+      duration_ms: 14.026435
+      type: 'test'
+      ...
+    1..4
+ok 1 - keenetic local owner consent audit
+  ---
+  duration_ms: 136.267848
+  type: 'test'
+  ...
+# Subtest: ha local owner consent audit
+    # Subtest: approved then revoked is one correlated audit sequence; no job
+    ok 1 - approved then revoked is one correlated audit sequence; no job
+      ---
+      duration_ms: 14.190908
+      type: 'test'
+      ...
+    # Subtest: wrong proof or mismatched owner request does not mutate audit lifecycle
+    ok 2 - wrong proof or mismatched owner request does not mutate audit lifecycle
+      ---
+      duration_ms: 7.854857
+      type: 'test'
+      ...
+    # Subtest: transport integrates with real Worker and consent is consumed atomically
+    ok 3 - transport integrates with real Worker and consent is consumed atomically
+      ---
+      duration_ms: 9.193271
+      type: 'test'
+      ...
+    # Subtest: race revoke versus consume and private audit shape
+    ok 4 - race revoke versus consume and private audit shape
+      ---
+      duration_ms: 7.984163
+      type: 'test'
+      ...
+    1..4
+ok 2 - ha local owner consent audit
+  ---
+  duration_ms: 54.251993
+  type: 'test'
+  ...
+1..2
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 198.376751
