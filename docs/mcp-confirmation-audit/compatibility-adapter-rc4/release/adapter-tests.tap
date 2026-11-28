@@ -1,0 +1,150 @@
+TAP version 13
+# (node:1014) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: keenetic genuine-ingress contract and signed one-shot handoff (synthetic transport)
+ok 1 - keenetic genuine-ingress contract and signed one-shot handoff (synthetic transport)
+  ---
+  duration_ms: 52.038908
+  type: 'test'
+  ...
+# Subtest: keenetic approval cannot be provided by model or a different authenticated session
+ok 2 - keenetic approval cannot be provided by model or a different authenticated session
+  ---
+  duration_ms: 9.288644
+  type: 'test'
+  ...
+# Subtest: keenetic strict arguments and exact data comparison
+ok 3 - keenetic strict arguments and exact data comparison
+  ---
+  duration_ms: 14.32233
+  type: 'test'
+  ...
+# Subtest: keenetic revoke, expiry, no execution after host absent
+ok 4 - keenetic revoke, expiry, no execution after host absent
+  ---
+  duration_ms: 12.473765
+  type: 'test'
+  ...
+# Subtest: keenetic parallel invocation only queues once
+ok 5 - keenetic parallel invocation only queues once
+  ---
+  duration_ms: 11.930169
+  type: 'test'
+  ...
+# Subtest: keenetic ambiguous response resolves through read-only recovery, never resubmits
+ok 6 - keenetic ambiguous response resolves through read-only recovery, never resubmits
+  ---
+  duration_ms: 8.42027
+  type: 'test'
+  ...
+# Subtest: keenetic explicit server denial does not fall back
+ok 7 - keenetic explicit server denial does not fall back
+  ---
+  duration_ms: 10.325039
+  type: 'test'
+  ...
+# Subtest: keenetic exec mapping and timeout preserve reviewed args
+ok 8 - keenetic exec mapping and timeout preserve reviewed args
+  ---
+  duration_ms: 14.821559
+  type: 'test'
+  ...
+# Subtest: ha genuine-ingress contract and signed one-shot handoff (synthetic transport)
+ok 9 - ha genuine-ingress contract and signed one-shot handoff (synthetic transport)
+  ---
+  duration_ms: 11.56418
+  type: 'test'
+  ...
+# Subtest: ha approval cannot be provided by model or a different authenticated session
+ok 10 - ha approval cannot be provided by model or a different authenticated session
+  ---
+  duration_ms: 6.38849
+  type: 'test'
+  ...
+# Subtest: ha strict arguments and exact data comparison
+ok 11 - ha strict arguments and exact data comparison
+  ---
+  duration_ms: 12.212312
+  type: 'test'
+  ...
+# Subtest: ha revoke, expiry, no execution after host absent
+ok 12 - ha revoke, expiry, no execution after host absent
+  ---
+  duration_ms: 9.068734
+  type: 'test'
+  ...
+# Subtest: ha parallel invocation only queues once
+ok 13 - ha parallel invocation only queues once
+  ---
+  duration_ms: 10.082185
+  type: 'test'
+  ...
+# Subtest: ha ambiguous response resolves through read-only recovery, never resubmits
+ok 14 - ha ambiguous response resolves through read-only recovery, never resubmits
+  ---
+  duration_ms: 7.701931
+  type: 'test'
+  ...
+# Subtest: ha explicit server denial does not fall back
+ok 15 - ha explicit server denial does not fall back
+  ---
+  duration_ms: 8.734723
+  type: 'test'
+  ...
+# Subtest: ha exec mapping and timeout preserve reviewed args
+ok 16 - ha exec mapping and timeout preserve reviewed args
+  ---
+  duration_ms: 7.352428
+  type: 'test'
+  ...
+# Subtest: Keenetic legacy mutation alias preserves op and rejects unreviewed route
+ok 17 - Keenetic legacy mutation alias preserves op and rejects unreviewed route
+  ---
+  duration_ms: 10.297628
+  type: 'test'
+  ...
+# Subtest: descriptors require approved reference and OAuth schemes, no proof or owner methods
+ok 18 - descriptors require approved reference and OAuth schemes, no proof or owner methods
+  ---
+  duration_ms: 0.685379
+  type: 'test'
+  ...
+# Subtest: durable recovery capacity blocks dispatch before network, unresolved survives expiry
+ok 19 - durable recovery capacity blocks dispatch before network, unresolved survives expiry
+  ---
+  duration_ms: 9.587352
+  type: 'test'
+  ...
+# Subtest: owner must pair via trusted registry and not accept unpaired clients
+ok 20 - owner must pair via trusted registry and not accept unpaired clients
+  ---
+  duration_ms: 3.432453
+  type: 'test'
+  ...
+# Subtest: read recovery pinned HTTPS only, GET only, denies redirect and malformed replies
+ok 21 - read recovery pinned HTTPS only, GET only, denies redirect and malformed replies
+  ---
+  duration_ms: 0.923927
+  type: 'test'
+  ...
+# Subtest: lost response survives process restart, no secrets or payload persisted and no replay
+ok 22 - lost response survives process restart, no secrets or payload persisted and no replay
+  ---
+  duration_ms: 8.883676
+  type: 'test'
+  ...
+# Subtest: SQLite store rejects broad permissions and symlink; registration is unique
+ok 23 - SQLite store rejects broad permissions and symlink; registration is unique
+  ---
+  duration_ms: 5.070962
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 324.886907
